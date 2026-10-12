@@ -127,7 +127,8 @@ export function SeedConfirm() {
           run.problem = { kind: event.problem, message: event.message };
           return;
         }
-        setLog((l) => [...l, event.message]);
+        // After a stop the banner explains it; a closing "Done." would read like success.
+        if (event.type !== "done" || !run.problem) setLog((l) => [...l, event.message]);
         if (event.type === "done") {
           run.done = true;
           applyResolutions(event.data);
