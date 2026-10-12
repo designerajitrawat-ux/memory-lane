@@ -78,6 +78,10 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
   alert, seeds stay pending, no profile text in agent logs. Fixed: "Add another favourite" focused the
   Type select, so typing changed it; it now focuses the name. ux-reviewer (2 Critical, 9 Warnings) and
   security-reviewer (0 Critical, 3 Warnings) findings fixed, plus most suggestions.
+  128 tests green (100 agent, 14 shared, 14 web). Deployed (867f69f, 7a32266): CI green, Render
+  applied migration 0003 on Neon (health DB ok), live check on Vercel+Render: "Check 1 favourite" →
+  focused "Qloo isn't connected yet" banner, seed stays pending. One synthetic test profile (no
+  nickname, favourite "Mohammed Rafi") is left on the live DB; the 90-day purge removes it.
 - 2026-10-12: **Phase 3a code complete.** Profiles (create/list/get/delete), bearer owner token (sha256 in
   DB), cf-connecting-ip client key, 4-step wizard + profile page + list, shared PII patterns for profile
   text, profile limits + 90-day retention purge. ux-reviewer (4 Critical) and security-reviewer (0 Critical,
