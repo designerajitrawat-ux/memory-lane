@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { CircleDashed } from "lucide-react";
+import { CircleCheck, CircleDashed, CircleHelp, CircleSlash } from "lucide-react";
 import type { ProfileView } from "@memory-lane/shared";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,8 +29,25 @@ const DOMAIN_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+const STATUS_CHIP: Record<
+  ProfileView["seeds"][number]["status"],
+  { label: string; icon: typeof CircleCheck; className: string }
+> = {
+  pending: { label: "Not checked yet", icon: CircleDashed, className: "text-muted-foreground" },
+  needs_input: { label: "Choose a match", icon: CircleHelp, className: "text-warning" },
+  confirmed: { label: "Confirmed with Qloo", icon: CircleCheck, className: "text-evidence" },
+  unresolved: { label: "Not found in Qloo", icon: CircleSlash, className: "text-muted-foreground" },
+  rejected: { label: "Not used", icon: CircleSlash, className: "text-muted-foreground" },
+};
+
+const NOT_SENT_CHIP = {
+  label: "Not sent to Qloo",
+  icon: CircleSlash,
+  className: "text-muted-foreground",
+};
+
 const primaryLink =
-  "inline-flex h-12 items-center justify-center rounded-lg bg-primary px-6 text-base font-bold text-primary-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+  "inline-flex min-h-12 items-center justify-center rounded-lg bg-primary px-6 py-2 text-base font-bold text-primary-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 function Years({ from, to }: { from: number; to: number }) {
   return (
@@ -46,9 +63,14 @@ function Years({ from, to }: { from: number; to: number }) {
 
 export function ProfileDetail() {
   const params = useParams<{ id: string }>();
-  const justSaved = useSearchParams().get("saved") === "1";
+  const search = useSearchParams();
   const router = useRouter();
   const id = params.id;
+  // The query stays in the URL: Next keeps visited routes alive, and replacing it would bring back the
+  // profile as it was before the save.
+  const flash =
+    search.get("confirmed") === "1" ? "confirmed" : search.get("saved") === "1" ? "saved" : null;
+  const flashRef = useRef<HTMLParagraphElement>(null);
   const [result, setResult] = useState<Loaded | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -74,6 +96,12 @@ export function ProfileDetail() {
     window.addEventListener("online", retry);
     return () => window.removeEventListener("online", retry);
   }, [retry]);
+
+  const loaded = result?.ok === true;
+  useEffect(() => {
+    if (!flash || !loaded) return;
+    flashRef.current?.focus(); // the page changed under the person: say what happened
+  }, [flash, loaded]);
 
   async function confirmDelete() {
     setDeleting(true);
@@ -129,13 +157,23 @@ export function ProfileDetail() {
 
   const { profile, isOwner } = result.data;
   const name = profile.nickname ?? "Unnamed profile";
-  const anyPending = profile.seeds.some((s) => s.status === "pending");
+  const toCheck = profile.seeds.filter((s) => s.status === "pending").length;
+  const toChoose = profile.seeds.filter((s) => s.status === "needs_input").length;
+  const confirmed = profile.seeds.filter((s) => s.status === "confirmed").length;
+  const nothingMatched = isOwner && toCheck === 0 && toChoose === 0 && confirmed === 0;
 
   return (
     <div className="space-y-8">
-      {justSaved && (
-        <p role="status" className="rounded-xl border border-evidence p-4 text-base">
-          Profile saved.
+      {flash && (
+        <p
+          ref={flashRef}
+          tabIndex={-1}
+          className="rounded-xl border border-evidence p-4 text-base outline-none"
+        >
+          {flash === "confirmed" ? "Choices saved." : "Profile saved."}
+          {flash === "confirmed" &&
+            toChoose > 0 &&
+            ` ${toChoose} favourite${toChoose === 1 ? " still needs" : "s still need"} a choice.`}
         </p>
       )}
       <div className="space-y-2">
@@ -162,19 +200,25 @@ export function ProfileDetail() {
                 </span>
                 {s.displayName ?? s.rawText}
               </span>
-              {s.status === "pending" && (
-                <span className="inline-flex items-center gap-2 text-base text-muted-foreground">
-                  <span className="sr-only">. </span>
-                  <CircleDashed aria-hidden="true" className="size-5" /> Not checked yet
-                </span>
-              )}
+              <StatusChip status={s.status} note={s.note} />
             </li>
           ))}
         </ul>
-        {anyPending && (
+        {isOwner && (toCheck > 0 || toChoose > 0) && (
+          <div className="space-y-3">
+            <p className="text-base text-muted-foreground">
+              {toChoose > 0
+                ? "Qloo found possible matches. Please choose the right ones."
+                : "Next, Memory Lane looks each favourite up in Qloo and asks you to confirm the match. Nothing is guessed."}
+            </p>
+            <Link href={`/profiles/${profile.id}/confirm`} className={primaryLink}>
+              {toChoose > 0 ? "Choose matches" : "Check favourites with Qloo"}
+            </Link>
+          </div>
+        )}
+        {nothingMatched && profile.seeds.length > 0 && (
           <p className="text-base text-muted-foreground">
-            Checking favourites with Qloo isn&apos;t switched on yet. When it is, Memory Lane will
-            look each one up and ask you to confirm the match. Nothing is guessed in the meantime.
+            None of the favourites were matched in Qloo, so there&apos;s nothing to plan from yet.
           </p>
         )}
       </section>
@@ -212,7 +256,14 @@ export function ProfileDetail() {
       </section>
 
       <div>
-        <Link href="/profiles" className={primaryLink}>
+        <Link
+          href="/profiles"
+          className={
+            isOwner && (toCheck > 0 || toChoose > 0)
+              ? "inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4"
+              : primaryLink
+          }
+        >
           Back to your profiles
         </Link>
       </div>
@@ -273,5 +324,17 @@ export function ProfileDetail() {
         </section>
       )}
     </div>
+  );
+}
+
+function StatusChip({ status, note }: Pick<ProfileView["seeds"][number], "status" | "note">) {
+  const chip =
+    status === "unresolved" && note === "personal_info" ? NOT_SENT_CHIP : STATUS_CHIP[status];
+  const Icon = chip.icon;
+  return (
+    <span className={`inline-flex items-center gap-2 text-base ${chip.className}`}>
+      <span className="sr-only">. </span>
+      <Icon aria-hidden="true" className="size-5" /> {chip.label}
+    </span>
   );
 }

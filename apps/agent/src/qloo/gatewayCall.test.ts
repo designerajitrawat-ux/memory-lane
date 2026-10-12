@@ -241,6 +241,21 @@ describe("gateway.call", () => {
     });
   });
 
+  it("leaves the reserved part of the daily budget for demo personas", async () => {
+    const mcp = scripted(ok);
+    const { gateway } = setup(mcp, { dailyBudget: 3 });
+    const user = { ...NONE, reserve: 2 };
+    await gateway.call("qloo_find_tags", { query: "one" }, user);
+    expect(await gateway.call("qloo_find_tags", { query: "two" }, user)).toMatchObject({
+      kind: "quota",
+      scope: "daily",
+    });
+    expect(await gateway.call("qloo_find_tags", { query: "two" }, NONE)).toMatchObject({
+      kind: "usable",
+    });
+    expect(mcp.calls).toBe(2);
+  });
+
   it("keeps only complete demo answers forever", async () => {
     let t = 0;
     const partial = { structuredContent: { ...recommendOk.structuredContent, status: "partial" } };

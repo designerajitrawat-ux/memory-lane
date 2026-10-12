@@ -37,6 +37,35 @@ describe("loadEnv", () => {
     expect(() => loadEnv({ WEB_ORIGIN: "https://a.example/app" })).toThrow(/WEB_ORIGIN/);
   });
 
+  it("refuses fixture answers in production (CLAUDE.md rule 3)", () => {
+    expect(() =>
+      loadEnv({
+        NODE_ENV: "production",
+        DATABASE_URL: "postgres://db/x",
+        WEB_ORIGIN: "https://memory-lane.vercel.app",
+        QLOO_FIXTURE_DIR: "test/fixtures",
+      }),
+    ).toThrow(/QLOO_FIXTURE_DIR/);
+    expect(loadEnv({ QLOO_FIXTURE_DIR: "test/fixtures" }).QLOO_FIXTURE_DIR).toBe("test/fixtures");
+  });
+
+  it("refuses the in-memory dev database in production", () => {
+    expect(() =>
+      loadEnv({
+        NODE_ENV: "production",
+        DATABASE_URL: "pglite:memory",
+        WEB_ORIGIN: "https://memory-lane.vercel.app",
+      }),
+    ).toThrow(/DATABASE_URL/);
+    expect(loadEnv({ DATABASE_URL: "pglite:memory" }).DATABASE_URL).toBe("pglite:memory");
+  });
+
+  it("keeps the demo reserve within the daily Qloo budget", () => {
+    expect(() => loadEnv({ DAILY_QLOO_CALL_BUDGET: "50", QLOO_BUDGET_RESERVE: "60" })).toThrow(
+      /QLOO_BUDGET_RESERVE/,
+    );
+  });
+
   it("names bad variables without echoing their values", () => {
     expect(() => loadEnv({ PORT: "not-a-port-s3cret" })).toThrow(/PORT/);
     expect(() => loadEnv({ PORT: "not-a-port-s3cret" })).not.toThrow(/s3cret/);

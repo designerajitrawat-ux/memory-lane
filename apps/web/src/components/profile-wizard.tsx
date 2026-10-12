@@ -239,12 +239,13 @@ export function ProfileWizard() {
       </div>
 
       {submitError && (
+        // Focused when shown (read once on focus), so it is not also a live region.
         <div
           ref={bannerRef}
           tabIndex={-1}
-          role="alert"
           className="rounded-xl border border-destructive p-4 text-base outline-none"
         >
+          <span className="sr-only">Problem: </span>
           {submitError}
         </div>
       )}
@@ -474,7 +475,7 @@ export function ProfileWizard() {
                     aria-required="true"
                     aria-invalid={!!err(`favourites.${i}.text`)}
                     aria-describedby={describedBy(
-                      "favourites-hint",
+                      i === 0 ? "favourites-hint" : null,
                       `favourites.${i}.text-error`,
                       !!err(`favourites.${i}.text`),
                     )}
@@ -508,7 +509,13 @@ export function ProfileWizard() {
               type="button"
               variant="outline"
               className={addButton}
-              onClick={() => favourites.append({ domain: "music", text: "" })}
+              onClick={() =>
+                // Focus the name, not the Type select (typing into a focused select silently changes it).
+                favourites.append(
+                  { domain: "music", text: "" },
+                  { focusName: `favourites.${favourites.fields.length}.text` },
+                )
+              }
             >
               <Plus aria-hidden="true" /> Add another favourite
             </Button>

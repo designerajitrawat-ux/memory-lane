@@ -1,6 +1,10 @@
-import type { z } from "zod";
+import { z } from "zod";
 import {
   ApiErrorSchema,
+  ResolveEventSchema,
+  SeedResolutionSchema,
+  type ConfirmRequest,
+  type ResolveEvent,
   CreateProfileResponseSchema,
   ProfileListResponseSchema,
   ProfileResponseSchema,
@@ -8,6 +12,9 @@ import {
 } from "@memory-lane/shared";
 import { AGENT_URL } from "./agent";
 import { getOwnerToken, setOwnerToken } from "./owner-token";
+import { readSse } from "./sse";
+
+const ResolutionsResponseSchema = z.object({ resolutions: z.array(SeedResolutionSchema) });
 
 export type ApiFailureKind =
   | "offline"
@@ -105,4 +112,46 @@ export const api = {
     request(`/api/profiles/${encodeURIComponent(id)}`, ProfileResponseSchema),
   deleteProfile: (id: string) =>
     request(`/api/profiles/${encodeURIComponent(id)}`, null, { method: "DELETE" }),
+  listResolutions: (id: string) =>
+    request(`/api/profiles/${encodeURIComponent(id)}/seeds`, ResolutionsResponseSchema),
+  confirmSeeds: (id: string, decisions: ConfirmRequest["decisions"]) =>
+    request(`/api/profiles/${encodeURIComponent(id)}/seeds/confirm`, ResolutionsResponseSchema, {
+      method: "POST",
+      body: JSON.stringify({ decisions }),
+    }),
+
+  /**
+   * Streams the agent's Stage 1 run; each event goes to onEvent as it arrives. Aborting `signal` (the
+   * page closed) ends the request, and the agent stops looking favourites up.
+   */
+  async resolveSeeds(
+    id: string,
+    onEvent: (e: ResolveEvent) => void,
+    signal?: AbortSignal,
+  ): Promise<ApiResult<null>> {
+    const token = getOwnerToken();
+    let res: Response;
+    try {
+      res = await fetch(`${AGENT_URL}/api/profiles/${encodeURIComponent(id)}/seeds/resolve`, {
+        method: "POST",
+        cache: "no-store",
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+        signal,
+      });
+    } catch {
+      return failure(
+        typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "unreachable",
+      );
+    }
+    if (!res.ok || !res.body) return failure(res.ok ? "server" : kindForStatus(res.status));
+    try {
+      for await (const data of readSse(res.body)) {
+        const parsed = ResolveEventSchema.safeParse(JSON.parse(data));
+        if (parsed.success) onEvent(parsed.data);
+      }
+    } catch {
+      return failure("unreachable");
+    }
+    return { ok: true, data: null };
+  },
 };

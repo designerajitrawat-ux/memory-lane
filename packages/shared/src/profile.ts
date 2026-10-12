@@ -17,7 +17,21 @@ import {
  * public cultural favourites. No health data, no addresses, no contact details (docs/07 §1).
  */
 export const DomainSchema = z.enum(["music", "film", "tv", "food", "place", "other"]);
-export const SeedStatusSchema = z.enum(["pending", "confirmed", "rejected", "unresolved"]);
+export const SeedStatusSchema = z.enum([
+  "pending",
+  "needs_input",
+  "confirmed",
+  "rejected",
+  "unresolved",
+]);
+/** Why a favourite wasn't matched, or couldn't be checked this time (Stage 1). Shown as fixed text. */
+export const SeedNoteSchema = z.enum([
+  "not_found",
+  "no_clear_match",
+  "personal_info",
+  "invalid",
+  "lookup_failed",
+]);
 
 const CURRENT_YEAR = new Date().getUTCFullYear();
 
@@ -133,6 +147,7 @@ export const SeedViewSchema = z.object({
   domain: DomainSchema,
   rawText: z.string(),
   status: SeedStatusSchema,
+  note: SeedNoteSchema.nullable(),
   displayName: z.string().nullable(),
 });
 
@@ -180,6 +195,7 @@ export const ApiErrorSchema = z.object({
 });
 
 export type Domain = z.infer<typeof DomainSchema>;
+export type SeedNote = z.infer<typeof SeedNoteSchema>;
 export type ProfileInput = z.input<typeof ProfileInputSchema>;
 export type ProfileInputParsed = z.output<typeof ProfileInputSchema>;
 export type ProfileView = z.infer<typeof ProfileViewSchema>;

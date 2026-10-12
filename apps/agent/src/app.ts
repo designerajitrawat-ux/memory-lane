@@ -7,6 +7,7 @@ import type { QlooGateway } from "./qloo/gateway";
 import type { Db } from "./db/client";
 import { clientIpResolver } from "./clientIp";
 import { profileRoutes } from "./profiles/routes";
+import { resolveRoutes, type ResolveRouteDeps } from "./stage1/routes";
 import type { ProfileStore } from "./profiles/store";
 
 export interface AppDeps {
@@ -14,6 +15,8 @@ export interface AppDeps {
   db: Db | null;
   /** Profile storage; null without a database (routes then answer 503). */
   profiles?: ProfileStore | null;
+  /** Stage 1 seed resolution; null without a database (routes then answer 503). */
+  resolution?: ResolveRouteDeps | null;
   version: string;
   webOrigins: string[];
   trustProxyHops?: number;
@@ -113,6 +116,7 @@ export async function buildApp(deps: AppDeps) {
   );
 
   await app.register(profileRoutes, { store: deps.profiles ?? null });
+  await app.register(resolveRoutes, { deps: deps.resolution ?? null, clientIp });
 
   const startedAt = Date.now();
   let cached: { at: number; checks: Promise<[QlooCheck, DbCheck]> } | null = null;

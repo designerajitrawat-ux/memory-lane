@@ -72,6 +72,7 @@ export function createProfileStore(
         domain: s.domain as ProfileView["seeds"][number]["domain"],
         rawText: s.rawText,
         status: s.status as ProfileView["seeds"][number]["status"],
+        note: s.note as ProfileView["seeds"][number]["note"],
         displayName: s.displayName,
       })),
       avoid: avoidRows.map((a) => ({ id: a.id, text: a.text, reason: a.reason })),

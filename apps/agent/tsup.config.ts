@@ -7,7 +7,10 @@ export default defineConfig({
   format: ["cjs"],
   platform: "node",
   target: "node22",
-  noExternal: [/.*/],
+  // Everything except the dev-only in-process Postgres (db/devPglite.ts), which must never be part of
+  // the production bundle (it stays a lazy require that only runs with DATABASE_URL=pglite:…).
+  noExternal: [/^(?!@electric-sql\/pglite)/],
+  external: ["@electric-sql/pglite"],
   outExtension: () => ({ js: ".cjs" }),
   sourcemap: true,
   clean: true,

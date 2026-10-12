@@ -20,7 +20,7 @@ flowchart LR
 | Language | TypeScript strict everywhere | fewer bugs, shared types |
 | Frontend | Next.js (App Router), React, Tailwind CSS, shadcn/ui (Radix), lucide icons | fast, accessible components |
 | Forms/validation | react-hook-form + zod | shared zod schemas with backend |
-| Data fetching | TanStack Query + native EventSource for SSE | streaming agent progress |
+| Data fetching | `fetch` + a small SSE reader (`lib/sse.ts`) | streaming agent progress; EventSource can't POST or send the bearer header |
 | Backend | Node ≥ 22.19, Fastify, zod; built with tsup into one self-contained `dist/server.cjs` | light, fast, long-lived process for MCP; tiny runtime image |
 | Qloo | `@qloo/qloo-harness` (global in container) + `@modelcontextprotocol/sdk` client | official route |
 | LLM | `@anthropic-ai/sdk`, model `claude-sonnet-5-5` (cost/speed); optionally `claude-opus-5-5` for compose step | strong tool use |
@@ -65,13 +65,14 @@ memory-lane/
 | Table | Key columns |
 |---|---|
 | `profiles` | id (uuid), owner_token_hash (sha256 of the device's owner token), nickname, birth_year, languages[], life_stages jsonb [{region, from_year, to_year}], is_demo bool, created_at |
-| `seeds` | id, profile_id, raw_text, domain (music/film/tv/food/place/other), qloo_entity_id, qloo_entity_type, display_name, status (pending/confirmed/rejected/unresolved), source (caregiver/learned), evidence_id |
+| `seeds` | id, profile_id, raw_text, domain (music/film/tv/food/place/other), qloo_entity_id, qloo_entity_type, display_name, status (pending/needs_input/confirmed/rejected/unresolved, CHECK), note (not_found/no_clear_match/personal_info/invalid/lookup_failed: why it wasn't matched, shown as fixed text), source (caregiver/learned), evidence_id (FK → qloo_calls; CHECK: confirmed ⇒ evidence_id + qloo_entity_id) |
+| `seed_candidates` | seed_id (cascade), position, entity_id, name, entity_type, year, evidence_id (not null, FK → qloo_calls): the matches Stage 1 found; confirm only accepts one of these, then the seed's candidates are deleted |
 | `avoid_items` | id, profile_id, text, qloo_entity_id nullable, reason, source (caregiver/learned) |
 | `taste_profiles` | id, profile_id, version, items jsonb [{domain, entity_id, name, caption, evidence_ids[]}], created_at |
 | `sessions` | id, profile_id, number, status (planned/in_progress/done), plan jsonb, what_changed text, created_at |
 | `session_items` | id, session_id, order, kind (song/film/food/place/tv/other), qloo_entity_id, title, why text, prompts text[], link_url, evidence_ids[] |
 | `reactions` | id, session_item_id, value (engaged/sang/neutral/distressed), note, created_at |
-| `qloo_calls` | id, tool, args_checked jsonb (as sent, after the PII guard), status, summary, result_count, results_digest jsonb, cached bool, latency_ms, created_at |
+| `qloo_calls` | id, profile_id nullable (cascade on profile delete), tool, args_checked jsonb (as sent, after the PII guard), status, summary, result_count, results_digest jsonb, cached bool, latency_ms, created_at |
 | `qloo_cache` | key (sha256), tool, args jsonb, envelope jsonb, expires_at |
 | `budget` | day, qloo_calls, llm_tokens, profiles_created |
 
@@ -97,8 +98,9 @@ profiles get an owner hash no token can produce. Limits: 20 profiles per owner, 
 | GET `/api/profiles` | the caller's profiles (by owner token) |
 | GET `/api/profiles/:id` | profile + seeds (+ taste profile + sessions later); owner or demo, else 404 |
 | DELETE `/api/profiles/:id` | owner only; cascades seeds/avoid items (docs/07 §2.8) |
-| POST `/api/profiles/:id/seeds/resolve` | SSE: resolve raw favourites via Qloo → candidates |
-| POST `/api/profiles/:id/seeds/confirm` | caregiver confirms/rejects candidates |
+| GET `/api/profiles/:id/seeds` | owner only: each favourite's status + stored candidates |
+| POST `/api/profiles/:id/seeds/resolve` | owner only, SSE, 6/min/IP, one run per profile (else 409 `already_checking`): looks up each pending favourite with `qloo_describe` → stored candidates (status `needs_input`) or `unresolved` + note; stops at the first failure, no key, quota or used-up allowance (`error` event; that seed stays pending). Allowance: `STAGE1_LOOKUPS_PER_OWNER_DAY` (50) per device token and `STAGE1_LOOKUPS_PER_CLIENT_DAY` (100) per client IP, in memory; Stage 1 leaves `QLOO_BUDGET_RESERVE` (100) of the daily budget for demo personas (gateway `reserve`). Keep-alive comment every 15 s |
+| POST `/api/profiles/:id/seeds/confirm` | owner only, 30/min/IP: `{decisions:[{seedId, candidateId \| null}]}`; a candidate must be one stored for that seed (else 409 `choice_out_of_date`); null = "None of these" → `rejected` |
 | POST `/api/profiles/:id/taste-profile` | SSE: agent builds Life Taste Profile |
 | POST `/api/profiles/:id/sessions` | SSE: agent composes next session (uses reactions history) |
 | GET `/api/sessions/:id` | session + items |
@@ -108,6 +110,13 @@ profiles get an owner hash no token can produce. Limits: 20 profiles per owner, 
 | GET `/api/evidence/:id` | one evidence record (redacted) |
 
 SSE event shape: `{type:"step"|"tool"|"result"|"error"|"done", message, tool?, status?, evidenceId?, data?}`.
+Messages are fixed app text; harness `summary`/`recovery` text is never forwarded. Stage 1 events are
+`ResolveEventSchema` in `packages/shared/src/resolve.ts` (`error` carries `problem`:
+`qloo_not_connected` | `quota` | `unavailable`; the stream always ends with `done`).
+
+Local demo without secrets: `pnpm --filter @memory-lane/agent dev:fixtures` (in-memory PGlite +
+synthetic Qloo envelopes from `test/fixtures`). Both switches are refused when `NODE_ENV=production`, and
+PGlite stays out of the production bundle.
 
 ## 6. Non-functional requirements
 - p95 cached demo load < 3 s; uncached session build target < 45 s with live progress.

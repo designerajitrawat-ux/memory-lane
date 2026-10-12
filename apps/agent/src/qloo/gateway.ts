@@ -37,6 +37,8 @@ export interface CallContext {
   persistent?: boolean;
   /** Per-stage subset of the allow-list (docs/05 §5). */
   allowedTools?: readonly QlooToolName[];
+  /** Daily budget units this call must leave untouched (kept for demo personas). Server-side only. */
+  reserve?: number;
 }
 
 export type GatewayResult =
@@ -93,7 +95,7 @@ export function createQlooGateway(deps: GatewayDeps): QlooGateway {
   }
 
   // The caller already paid for the first attempt; each retry takes another unit of the daily budget.
-  async function liveCall(tool: QlooToolName, args: unknown): Promise<QlooEnvelope> {
+  async function liveCall(tool: QlooToolName, args: unknown, limit: number): Promise<QlooEnvelope> {
     let envelope: QlooEnvelope;
     for (let attempt = 0; ; attempt++) {
       try {
@@ -113,7 +115,7 @@ export function createQlooGateway(deps: GatewayDeps): QlooGateway {
       }
       const backoff = RETRY_BACKOFF_MS[attempt];
       if (!isRetryable(envelope) || backoff === undefined) return envelope;
-      if (!(await budget.tryConsume(dailyBudget).catch(() => false))) return envelope;
+      if (!(await budget.tryConsume(limit).catch(() => false))) return envelope;
       await sleep(backoff);
     }
   }
@@ -177,6 +179,7 @@ export function createQlooGateway(deps: GatewayDeps): QlooGateway {
       if (hit) {
         try {
           const evidenceId = await evidence.record({
+            profileId: ctx.profileId,
             tool: name.data,
             args,
             envelope: hit,
@@ -197,9 +200,10 @@ export function createQlooGateway(deps: GatewayDeps): QlooGateway {
           message: "This profile has done a lot of research this hour. Try again later.",
         };
       }
+      const limit = Math.max(0, dailyBudget - (ctx.reserve ?? 0));
       let allowed: boolean;
       try {
-        allowed = await budget.tryConsume(dailyBudget);
+        allowed = await budget.tryConsume(limit);
       } catch (err) {
         storeError(name.data, err);
         return {
@@ -216,7 +220,7 @@ export function createQlooGateway(deps: GatewayDeps): QlooGateway {
       }
 
       const started = now();
-      const envelope = await liveCall(name.data, args);
+      const envelope = await liveCall(name.data, args, limit);
       const kind = classify(envelope);
       if (CACHEABLE.has(kind)) {
         // Demo personas keep complete answers forever; incomplete ones are retried after a day.
@@ -229,6 +233,7 @@ export function createQlooGateway(deps: GatewayDeps): QlooGateway {
       }
       try {
         const evidenceId = await evidence.record({
+          profileId: ctx.profileId,
           tool: name.data,
           args,
           envelope,

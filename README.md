@@ -35,6 +35,10 @@ pnpm dev                                   # web on :3000, agent on :8787
 Open http://localhost:3000 — the status strip shows whether the agent, Qloo and the database are
 ready. Without a Qloo key it honestly shows "Qloo: waiting for API key".
 
+No key or database yet? `pnpm --filter @memory-lane/agent dev:fixtures` runs the agent with an
+in-memory database and synthetic Qloo answers (placeholder names like "Example Artist A"), so the whole
+flow can be clicked through locally. Both switches are refused in production.
+
 | Command | |
 |---|---|
 | `pnpm test` | unit tests (Vitest, synthetic Qloo envelopes — no live calls) |

@@ -10,6 +10,8 @@ export interface DigestItem {
 }
 
 export interface EvidenceRecord {
+  /** Profile the call was made for; its records are deleted with the profile. */
+  profileId?: string | undefined;
   tool: string;
   args: unknown; // already passed the PII guard
   envelope: QlooEnvelope;
@@ -54,8 +56,9 @@ export function resultsDigest(results: unknown): DigestItem[] {
 
 const str = (v: unknown) => (typeof v === "string" && v ? v.slice(0, MAX_TEXT) : undefined);
 
-function row({ tool, args, envelope, cached, latencyMs }: EvidenceRecord) {
+function row({ profileId, tool, args, envelope, cached, latencyMs }: EvidenceRecord) {
   return {
+    profileId: profileId ?? null,
     tool,
     argsChecked: args,
     status: envelope.status,

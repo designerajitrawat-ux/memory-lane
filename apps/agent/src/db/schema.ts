@@ -1,6 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  check,
   date,
   index,
   integer,
@@ -23,18 +25,24 @@ export const qlooCache = pgTable("qloo_cache", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const qlooCalls = pgTable("qloo_calls", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  tool: text("tool").notNull(),
-  argsChecked: jsonb("args_checked").notNull(), // args exactly as sent, after passing the PII guard
-  status: text("status").notNull(),
-  summary: text("summary"),
-  resultCount: integer("result_count").notNull().default(0),
-  resultsDigest: jsonb("results_digest").notNull().default([]),
-  cached: boolean("cached").notNull().default(false),
-  latencyMs: integer("latency_ms").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const qlooCalls = pgTable(
+  "qloo_calls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // The profile the call was made for; deleting the profile deletes its call records (docs/07 §2.8).
+    profileId: uuid("profile_id").references(() => profiles.id, { onDelete: "cascade" }),
+    tool: text("tool").notNull(),
+    argsChecked: jsonb("args_checked").notNull(), // args exactly as sent, after passing the PII guard
+    status: text("status").notNull(),
+    summary: text("summary"),
+    resultCount: integer("result_count").notNull().default(0),
+    resultsDigest: jsonb("results_digest").notNull().default([]),
+    cached: boolean("cached").notNull().default(false),
+    latencyMs: integer("latency_ms").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("qloo_calls_profile_idx").on(t.profileId)],
+);
 
 export const budget = pgTable("budget", {
   day: date("day").primaryKey(), // UTC day
@@ -80,11 +88,27 @@ export const seeds = pgTable(
     qlooEntityId: text("qloo_entity_id"),
     qlooEntityType: text("qloo_entity_type"),
     displayName: text("display_name"),
-    status: text("status").notNull().default("pending"), // pending | confirmed | rejected | unresolved
+    status: text("status").notNull().default("pending"), // pending | needs_input | confirmed | rejected | unresolved
+    note: text("note"), // SeedNote: why it wasn't matched / couldn't be checked; fixed text in the UI
     source: text("source").notNull().default("caregiver"), // caregiver | learned
-    evidenceId: uuid("evidence_id"),
+    evidenceId: uuid("evidence_id").references(() => qlooCalls.id),
   },
-  (t) => [index("seeds_profile_idx").on(t.profileId)],
+  (t) => [
+    index("seeds_profile_idx").on(t.profileId),
+    check(
+      "seeds_status_check",
+      sql`${t.status} in ('pending', 'needs_input', 'confirmed', 'rejected', 'unresolved')`,
+    ),
+    check(
+      "seeds_note_check",
+      sql`${t.note} is null or ${t.note} in ('not_found', 'no_clear_match', 'personal_info', 'invalid', 'lookup_failed')`,
+    ),
+    // Rule 2 in the database too: a confirmed seed always points at its Qloo evidence.
+    check(
+      "seeds_confirmed_evidence_check",
+      sql`${t.status} <> 'confirmed' or (${t.evidenceId} is not null and ${t.qlooEntityId} is not null)`,
+    ),
+  ],
 );
 
 export const avoidItems = pgTable(
@@ -101,4 +125,24 @@ export const avoidItems = pgTable(
     source: text("source").notNull().default("caregiver"),
   },
   (t) => [index("avoid_items_profile_idx").on(t.profileId)],
+);
+
+/** Qloo matches found for a seed (Stage 1). Confirm accepts only these, so every seed has evidence. */
+export const seedCandidates = pgTable(
+  "seed_candidates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    seedId: uuid("seed_id")
+      .notNull()
+      .references(() => seeds.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    entityId: text("entity_id").notNull(),
+    name: text("name").notNull(),
+    entityType: text("entity_type"),
+    year: integer("year"),
+    evidenceId: uuid("evidence_id")
+      .notNull()
+      .references(() => qlooCalls.id),
+  },
+  (t) => [index("seed_candidates_seed_idx").on(t.seedId)],
 );

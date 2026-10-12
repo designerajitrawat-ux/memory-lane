@@ -5,7 +5,8 @@ import type { AppDb } from "./types";
 /**
  * Data retention (docs/07 §2.8): profiles nobody has opened for `profileRetentionDays` are deleted
  * (seeds and avoid items cascade), and expired Qloo cache rows are removed. Demo profiles stay.
- * Evidence rows (qloo_calls) are kept for now; Phase 4 links them to sessions and purges unreferenced ones.
+ * Evidence rows (qloo_calls) of a deleted profile cascade with it; rows without a profile are kept for
+ * now (Phase 4 links them to sessions and purges unreferenced ones).
  */
 export async function purgeStaleData(
   db: AppDb,

@@ -2,18 +2,23 @@ import { resolve } from "node:path";
 import pkg from "../package.json";
 import { buildApp } from "./app";
 import { createDb } from "./db/client";
-import { loadEnv } from "./env";
+import { createDevPgliteDb } from "./db/devPglite";
+import { isPgliteUrl, loadEnv } from "./env";
 import { createMemoryBudgetStore, createPgBudgetStore } from "./qloo/budget";
 import { createMemoryCacheStore, createPgCacheStore } from "./qloo/cache";
 import { createMemoryEvidenceStore, createPgEvidenceStore } from "./qloo/evidence";
 import { createQlooGateway } from "./qloo/gateway";
 import { createQlooMcpClient } from "./qloo/mcpClient";
+import { createFixtureMcpClient } from "./qloo/fixtureMcp";
+import { createResolutionStore } from "./stage1/store";
 import { createProfileStore } from "./profiles/store";
 import { purgeStaleData } from "./db/maintenance";
 
 async function main() {
   const env = loadEnv();
-  const db = createDb(env.DATABASE_URL, { verifyTls: env.NODE_ENV === "production" });
+  const db = isPgliteUrl(env.DATABASE_URL)
+    ? await createDevPgliteDb() // local dev only (refused in production)
+    : createDb(env.DATABASE_URL, { verifyTls: env.NODE_ENV === "production" });
   let dbSetupFailed = false;
   if (db) {
     try {
@@ -30,7 +35,9 @@ async function main() {
     }
   }
 
-  const mcp = createQlooMcpClient(env.QLOO_MCP_COMMAND);
+  const mcp = env.QLOO_FIXTURE_DIR
+    ? createFixtureMcpClient(resolve(env.QLOO_FIXTURE_DIR)) // dev only (refused in production)
+    : createQlooMcpClient(env.QLOO_MCP_COMMAND);
   // Without a database (local dev) the gateway keeps cache, evidence and budget in memory.
   const gateway = createQlooGateway({
     mcp,
@@ -43,16 +50,32 @@ async function main() {
     log: { warn: (obj, msg) => app.log.warn(obj, msg) },
   });
   const commit = process.env.RENDER_GIT_COMMIT?.slice(0, 7);
+  // Without a migrated schema the data routes answer an honest 503 instead of failing per query.
+  const dataDb = db && !dbSetupFailed ? db : null;
+  const profiles = dataDb
+    ? createProfileStore(dataDb.drizzle, {
+        perOwner: env.PROFILES_PER_OWNER,
+        perDay: env.PROFILES_PER_DAY,
+      })
+    : null;
 
   const app = await buildApp({
     gateway,
     db,
-    profiles: db
-      ? createProfileStore(db.drizzle, {
-          perOwner: env.PROFILES_PER_OWNER,
-          perDay: env.PROFILES_PER_DAY,
-        })
-      : null,
+    profiles,
+    resolution:
+      dataDb && profiles
+        ? {
+            profiles,
+            resolutions: createResolutionStore(dataDb.drizzle),
+            gateway,
+            limits: {
+              lookupsPerOwnerPerDay: env.STAGE1_LOOKUPS_PER_OWNER_DAY,
+              lookupsPerClientPerDay: env.STAGE1_LOOKUPS_PER_CLIENT_DAY,
+              budgetReserve: env.QLOO_BUDGET_RESERVE,
+            },
+          }
+        : null,
     version: commit ? `${pkg.version}+${commit}` : pkg.version,
     webOrigins: env.WEB_ORIGIN,
     trustProxyHops: env.TRUST_PROXY_HOPS,

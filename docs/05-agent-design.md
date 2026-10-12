@@ -28,9 +28,15 @@ flowchart TD
 ### Stage 1 — Resolve seeds
 - Input: raw favourites text + domain hints.
 - Tools: `qloo_describe`, `qloo_find_tags`.
-- Output: per seed → `confirmed` (single clear match), `candidates` (needs_input / several close),
-  or `unresolved`.
+- Output: per seed → `needs_input` with up to 5 stored candidates (each with an evidence id), or
+  `unresolved` (nothing found, or refused by the PII guard). The caregiver then confirms **every** seed,
+  single matches included: a single match is preselected, never auto-confirmed. "None of these" →
+  `rejected`. No key / quota / outage → the seed stays `pending` and the UI says so; nothing is guessed.
+  The run stops at the first failed lookup (the rest would most likely fail too and spend budget); that
+  seed keeps the note `lookup_failed`. Stage 1 writes only touch seeds that are still `pending`.
 - Rule: **never** use an unconfirmed seed downstream. UI shows candidates with name/type/year.
+- Mapping `qloo_describe` results → candidates lives in `apps/agent/src/stage1/mapDescribe.ts` and is
+  provisional until real recordings exist (Phase 0).
 
 ### Stage 2 — Life Taste Profile
 Agent loop (max ~12 tool calls, budget-guarded). Allowed tools: `qloo_recommend`, `qloo_rank`,

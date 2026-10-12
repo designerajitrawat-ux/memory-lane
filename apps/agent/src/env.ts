@@ -5,6 +5,9 @@ import { z } from "zod";
 // allow-listed env we pass to the MCP child process (qloo/mcpClient.ts).
 const DEV_WEB_ORIGIN = "http://localhost:3000";
 
+/** DEV ONLY in-process Postgres (`DATABASE_URL=pglite:memory`); refused in production. */
+export const isPgliteUrl = (url: string | undefined) => url?.startsWith("pglite:") ?? false;
+
 const isOrigin = (s: string) => {
   try {
     return new URL(s).origin === s;
@@ -41,9 +44,16 @@ const EnvSchema = z
     PROFILES_PER_OWNER: z.coerce.number().int().min(1).default(20),
     PROFILES_PER_DAY: z.coerce.number().int().min(0).default(200),
     PROFILE_RETENTION_DAYS: z.coerce.number().int().min(1).default(90),
+    // DEV ONLY: serve Qloo answers from fixture files (synthetic envelopes) instead of `qloo mcp`.
+    QLOO_FIXTURE_DIR: z.string().optional(),
     // Live Qloo calls per UTC day (shared hackathon quota); cache hits don't count.
     DAILY_QLOO_CALL_BUDGET: z.coerce.number().int().min(0).default(500),
     QLOO_CACHE_TTL_DAYS: z.coerce.number().positive().default(7),
+    // Budget units user-triggered research must leave for demo personas and judges.
+    QLOO_BUDGET_RESERVE: z.coerce.number().int().min(0).default(100),
+    // Stage 1 favourite lookups per device token and per client IP (/64) in 24 h (in memory).
+    STAGE1_LOOKUPS_PER_OWNER_DAY: z.coerce.number().int().min(1).default(50),
+    STAGE1_LOOKUPS_PER_CLIENT_DAY: z.coerce.number().int().min(1).default(100),
     // SQL migrations applied at startup (relative to the working directory).
     MIGRATIONS_DIR: z.string().default("drizzle"),
   })
@@ -52,6 +62,28 @@ const EnvSchema = z
     if (prod && !env.DATABASE_URL) {
       // Otherwise the daily budget would live in memory and reset on every restart.
       ctx.addIssue({ code: "custom", path: ["DATABASE_URL"], message: "required in production" });
+    }
+    if (prod && isPgliteUrl(env.DATABASE_URL)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["DATABASE_URL"],
+        message: "pglite is for local dev only",
+      });
+    }
+    if (prod && env.QLOO_FIXTURE_DIR) {
+      // Fixture answers are not real Qloo data and must never reach real users (CLAUDE.md rule 3).
+      ctx.addIssue({
+        code: "custom",
+        path: ["QLOO_FIXTURE_DIR"],
+        message: "not allowed in production",
+      });
+    }
+    if (env.QLOO_BUDGET_RESERVE > env.DAILY_QLOO_CALL_BUDGET) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["QLOO_BUDGET_RESERVE"],
+        message: "must not exceed DAILY_QLOO_CALL_BUDGET",
+      });
     }
     if (prod && env.WEB_ORIGIN.length === 0) {
       ctx.addIssue({ code: "custom", path: ["WEB_ORIGIN"], message: "required in production" });

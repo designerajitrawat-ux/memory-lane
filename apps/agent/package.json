@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "record": "tsx --env-file-if-exists=../../.env scripts/record-fixtures.ts"
+    "record": "tsx --env-file-if-exists=../../.env scripts/record-fixtures.ts",
+    "dev:fixtures": "tsx watch --env-file=fixtures.env src/server.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.1",
