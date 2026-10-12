@@ -32,7 +32,7 @@ const EnvSchema = z
       .optional()
       .transform((v) => v || undefined),
     QLOO_MCP_COMMAND: z.string().default("qloo"),
-    // Number of reverse proxies in front of the agent (Render: 2), so rate limits see the client IP.
+    // Number of reverse proxies in front of the agent (see render.yaml), so rate limits see the client IP.
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
   })
   .superRefine((env, ctx) => {

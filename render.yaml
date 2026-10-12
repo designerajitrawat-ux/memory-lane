@@ -13,8 +13,9 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # Render puts two proxies in front of the service (verified 2026-10-12 via a spoofed
-      # X-Forwarded-For probe: one hop left req.ip on an internal 10.x address).
+      # Render has 2+ proxies in front of the service: with 1 or 2 trusted hops req.ip is still an
+      # internal 10.x address (not spoofable, but rate-limit buckets are per proxy node). Pin the
+      # exact chain (log raw X-Forwarded-For once) before Phase 2 adds per-IP limits.
       - key: TRUST_PROXY_HOPS
         value: "2"
       # Hackathon keys only work against the hackathon API.

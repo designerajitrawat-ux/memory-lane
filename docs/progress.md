@@ -3,18 +3,15 @@
 Claude Code: update this file at the end of every phase/session. Newest entries on top.
 
 ## Current status
-- Phase: 1 — Scaffold & deploy skeleton (code done locally; deploy pending). Phase 0 still waiting on the Qloo key.
-- Live URLs: web: _tbd_ · agent: _tbd_
-- Repo: local git (`main`); GitHub remote _tbd_
+- Phase: 1 — Scaffold & deploy skeleton: **deployed**; gate waits only on the Qloo key (Qloo ✗ → ✓).
+  Phase 0 still waiting on the Qloo key.
+- Live URLs: web: https://memory-lane-sable-rho.vercel.app · agent: https://memory-lane-agent.onrender.com
+- Repo: https://github.com/designerajitrawat-ux/memory-lane (public; secret scanning + push protection on)
+- Hosting: Vercel project `memory-lane` (root `apps/web`), Render Blueprint `memory-lane` → service
+  `memory-lane-agent` (free, Virginia), Neon project `memory-lane` (aws-us-east-1, direct connection).
 
 ## Next steps
-1. **Deploy Phase 1** (user creates accounts): GitHub public repo `memory-lane` (turn on secret scanning
-   + push protection) → push → Neon project (aws-us-east-1) → Vercel import (root `apps/web`,
-   NEXT_PUBLIC_AGENT_URL = expected Render URL) → Render Blueprint from `render.yaml` (WEB_ORIGIN = Vercel
-   URL, required in production; DATABASE_URL) → fix Vercel env if the Render URL differs → UptimeRobot:
-   5-min keep-alive on `/api/health/live` + hourly readiness on `/api/health`.
-   After deploy: confirm Render has exactly 1 proxy hop (curl with a fake X-Forwarded-For; your real IP
-   must be the rightmost entry) and that the web→agent fetch works with helmet's default CORP.
+1. UptimeRobot: 5-min keep-alive on `/api/health/live` + hourly readiness on `/api/health`.
 2. Wait for Qloo key email (requested 2026-10-12; usually within one business day, check spam). Make sure
    `QLOO_BASE_URL` + `QLOO_TRUSTED_BASE_URL` = `https://hackathon.api.qloo.com` are set as persistent
    user env vars, then run `qloo setup --qloo` yourself in a terminal (never paste the key in chat) →
@@ -38,6 +35,7 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-12 | Set `QLOO_BASE_URL` / `QLOO_TRUSTED_BASE_URL` = hackathon API in `.env.example`, `render.yaml`, `.mcp.json` | Qloo kickoff email: hackathon keys only work against `hackathon.api.qloo.com`; harness default is `api.qloo.com` | 03, README |
 | 2026-10-12 | Qloo harness child gets an allow-listed env (QLOO_API_KEY, QLOO_HOME, QLOO_BASE_URL, QLOO_TRUSTED_BASE_URL) instead of process.env | security-reviewer: harness is third-party and bundles an LLM agent runtime; DATABASE_URL / ANTHROPIC_API_KEY must not reach it | 03 |
 | 2026-10-12 | Keep-alive ping on `/api/health/live`; readiness check only hourly | Neon free ≈ 100 CU-h/month; a 5-min DB ping would keep compute on 24/7 | 04 |
+| 2026-10-12 | Deployed: Vercel `memory-lane` + Render Blueprint `memory-lane` + Neon `memory-lane`; Neon direct (unpooled) connection; strip `channel_binding` from DATABASE_URL | Long-lived single agent process; postgres.js forwards unknown URL params to the server | 04 |
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
@@ -57,6 +55,9 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 - Does Qloo support decade/age signals well enough for era fit? (Phase 0)
 - Coverage of older Indian content? (Phase 0)
 - Anthropic API budget for live app.
+- Render proxy chain: with TRUST_PROXY_HOPS 1 and 2, req.ip is still an internal 10.x address (probe
+  2026-10-12), so rate-limit buckets are per proxy node (not spoofable). Before Phase 2's per-IP limits,
+  log the raw X-Forwarded-For once and pin the right trust rule (hop count or `uniquelocal` subnets).
 - Phase 3 auth: an owner_token cookie set by onrender.com and read from vercel.app is third-party
   (blocked by Safari/Firefox/Brave). Decide before Phase 3: Vercel rewrites proxy (/api/agent/* → Render)
   or a bearer token header. Rewrites change the trusted hop count and CSP.
