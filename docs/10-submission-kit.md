@@ -10,6 +10,12 @@
 - [ ] Devpost: description, built-with tags, demo URL, repo URL, testing instructions, images
 - [ ] Known limitations + Qloo tools used + redacted request-to-result example included (request shape, status,
   entity names only — no raw Qloo response payload in the public repo, per Qloo's developer guide)
+- [ ] Kit `docs/SUBMISSION.md` covered: the request-to-result example explains our **entity and tag choices**
+  (e.g. several Qloo matches for one favourite → the caregiver picked one on the confirm screen); known
+  limitations say **what the results do not establish** (aggregate affinities, not facts about this person;
+  no clinical effect); setup works from a clean environment (incl. `dev:fixtures` without a key)
+- [ ] Screenshots and demo show demo personas only: no credentials, no personal data, and never taken in
+  `dev:fixtures` mode (synthetic answers would look Qloo-confirmed)
 - [ ] Submitted by **Oct 29 IST** (deadline Oct 30, 11:45 pm EDT = Oct 31, 9:15 am IST)
 
 ## 2. README template
@@ -50,7 +56,8 @@ Cite docs/02 sources. Add 1–2 caregiver quotes.>
 <prereqs, env vars, commands, harness install, `qloo setup`, deploy notes>
 
 ## Known limitations
-<from docs/07 §5 + findings>
+<from docs/07 §5 + findings; include what the results do not establish: Qloo describes what groups tend
+to like, not what this person remembers or will enjoy; no claim of clinical benefit>
 
 ## Business model & what's next
 <families freemium, care homes per-resident; roadmap>

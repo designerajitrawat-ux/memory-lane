@@ -29,7 +29,8 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
    `test/fixtures/recorded/`; check `git status` stays clean).
 3. Phase 3b after the key: record a few `qloo_describe` answers (gitignored), fit
    `stage1/mapDescribe.ts` (fields, type labels, year) and its tests to them, then click the confirm flow
-   live.
+   live. Also try `qloo_find_tags` for genre/era favourites ("ghazals", "60s Bollywood"): the kit's own
+   first example ("jazz" → five Jazz tags of different types) shows these are tags, not entities.
 4. Run Phase-0 validation; fill `docs/qloo-findings.md`. Note: `qloo_recommend`/`qloo_rank` accept a
    free-text `demographic` ("men 25-34") — test an older age band for era fit.
 5. While waiting: join Discord, get an Anthropic API key (Console billing) for Phase 4.
