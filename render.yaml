@@ -1,0 +1,30 @@
+# Render Blueprint for the agent service (docs/04-architecture.md).
+# Secrets are marked sync: false — Render asks for their values in the dashboard; they never live here.
+services:
+  - type: web
+    name: memory-lane-agent
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerfilePath: ./apps/agent/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health/live
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY_HOPS
+        value: "1"
+      # Hackathon keys only work against the hackathon API.
+      - key: QLOO_BASE_URL
+        value: https://hackathon.api.qloo.com
+      - key: QLOO_TRUSTED_BASE_URL
+        value: https://hackathon.api.qloo.com
+      - key: WEB_ORIGIN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: QLOO_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false

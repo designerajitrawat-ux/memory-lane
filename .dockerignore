@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/.vercel
+**/coverage
+.git
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/*.log
+docs
+apps/web
+.claude

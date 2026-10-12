@@ -1,0 +1,113 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Dark mode follows the system setting (docs/06-ui-ux.md §2). */
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-display);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-evidence: var(--evidence);
+  --color-warning: var(--warning);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+}
+
+/* "A warm family album": paper background, deep ink, terracotta accent, teal for evidence. */
+:root {
+  color-scheme: light dark;
+  --background: #fbf7f2;
+  --foreground: #241f1a;
+  --card: #fffdf9;
+  --card-foreground: #241f1a;
+  --popover: #fffdf9;
+  --popover-foreground: #241f1a;
+  --primary: #b5552b;
+  --primary-foreground: #ffffff;
+  --secondary: #f1eae1;
+  --secondary-foreground: #241f1a;
+  --muted: #f1eae1;
+  --muted-foreground: #6b6158;
+  --accent: #e3efed;
+  --accent-foreground: #1f4f4b;
+  --evidence: #2f6f6a;
+  --warning: #8a4b00;
+  --destructive: #b42318;
+  --border: #e7ddd1;
+  --input: #e7ddd1;
+  --ring: #b5552b;
+  --radius: 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #17140f;
+    --foreground: #f3ece2;
+    --card: #221e18;
+    --card-foreground: #f3ece2;
+    --popover: #221e18;
+    --popover-foreground: #f3ece2;
+    --primary: #e07a4f;
+    --primary-foreground: #17140f;
+    --secondary: #2a251e;
+    --secondary-foreground: #f3ece2;
+    --muted: #2a251e;
+    --muted-foreground: #b5aa9c;
+    --accent: #1e3533;
+    --accent-foreground: #cde7e4;
+    --evidence: #6fb7af;
+    --warning: #f2b45a;
+    --destructive: #f97066;
+    --border: #3a332a;
+    --input: #3a332a;
+    --ring: #e07a4f;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring;
+  }
+  html {
+    /* Base 18 px while still respecting the browser's font-size setting. */
+    font-size: 112.5%;
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

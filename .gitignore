@@ -1,0 +1,19 @@
+node_modules/
+.pnpm-store/
+.next/
+dist/
+build/
+coverage/
+.turbo/
+.vercel/
+*.log
+.DS_Store
+
+# secrets
+.env
+.env.*
+!.env.example
+
+# local claude settings
+.claude/settings.local.json
+CLAUDE.local.md
