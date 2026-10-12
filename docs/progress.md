@@ -10,16 +10,18 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 - Hosting: Vercel project `memory-lane` (root `apps/web`), Render Blueprint `memory-lane` → service
   `memory-lane-agent` (free, Virginia), Neon project `memory-lane` (aws-us-east-1, direct connection).
 
+- Monitoring: UptimeRobot "Memory Lane agent - keep-alive (live)" (5 min, `/api/health/live`) +
+  "Memory Lane agent - readiness (Qloo + DB)" (1 h, `/api/health`; shows Down until the Qloo key is set).
+
 ## Next steps
-1. UptimeRobot: 5-min keep-alive on `/api/health/live` + hourly readiness on `/api/health`.
-2. Wait for Qloo key email (requested 2026-10-12; usually within one business day, check spam). Make sure
+1. Wait for Qloo key email (requested 2026-10-12; usually within one business day, check spam). Make sure
    `QLOO_BASE_URL` + `QLOO_TRUSTED_BASE_URL` = `https://hackathon.api.qloo.com` are set as persistent
    user env vars, then run `qloo setup --qloo` yourself in a terminal (never paste the key in chat) →
    `qloo setup --status` shows "Qloo data: ready" → reload Claude Code so the `qloo` MCP server
-   connects. Add QLOO_API_KEY on Render → the Phase-1 gate
+   connects. Add QLOO_API_KEY on Render (Environment tab; you paste it) → the Phase-1 gate
    ("Agent ✓ · Qloo ✓ · DB ✓" on the public URL) passes. Record a real "ready" capabilities fixture.
-3. Run Phase-0 validation; fill `docs/qloo-findings.md`.
-4. While waiting: join Discord, get an Anthropic API key (Console billing) for Phase 4.
+2. Run Phase-0 validation; fill `docs/qloo-findings.md`.
+3. While waiting: join Discord, get an Anthropic API key (Console billing) for Phase 4.
 
 ## Decisions (ADR-lite)
 | Date | Decision | Why | Docs updated |
