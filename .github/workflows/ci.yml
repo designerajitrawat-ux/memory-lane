@@ -20,6 +20,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      - name: No real Qloo responses committed (Qloo developer guide)
+        run: "! git ls-files | grep -q '/fixtures/recorded/'"
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint

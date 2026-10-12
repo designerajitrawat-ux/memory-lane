@@ -27,7 +27,8 @@ flowchart LR
 | DB | Postgres + Drizzle ORM + drizzle-kit migrations | simple, typed |
 | Cache | Postgres table `qloo_cache` (no Redis needed) | fewer moving parts |
 | Rate limit | `@fastify/rate-limit` + DB daily budget counter | quota safety |
-| Testing | Vitest (unit) with synthetic Qloo envelopes (committed) + locally recorded fixtures (gitignored — no Qloo response data in the public repo), Playwright (2–3 e2e smoke flows) | reliability |
+| Testing | Vitest (unit) with synthetic Qloo envelopes (committed) + locally recorded fixtures (gitignored — no Qloo response data in the public repo); store SQL tested on PGlite (in-process Postgres) with the real migrations; Playwright (2–3 e2e smoke flows) | reliability |
+| Migrations | drizzle-kit generates SQL into `apps/agent/drizzle/` (`db:generate`); the agent applies them at startup (failure is logged by code, agent keeps serving) | no manual DB steps on deploy |
 | Lint/format | ESLint + Prettier | consistency |
 | CI | GitHub Actions: typecheck, lint, test | judges see quality |
 | Hosting | Vercel (web), **Render free** (agent, `apps/agent/Dockerfile` via `render.yaml`), **Neon free** (DB); all US East | MCP needs a container; all free. Render free sleeps after 15 min idle → UptimeRobot 5-min keep-alive on `/api/health/live` (750 free h/month covers 24/7; touches no DB). Readiness monitor on `/api/health` only **hourly**, because Neon free has ~100 CU-h/month and a 5-min DB ping would keep it awake 24/7 |
@@ -70,7 +71,7 @@ memory-lane/
 | `sessions` | id, profile_id, number, status (planned/in_progress/done), plan jsonb, what_changed text, created_at |
 | `session_items` | id, session_id, order, kind (song/film/food/place/tv/other), qloo_entity_id, title, why text, prompts text[], link_url, evidence_ids[] |
 | `reactions` | id, session_item_id, value (engaged/sang/neutral/distressed), note, created_at |
-| `qloo_calls` | id, tool, args_redacted jsonb, status, summary, result_count, results_digest jsonb, cached bool, latency_ms, created_at |
+| `qloo_calls` | id, tool, args_checked jsonb (as sent, after the PII guard), status, summary, result_count, results_digest jsonb, cached bool, latency_ms, created_at |
 | `qloo_cache` | key (sha256), tool, args jsonb, envelope jsonb, expires_at |
 | `budget` | day, qloo_calls, llm_tokens |
 

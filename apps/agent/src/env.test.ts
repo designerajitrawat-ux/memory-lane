@@ -17,14 +17,19 @@ describe("loadEnv", () => {
   });
 
   it("requires exact https origins for WEB_ORIGIN in production", () => {
-    expect(() => loadEnv({ NODE_ENV: "production" })).toThrow(/WEB_ORIGIN/);
-    expect(() => loadEnv({ NODE_ENV: "production", WEB_ORIGIN: "http://a.example" })).toThrow(
-      /WEB_ORIGIN/,
-    );
-    expect(() => loadEnv({ NODE_ENV: "production", WEB_ORIGIN: "*" })).toThrow(/WEB_ORIGIN/);
-    expect(
-      loadEnv({ NODE_ENV: "production", WEB_ORIGIN: "https://memory-lane.vercel.app" }).WEB_ORIGIN,
-    ).toEqual(["https://memory-lane.vercel.app"]);
+    const prod = { NODE_ENV: "production", DATABASE_URL: "postgres://db/x" } as const;
+    expect(() => loadEnv(prod)).toThrow(/WEB_ORIGIN/);
+    expect(() => loadEnv({ ...prod, WEB_ORIGIN: "http://a.example" })).toThrow(/WEB_ORIGIN/);
+    expect(() => loadEnv({ ...prod, WEB_ORIGIN: "*" })).toThrow(/WEB_ORIGIN/);
+    expect(loadEnv({ ...prod, WEB_ORIGIN: "https://memory-lane.vercel.app" }).WEB_ORIGIN).toEqual([
+      "https://memory-lane.vercel.app",
+    ]);
+  });
+
+  it("requires DATABASE_URL in production so the daily budget can't reset on restart", () => {
+    expect(() =>
+      loadEnv({ NODE_ENV: "production", WEB_ORIGIN: "https://memory-lane.vercel.app" }),
+    ).toThrow(/DATABASE_URL/);
   });
 
   it("rejects origins with a path or trailing slash", () => {

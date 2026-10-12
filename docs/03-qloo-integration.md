@@ -92,16 +92,34 @@ const envelope = res.structuredContent;      // treat missing status as error
   **Serverless (Vercel functions) is NOT supported** for this. Browser can never call Qloo.
 
 ## 6. Our "Qloo Gateway" layer (wrap every call)
-All Qloo calls go through `apps/agent/src/qloo/gateway.ts`, which:
-1. Checks tool against an **allow-list** (only tools in §3 we actually use).
-2. **Redacts/validates args** — rejects anything that looks like personal data (names of the
-   person, emails, exact addresses, health terms). Only public cultural signals pass
-   (entity names, tags, coarse regions like "Punjab, India", decades, target types).
-3. Looks up **cache** (Postgres table `qloo_cache`, key = sha256(tool + canonical JSON args),
-   TTL 7 days; demo personas: no expiry).
-4. Calls MCP, normalises envelope, applies §4 rules.
-5. Writes an **evidence record** (`qloo_calls` table) and returns `{ envelope, evidenceId }`.
-6. Enforces **rate limits** (per IP + per profile + global daily budget) → friendly "quota" UI state.
+All Qloo calls go through `apps/agent/src/qloo/gateway.ts` → `gateway.call(tool, args, ctx)` (built in
+Phase 2), in this order:
+1. **Allow-list** (`QlooToolNameSchema` in packages/shared: describe, find_tags, recommend, rank,
+   where_popular, entity_tags, audience_demographics), optionally narrowed per stage via `ctx.allowedTools`.
+2. **Strict arg schemas** (`qloo/tools.ts`, mirrored from `qloo_capabilities`): the harness checks the
+   credential before validating, so we validate ourselves. `demographic` only accepts an age band or a
+   generation ("people 75+", "older adults"), never a description of the person.
+3. **PII guard** (`qloo/redact.ts`): every value is normalised first (NFKC, invisible characters removed,
+   Cyrillic/Greek lookalikes folded, any-script digits → 0-9, spaces collapsed). It then rejects the
+   nickname (whole name with any separators, each part of 3+ letters, 4+ letter parts also as a word
+   prefix), email/phone/URL, house/unit numbers, postcodes and street addresses in free text, any digit in
+   location fields, and stem-tolerant health/care terms. `ctx.nickname` is required (`string | null`). Rejections return `{kind:"rejected", reason, field}`, are logged without
+   values, and create no evidence. Only public cultural signals pass.
+4. **Cache** (`qloo_cache`, key = sha256(tool + canonical JSON args); TTL `QLOO_CACHE_TTL_DAYS`, default 7;
+   `ctx.persistent` = no expiry for demo personas, complete `ok` answers only; partial/degraded/empty
+   expire after a day). Usable/empty/needs_input are cached, errors never; cached rows are re-validated.
+   Cache hits cost no budget but still get an evidence row (`cached: true`).
+5. **Limits**: per-profile sliding window (60 live calls/hour, in memory) + atomic daily budget
+   (`budget` table, `DAILY_QLOO_CALL_BUDGET`, default 500) → `{kind:"quota"}` before any call. Per-IP limits
+   come with the Phase 3 routes (after pinning the Render proxy chain).
+6. **MCP call** (30 s timeout) with ≤2 retries (0.5 s / 1.5 s) only when `error.retryable`; **each retry
+   costs another budget unit**. A crashed transport counts as retryable (the client reconnects); a timeout
+   does not (the request may already have reached Qloo). Unreadable output → local `INVALID_ENVELOPE`.
+   Store failures → `{kind:"unavailable"}` (or a cache miss), logged by error code only.
+7. **Evidence** (`qloo_calls`: args, status, summary, result_count, ≤10-item `{id,name,type}` digest,
+   cached, latency) → returns `{kind: usable|needs_input|empty|error, envelope, evidenceId, cached}`.
+Health reports `quota_exhausted` once the daily budget is used. Tests run the real gateway on a fake MCP
+(`qloo/fixtureMcp.ts`: gitignored recordings → committed synthetic envelopes) and the real SQL on PGlite.
 
 ## 7. How we get "era" and "region" (hypothesis — VERIFY in Phase 0)
 The documented tools have no explicit "year" filter. Strategy, in order of preference:

@@ -34,9 +34,18 @@ const EnvSchema = z
     QLOO_MCP_COMMAND: z.string().default("qloo"),
     // Number of reverse proxies in front of the agent (see render.yaml), so rate limits see the client IP.
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
+    // Live Qloo calls per UTC day (shared hackathon quota); cache hits don't count.
+    DAILY_QLOO_CALL_BUDGET: z.coerce.number().int().min(0).default(500),
+    QLOO_CACHE_TTL_DAYS: z.coerce.number().positive().default(7),
+    // SQL migrations applied at startup (relative to the working directory).
+    MIGRATIONS_DIR: z.string().default("drizzle"),
   })
   .superRefine((env, ctx) => {
     const prod = env.NODE_ENV === "production";
+    if (prod && !env.DATABASE_URL) {
+      // Otherwise the daily budget would live in memory and reset on every restart.
+      ctx.addIssue({ code: "custom", path: ["DATABASE_URL"], message: "required in production" });
+    }
     if (prod && env.WEB_ORIGIN.length === 0) {
       ctx.addIssue({ code: "custom", path: ["WEB_ORIGIN"], message: "required in production" });
     }

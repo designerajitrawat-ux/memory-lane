@@ -4,7 +4,8 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 
 ## Current status
 - Phase: 1 — Scaffold & deploy skeleton: **deployed**; gate waits only on the Qloo key (Qloo ✗ → ✓).
-  Phase 0 still waiting on the Qloo key.
+  Phase 2 — Qloo gateway: **code complete** (key-independent parts); live gate = run the recorder after
+  the key. Phase 0 still waiting on the Qloo key.
 - Live URLs: web: https://memory-lane-sable-rho.vercel.app · agent: https://memory-lane-agent.onrender.com
 - Repo: https://github.com/designerajitrawat-ux/memory-lane (public; secret scanning + push protection on)
 - Hosting: Vercel project `memory-lane` (root `apps/web`), Render Blueprint `memory-lane` → service
@@ -21,8 +22,11 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
    connects. Add QLOO_API_KEY on Render (Environment tab; you paste it) → the Phase-1 gate
    ("Agent ✓ · Qloo ✓ · DB ✓" on the public URL) passes. Record a real "ready" capabilities fixture
    (harness-local metadata, not Qloo response data, so it may be committed).
-2. Run Phase-0 validation; fill `docs/qloo-findings.md`.
-3. While waiting: join Discord, get an Anthropic API key (Console billing) for Phase 4.
+2. Phase-2 live gate: `pnpm --filter @memory-lane/agent record` (3 live calls → gitignored
+   `test/fixtures/recorded/`; check `git status` stays clean).
+3. Run Phase-0 validation; fill `docs/qloo-findings.md`. Note: `qloo_recommend`/`qloo_rank` accept a
+   free-text `demographic` ("men 25-34") — test an older age band for era fit.
+4. While waiting: join Discord, get an Anthropic API key (Console billing) for Phase 4.
 
 ## Decisions (ADR-lite)
 | Date | Decision | Why | Docs updated |
@@ -40,9 +44,23 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-12 | Keep-alive ping on `/api/health/live`; readiness check only hourly | Neon free ≈ 100 CU-h/month; a 5-min DB ping would keep compute on 24/7 | 04 |
 | 2026-10-12 | Deployed: Vercel `memory-lane` + Render Blueprint `memory-lane` + Neon `memory-lane`; Neon direct (unpooled) connection; strip `channel_binding` from DATABASE_URL | Long-lived single agent process; postgres.js forwards unknown URL params to the server | 04 |
 | 2026-10-12 | Never commit real Qloo responses: committed tests use synthetic envelopes; recordings go to gitignored `apps/agent/test/fixtures/recorded/`; README example shows request shape + entity names only | Qloo developer guide: "do not store Qloo response data in a public repository"; our repo is public | CLAUDE.md, 03, 04, 05, 08, 09, 10, README |
+| 2026-10-12 | Gateway order: allow-list → strict args → PII guard → cache → limits → MCP (≤2 retries, only `retryable`) → evidence; rejections create no evidence; errors never cached | One choke point for rule 4/6; harness validates args only after the credential check | 03 |
+| 2026-10-12 | Tests: fake MCP under the real gateway (`fixtureMcp.ts`) + store SQL on PGlite with real migrations; migrations applied by the agent at startup | Exercises the real code path without a key, Docker or Neon; no manual DB steps on deploy | 04, 05, 08 |
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-12: **Phase 2 code complete (no key needed).** Gateway `call()` with allow-list, strict arg
+  schemas mirrored from `qloo_capabilities`, PII guard, Postgres cache/evidence/budget stores (+ in-memory
+  for dev), per-profile limiter, bounded retries, honest error/quota results, health `quota_exhausted`,
+  drizzle schema + startup migrations, fixture MCP + synthetic envelopes, real harness QLOO_AUTH fixture,
+  recorder script. Bundle verified: finds `drizzle/`, survives an unreachable DB (logs code only).
+  security-reviewer: no Critical; fixed W1–W5 + most suggestions (Unicode-normalised PII guard with
+  nickname parts/prefixes, postcodes/streets, any-script digits, stem-tolerant health terms, age-band-only
+  `demographic`; required `nickname`; retries charged to the budget, timeouts not retried; recorder
+  path pinned + `git check-ignore` guard, `**/fixtures/recorded/` ignored in git/Docker + CI check; log
+  serializer drops SQL params; store errors → honest `unavailable`; cache re-validation; complete-only
+  persistent cache; `args_checked` rename; DATABASE_URL required in prod; migration failure shown in
+  health). 75 tests green (66 agent incl. PGlite).
 - 2026-10-12: **Phase 1 code complete locally.** pnpm monorepo (`apps/web` Next.js 16.4 + Tailwind 4 +
   shadcn, `apps/agent` Fastify 5 + MCP client + gateway + postgres/drizzle, `packages/shared` zod
   `HealthResponseSchema`), CI workflow, agent Dockerfile, `render.yaml`, README stub, MIT LICENSE.
@@ -62,6 +80,12 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 - Render proxy chain: with TRUST_PROXY_HOPS 1 and 2, req.ip is still an internal 10.x address (probe
   2026-10-12), so rate-limit buckets are per proxy node (not spoofable). Before Phase 2's per-IP limits,
   log the raw X-Forwarded-For once and pin the right trust rule (hop count or `uniquelocal` subnets).
+- Before/with Phase 3 routes (security review W6, S4, S6, S10): per-IP + per-owner-token limits on every
+  route that reaches the gateway and a cap on profile creation; per-stage call caps (docs/05); reuse one
+  evidence id per (session, cacheKey) instead of a row per cache hit; `persistent` set server-side only;
+  pre-warm demo caches; purge expired cache / old evidence rows and link evidence to profile/session with
+  cascading delete ("Delete this profile"); map harness error codes to fixed user text (never forward
+  harness `summary`/`recovery` to the browser or Claude); consider `pg_advisory_lock` around migrations.
 - Phase 3 auth: an owner_token cookie set by onrender.com and read from vercel.app is third-party
   (blocked by Safari/Firefox/Brave). Decide before Phase 3: Vercel rewrites proxy (/api/agent/* → Render)
   or a bearer token header. Rewrites change the trusted hop count and CSP.

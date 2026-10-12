@@ -21,6 +21,8 @@ RUN npm install --global @qloo/qloo-harness@0.1.26 && npm cache clean --force
 WORKDIR /app
 # dist/server.cjs is a single self-contained bundle (tsup), so no node_modules are needed here.
 COPY --from=build /repo/apps/agent/dist ./dist
+# SQL migrations, applied by the agent at startup (MIGRATIONS_DIR defaults to ./drizzle).
+COPY --from=build /repo/apps/agent/drizzle ./drizzle
 USER node
 EXPOSE 8787
 CMD ["node", "--enable-source-maps", "dist/server.cjs"]

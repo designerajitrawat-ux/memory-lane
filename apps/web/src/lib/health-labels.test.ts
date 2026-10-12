@@ -39,6 +39,14 @@ describe("describeHealth", () => {
     expect(view.summary).toBe("Some parts aren't ready yet.");
   });
 
+  it("says plainly when today's Qloo limit is reached", () => {
+    const view = describeHealth({
+      kind: "ok",
+      health: health({ qloo: { ok: false, state: "quota_exhausted", message: "limit" } }),
+    });
+    expect(view.items[1]?.label).toBe("Qloo: today's limit reached");
+  });
+
   it("marks everything unknown when the agent can't be reached", () => {
     const view = describeHealth({ kind: "unreachable" });
     expect(view.items.map((i) => i.tone)).toEqual(["warn", "unknown", "unknown"]);

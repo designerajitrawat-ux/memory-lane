@@ -18,6 +18,11 @@ services:
       # exact chain (log raw X-Forwarded-For once) before Phase 2 adds per-IP limits.
       - key: TRUST_PROXY_HOPS
         value: "2"
+      # Live Qloo calls per UTC day (shared hackathon quota) and cache lifetime for user profiles.
+      - key: DAILY_QLOO_CALL_BUDGET
+        value: "500"
+      - key: QLOO_CACHE_TTL_DAYS
+        value: "7"
       # Hackathon keys only work against the hackathon API.
       - key: QLOO_BASE_URL
         value: https://hackathon.api.qloo.com

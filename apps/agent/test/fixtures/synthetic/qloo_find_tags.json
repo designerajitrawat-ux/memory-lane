@@ -1,0 +1,16 @@
+{
+  "_note": "SYNTHETIC: hand-written for tests, shaped like the harness envelope. Not Qloo data.",
+  "isError": false,
+  "structuredContent": {
+    "schema_version": "1.0-preview.1",
+    "operation": "find_tags",
+    "status": "ok",
+    "summary": "Found 2 tags.",
+    "results": [
+      { "id": "urn:tag:genre:example:a", "name": "Example Genre A", "type": "urn:tag:genre" },
+      { "id": "urn:tag:keyword:example:b", "name": "Example Keyword B", "type": "urn:tag:keyword" }
+    ],
+    "result_count": 2,
+    "execution": { "transport": "mcp", "transport_name": "Qloo canonical MCP", "correlation_id": "synthetic-1", "duration_ms": 0 }
+  }
+}

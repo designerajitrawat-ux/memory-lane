@@ -20,9 +20,10 @@ commit, deploy (from Phase 1 onward), update `docs/progress.md`. Prompts for eac
 - **Gate:** public URL shows "Agent ✓ · Qloo ✓ · DB ✓". Repo public with license detected.
 
 ## Phase 2 — Qloo gateway
-- [ ] MCP client (long-lived, reconnect), allow-list, redact, cache, evidence log, envelope rules, retries, rate limit, budget
-- [ ] Fixture recorder (writes to gitignored `test/fixtures/recorded/`) + `FixtureGateway`; CI uses synthetic envelopes
-- [ ] Unit tests: redact, envelope handling, cache key, budget
+- [x] MCP client (long-lived, reconnect), allow-list, redact, cache, evidence log, envelope rules, retries, per-profile limit, daily budget (per-IP → Phase 3 routes)
+- [x] Fixture recorder (`pnpm --filter @memory-lane/agent record`, writes to gitignored `test/fixtures/recorded/`) + `FixtureMcpClient`; CI uses synthetic envelopes
+- [x] Unit tests: redact, envelope handling, cache key, budget, gateway flow; Postgres stores on PGlite
+- [ ] Live: run the recorder once the Qloo key arrives
 - **Gate:** a script calls 3 tools live, records fixtures locally (gitignored); tests green on synthetic envelopes; no secret in logs; no Qloo response data committed.
 
 ## Phase 3 — Profiles & seed resolution

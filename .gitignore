@@ -19,4 +19,4 @@ coverage/
 CLAUDE.local.md
 
 # real Qloo responses must never be committed (Qloo developer guide)
-apps/agent/test/fixtures/recorded/
+**/fixtures/recorded/

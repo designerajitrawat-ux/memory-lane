@@ -7,12 +7,40 @@ import type { QlooGateway } from "./qloo/gateway";
 import type { Db } from "./db/client";
 
 export interface AppDeps {
-  gateway: QlooGateway;
+  gateway: Pick<QlooGateway, "capabilities">;
   db: Db | null;
   version: string;
   webOrigins: string[];
   trustProxyHops?: number;
+  /** True when startup migrations failed: the DB may answer pings but lack our tables. */
+  dbSetupFailed?: boolean;
   logger?: FastifyServerOptions["logger"];
+}
+
+/**
+ * Error serializer for logs. Query errors (drizzle/postgres) carry the SQL and its parameters, which
+ * can include user data, so only their type and code are kept.
+ */
+export function safeErr(err: unknown): {
+  type: string;
+  message: string;
+  stack: string;
+  code?: unknown;
+} {
+  if (!err || typeof err !== "object") return { type: typeof err, message: "", stack: "" };
+  const e = err as {
+    name?: string;
+    message?: string;
+    stack?: string;
+    code?: unknown;
+    cause?: { code?: unknown };
+  };
+  const isQueryError =
+    "query" in e || "params" in e || e.name === "DrizzleQueryError" || e.name === "PostgresError";
+  if (isQueryError) {
+    return { type: e.name ?? "Error", message: "", stack: "", code: e.code ?? e.cause?.code };
+  }
+  return { type: e.name ?? "Error", message: e.message ?? "", stack: e.stack ?? "", code: e.code };
 }
 
 export const LOGGER_OPTIONS: FastifyServerOptions["logger"] = {
@@ -21,6 +49,7 @@ export const LOGGER_OPTIONS: FastifyServerOptions["logger"] = {
     paths: ["req.headers.authorization", "req.headers.cookie", 'res.headers["set-cookie"]'],
     censor: "[redacted]",
   },
+  serializers: { err: safeErr },
 };
 
 // Readiness checks spawn work (Qloo harness call + DB query), so share one result for a short
@@ -42,13 +71,11 @@ export async function buildApp(deps: AppDeps) {
       const status = err.statusCode && err.statusCode < 500 ? err.statusCode : 500;
       if (status >= 500) {
         req.log.error({ err }, "unhandled error");
-        return reply
-          .code(500)
-          .send({
-            statusCode: 500,
-            error: "Internal Server Error",
-            message: "Something went wrong.",
-          });
+        return reply.code(500).send({
+          statusCode: 500,
+          error: "Internal Server Error",
+          message: "Something went wrong.",
+        });
       }
       return reply.code(status).send({ statusCode: status, error: err.name, message: err.message });
     },
@@ -68,7 +95,10 @@ export async function buildApp(deps: AppDeps) {
 
   const readiness = () => {
     if (!cached || Date.now() - cached.at > HEALTH_CACHE_MS) {
-      cached = { at: Date.now(), checks: Promise.all([checkQloo(deps.gateway), checkDb(deps.db)]) };
+      cached = {
+        at: Date.now(),
+        checks: Promise.all([checkQloo(deps.gateway), checkDb(deps.db, deps.dbSetupFailed)]),
+      };
     }
     return cached.checks;
   };
@@ -97,7 +127,7 @@ export async function buildApp(deps: AppDeps) {
   return app;
 }
 
-async function checkQloo(gateway: QlooGateway): Promise<QlooCheck> {
+async function checkQloo(gateway: Pick<QlooGateway, "capabilities">): Promise<QlooCheck> {
   try {
     return await gateway.capabilities();
   } catch {
@@ -105,8 +135,9 @@ async function checkQloo(gateway: QlooGateway): Promise<QlooCheck> {
   }
 }
 
-async function checkDb(db: Db | null): Promise<DbCheck> {
+async function checkDb(db: Db | null, setupFailed = false): Promise<DbCheck> {
   if (!db) return { ok: false, state: "not_configured", message: "No database is configured yet." };
+  if (setupFailed) return { ok: false, state: "error", message: "Database setup didn't finish." };
   try {
     return await db.ping();
   } catch {

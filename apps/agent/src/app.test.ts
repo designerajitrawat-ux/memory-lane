@@ -8,7 +8,9 @@ const WEB = "https://memory-lane.example";
 const qlooOk: QlooCheck = { ok: true, state: "ok", message: "Qloo is connected and ready." };
 const dbOk: DbCheck = { ok: true, state: "ok", message: "Database is reachable." };
 
-const gateway = (impl: () => Promise<QlooCheck>): QlooGateway => ({ capabilities: impl });
+const gateway = (impl: () => Promise<QlooCheck>): Pick<QlooGateway, "capabilities"> => ({
+  capabilities: impl,
+});
 const db = (impl: () => Promise<DbCheck>): Db => ({ ping: impl, close: async () => {} });
 
 let app: Awaited<ReturnType<typeof buildApp>> | undefined;
@@ -17,7 +19,11 @@ afterEach(async () => {
   app = undefined;
 });
 
-async function start(qloo: QlooGateway, database: Db | null, trustProxyHops = 0) {
+async function start(
+  qloo: Pick<QlooGateway, "capabilities">,
+  database: Db | null,
+  trustProxyHops = 0,
+) {
   app = await buildApp({
     gateway: qloo,
     db: database,
@@ -98,7 +104,7 @@ describe("trust proxy", () => {
   });
 });
 
-async function getHealth(qloo: QlooGateway, database: Db | null) {
+async function getHealth(qloo: Pick<QlooGateway, "capabilities">, database: Db | null) {
   const res = await (await start(qloo, database)).inject({ method: "GET", url: "/api/health" });
   return { res, body: HealthResponseSchema.parse(res.json()) };
 }

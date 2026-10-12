@@ -1,11 +1,20 @@
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { sql } from "drizzle-orm";
 import type { DbCheck } from "@memory-lane/shared";
+import type { AppDb } from "./types";
 
+/** What health needs. */
 export interface Db {
   ping(): Promise<DbCheck>;
   close(): Promise<void>;
+}
+
+/** The real database: health + drizzle access for the stores + startup migrations. */
+export interface Database extends Db {
+  drizzle: AppDb;
+  migrate(migrationsFolder: string): Promise<void>;
 }
 
 const PING_TIMEOUT_S = 3;
@@ -29,17 +38,20 @@ export function normalizeDatabaseUrl(url: string): string {
 export function createDb(
   url: string | undefined,
   { verifyTls }: { verifyTls: boolean },
-): Db | null {
+): Database | null {
   if (!url) return null;
   const client = postgres(normalizeDatabaseUrl(url), {
     ...(verifyTls ? { ssl: "verify-full" as const } : {}),
     max: 5,
     connect_timeout: PING_TIMEOUT_S,
     idle_timeout: 30,
+    onnotice: () => {}, // migrations emit "already exists, skipping" notices
   });
   const db = drizzle(client);
 
   return {
+    drizzle: db,
+    migrate: (migrationsFolder) => migrate(db, { migrationsFolder }),
     async ping() {
       let timer: NodeJS.Timeout | undefined;
       try {

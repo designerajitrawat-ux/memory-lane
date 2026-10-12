@@ -1,0 +1,17 @@
+{
+  "_note": "SYNTHETIC: hand-written for tests, shaped like the harness envelope. Not Qloo data.",
+  "isError": false,
+  "structuredContent": {
+    "schema_version": "1.0-preview.1",
+    "operation": "recommend",
+    "status": "ok",
+    "summary": "Found 3 movies.",
+    "results": [
+      { "entity_id": "00000000-0000-4000-8000-000000000101", "name": "Example Film One", "type": "urn:entity:movie" },
+      { "entity_id": "00000000-0000-4000-8000-000000000102", "name": "Example Film Two", "type": "urn:entity:movie" },
+      { "entity_id": "00000000-0000-4000-8000-000000000103", "name": "Example Film Three", "type": "urn:entity:movie" }
+    ],
+    "result_count": 3,
+    "execution": { "transport": "mcp", "transport_name": "Qloo canonical MCP", "correlation_id": "synthetic-3", "duration_ms": 0 }
+  }
+}

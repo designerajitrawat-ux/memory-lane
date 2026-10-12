@@ -26,6 +26,7 @@ export type HealthResult =
 const QLOO_LABEL: Record<QlooState, string> = {
   ok: "Qloo",
   no_credential: "Qloo: waiting for API key",
+  quota_exhausted: "Qloo: today's limit reached",
   unavailable: "Qloo: unavailable",
 };
 

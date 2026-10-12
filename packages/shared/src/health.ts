@@ -5,7 +5,7 @@ import { z } from "zod";
  * Messages are written for people and must never contain raw errors, env values or secrets.
  */
 export const AgentStateSchema = z.enum(["ok"]);
-export const QlooStateSchema = z.enum(["ok", "no_credential", "unavailable"]);
+export const QlooStateSchema = z.enum(["ok", "no_credential", "unavailable", "quota_exhausted"]);
 export const DbStateSchema = z.enum(["ok", "not_configured", "error"]);
 
 const check = <S extends z.ZodEnum>(state: S) =>

@@ -4,6 +4,7 @@
 **/.turbo
 **/.vercel
 **/coverage
+**/fixtures/recorded
 .git
 **/.env
 **/.env.*
