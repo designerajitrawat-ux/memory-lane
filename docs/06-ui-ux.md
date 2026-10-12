@@ -24,7 +24,7 @@
 |---|---|---|
 | 1 | **Landing** | Headline ("Reminiscence sessions, personal to them."), 3-line explainer, primary CTA **Try a demo profile**, secondary **Create a profile**, "How it works" link, disclaimer footer |
 | 2 | **Demo picker** | 3 persona cards (birth year, regions, 2 seed hints) → open |
-| 3 | **Profile wizard** (4 steps, progress bar) | Basics · Places (life-stage rows: region + years) · Favourites (chips by domain, free text) · Avoid-list. Privacy note: "Nickname only. We never send it anywhere." |
+| 3 | **Profile wizard** (4 steps, progress bar) | Basics · Places (life-stage rows: region + years) · Favourites (chips by domain, free text) · Avoid-list. Privacy note: "Nickname only, like "Dad" or "Nani". It stays in Memory Lane and is never sent to Qloo or the AI." (it is stored in our DB, so "never sent anywhere" would be untrue) |
 | 4 | **Confirm matches** | Agent stream at top; per seed: ✓ confirmed / pick one of candidates (name, type, year) / "not found — skip" |
 | 5 | **Life Taste Profile** | 4 domain sections, item cards with caption + evidence chip; button **Plan a session** |
 | 6 | **Session plan** | Timeline of 5–6 items with duration, why, prompts preview; **Start session**; "What I changed" panel (session ≥2) |

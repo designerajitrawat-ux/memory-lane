@@ -1,4 +1,9 @@
+import Link from "next/link";
+import { SiteFooter } from "@/components/site-chrome";
 import { SystemStatus } from "@/components/system-status";
+
+const linkFocus =
+  "outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 export default function Home() {
   return (
@@ -14,12 +19,23 @@ export default function Home() {
           Music, films, food and places from the years that mattered to the person you care for,
           with gentle prompts to start a conversation.
         </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Link
+            href="/profiles/new"
+            className={`inline-flex h-12 items-center justify-center rounded-lg bg-primary px-6 text-base font-bold text-primary-foreground ${linkFocus}`}
+          >
+            Create a profile
+          </Link>
+          <Link
+            href="/profiles"
+            className={`inline-flex h-12 items-center justify-center rounded-lg px-4 text-base font-bold underline underline-offset-4 ${linkFocus}`}
+          >
+            Your profiles
+          </Link>
+        </div>
         <SystemStatus />
       </main>
-      <footer className="border-t px-4 py-6 text-center text-base text-muted-foreground">
-        Memory Lane supports reminiscence activities. It is not a medical device and does not
-        diagnose or treat any condition.
-      </footer>
+      <SiteFooter />
     </>
   );
 }

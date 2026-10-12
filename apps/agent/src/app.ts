@@ -5,15 +5,20 @@ import rateLimit from "@fastify/rate-limit";
 import type { DbCheck, HealthResponse, QlooCheck } from "@memory-lane/shared";
 import type { QlooGateway } from "./qloo/gateway";
 import type { Db } from "./db/client";
+import { clientIpResolver } from "./clientIp";
+import { profileRoutes } from "./profiles/routes";
+import type { ProfileStore } from "./profiles/store";
 
 export interface AppDeps {
   gateway: Pick<QlooGateway, "capabilities">;
   db: Db | null;
+  /** Profile storage; null without a database (routes then answer 503). */
+  profiles?: ProfileStore | null;
   version: string;
   webOrigins: string[];
   trustProxyHops?: number;
-  /** TEMPORARY (proxy-chain probe): log proxy headers for /api/health/live?probe=… requests only. */
-  logProxyHeaders?: boolean;
+  /** Header the edge sets to the real client IP (Render/Cloudflare: cf-connecting-ip); see clientIp.ts. */
+  clientIpHeader?: string;
   /** True when startup migrations failed: the DB may answer pings but lack our tables. */
   dbSetupFailed?: boolean;
   logger?: FastifyServerOptions["logger"];
@@ -79,18 +84,35 @@ export async function buildApp(deps: AppDeps) {
           message: "Something went wrong.",
         });
       }
-      return reply.code(status).send({ statusCode: status, error: err.name, message: err.message });
+      // Fastify's own 4xx messages can quote the request (e.g. malformed JSON), so send fixed text.
+      const message =
+        status === 429
+          ? "Too many requests. Please wait a little and try again."
+          : status === 413
+            ? "That request is too large."
+            : "That request couldn't be read.";
+      return reply
+        .code(status)
+        .send({ error: status === 429 ? "rate_limited" : "bad_request", message });
     },
   );
-
   await app.register(helmet);
   await app.register(cors, {
     origin: deps.webOrigins,
-    methods: ["GET", "POST"],
-    allowedHeaders: ["content-type"],
+    methods: ["GET", "POST", "DELETE"],
+    allowedHeaders: ["content-type", "authorization"],
     maxAge: 600,
   });
-  await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
+  const clientIp = clientIpResolver(deps.clientIpHeader, () =>
+    app.log.warn("client IP header missing; rate limits fall back to the socket address"),
+  );
+  await app.register(rateLimit, { max: 120, timeWindow: "1 minute", keyGenerator: clientIp });
+  // Unknown routes count against the rate limit too (probing).
+  app.setNotFoundHandler({ preHandler: app.rateLimit() }, (_req, reply) =>
+    reply.code(404).send({ error: "not_found", message: "Not found." }),
+  );
+
+  await app.register(profileRoutes, { store: deps.profiles ?? null });
 
   const startedAt = Date.now();
   let cached: { at: number; checks: Promise<[QlooCheck, DbCheck]> } | null = null;
@@ -107,24 +129,7 @@ export async function buildApp(deps: AppDeps) {
 
   // Liveness only: the host's health check and the keep-alive ping. Touches neither Qloo nor the
   // DB, so deploys succeed while they aren't ready and the DB can still scale to zero.
-  app.get("/api/health/live", { config: { rateLimit: false } }, async (req) => {
-    if (deps.logProxyHeaders && typeof (req.query as { probe?: unknown }).probe === "string") {
-      const h = req.headers;
-      req.log.info(
-        {
-          probe: {
-            xff: h["x-forwarded-for"],
-            tci: h["true-client-ip"],
-            cf: h["cf-connecting-ip"],
-            xri: h["x-real-ip"],
-            socket: req.socket.remoteAddress,
-          },
-        },
-        "proxy headers probe",
-      );
-    }
-    return { ok: true };
-  });
+  app.get("/api/health/live", { config: { rateLimit: false } }, async () => ({ ok: true }));
 
   // Readiness: what the web status strip (and an hourly uptime check) read.
   app.get("/api/health", async (_req, reply) => {

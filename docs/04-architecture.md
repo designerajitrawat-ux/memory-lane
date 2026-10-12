@@ -64,7 +64,7 @@ memory-lane/
 ## 4. Data model (Drizzle / Postgres)
 | Table | Key columns |
 |---|---|
-| `profiles` | id (uuid), owner_token (random, stored in browser), nickname, birth_year, languages[], life_stages jsonb [{region, from_year, to_year}], is_demo bool, created_at |
+| `profiles` | id (uuid), owner_token_hash (sha256 of the device's owner token), nickname, birth_year, languages[], life_stages jsonb [{region, from_year, to_year}], is_demo bool, created_at |
 | `seeds` | id, profile_id, raw_text, domain (music/film/tv/food/place/other), qloo_entity_id, qloo_entity_type, display_name, status (pending/confirmed/rejected/unresolved), source (caregiver/learned), evidence_id |
 | `avoid_items` | id, profile_id, text, qloo_entity_id nullable, reason, source (caregiver/learned) |
 | `taste_profiles` | id, profile_id, version, items jsonb [{domain, entity_id, name, caption, evidence_ids[]}], created_at |
@@ -73,10 +73,19 @@ memory-lane/
 | `reactions` | id, session_item_id, value (engaged/sang/neutral/distressed), note, created_at |
 | `qloo_calls` | id, tool, args_checked jsonb (as sent, after the PII guard), status, summary, result_count, results_digest jsonb, cached bool, latency_ms, created_at |
 | `qloo_cache` | key (sha256), tool, args jsonb, envelope jsonb, expires_at |
-| `budget` | day, qloo_calls, llm_tokens |
+| `budget` | day, qloo_calls, llm_tokens, profiles_created |
 
-Auth: **no login**. A random `owner_token` (httpOnly cookie) owns created profiles. Demo personas
-are public read-only (`is_demo`), "Duplicate to try changes" creates an owned copy.
+Auth: **no login**. The agent mints a random owner token (32 bytes, base64url) with the first profile;
+the web keeps it on the device (localStorage, memory fallback) and sends `Authorization: Bearer …`. Only
+sha256(token) is stored. A bearer header, not a cookie: agent (onrender.com) and web (vercel.app) are
+different sites, so an agent cookie would be third-party and blocked by Safari/Firefox/Brave. Non-owners
+get 404. Demo personas are public read-only (`is_demo`, never deletable), "Duplicate to try changes"
+creates an owned copy. Seeds and avoid items cascade on profile delete.
+Client IP for rate limits = `CLIENT_IP_HEADER` (only `cf-connecting-ip` / `true-client-ip`; Render:
+`cf-connecting-ip`, which Cloudflare always overwrites and refuses from clients), else `req.ip`; IPv6 is
+keyed per /64. Tokens are only reused if they already own a profile (clients can't choose tokens); demo
+profiles get an owner hash no token can produce. Limits: 20 profiles per owner, 200 per day overall
+(`budget.profiles_created`), retention 90 days via `profiles.last_seen_at` + a daily purge.
 
 ## 5. API (agent service)
 | Method & path | Purpose |
@@ -84,8 +93,10 @@ are public read-only (`is_demo`), "Duplicate to try changes" creates an owned co
 | GET `/api/health/live` | liveness only, always 200 (Render health-check path, so deploys succeed while Qloo/DB aren't ready) |
 | GET `/api/health` | readiness: agent + `qloo_capabilities` (`adapter.ready`) + DB `select 1`; 200 when all ok, 503 when degraded; body = `HealthResponseSchema` |
 | GET `/api/demo-profiles` | list seeded personas |
-| POST `/api/profiles` | create profile (zod-validated) |
-| GET `/api/profiles/:id` | profile + seeds + latest taste profile + sessions |
+| POST `/api/profiles` | create profile (shared zod schema); mints an owner token if the request has none; 10/hour/IP |
+| GET `/api/profiles` | the caller's profiles (by owner token) |
+| GET `/api/profiles/:id` | profile + seeds (+ taste profile + sessions later); owner or demo, else 404 |
+| DELETE `/api/profiles/:id` | owner only; cascades seeds/avoid items (docs/07 §2.8) |
 | POST `/api/profiles/:id/seeds/resolve` | SSE: resolve raw favourites via Qloo → candidates |
 | POST `/api/profiles/:id/seeds/confirm` | caregiver confirms/rejects candidates |
 | POST `/api/profiles/:id/taste-profile` | SSE: agent builds Life Taste Profile |

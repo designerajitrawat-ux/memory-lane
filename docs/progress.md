@@ -5,7 +5,8 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 ## Current status
 - Phase: 1 — Scaffold & deploy skeleton: **deployed**; gate waits only on the Qloo key (Qloo ✗ → ✓).
   Phase 2 — Qloo gateway: **code complete** (key-independent parts); live gate = run the recorder after
-  the key. Phase 0 still waiting on the Qloo key.
+  the key. Phase 3a — profiles, owner token, wizard: **code complete** (seed resolution waits for the key +
+  Phase 0). Phase 0 still waiting on the Qloo key.
 - Live URLs: web: https://memory-lane-sable-rho.vercel.app · agent: https://memory-lane-agent.onrender.com
 - Repo: https://github.com/designerajitrawat-ux/memory-lane (public; secret scanning + push protection on)
 - Hosting: Vercel project `memory-lane` (root `apps/web`), Render Blueprint `memory-lane` → service
@@ -46,9 +47,19 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-12 | Never commit real Qloo responses: committed tests use synthetic envelopes; recordings go to gitignored `apps/agent/test/fixtures/recorded/`; README example shows request shape + entity names only | Qloo developer guide: "do not store Qloo response data in a public repository"; our repo is public | CLAUDE.md, 03, 04, 05, 08, 09, 10, README |
 | 2026-10-12 | Gateway order: allow-list → strict args → PII guard → cache → limits → MCP (≤2 retries, only `retryable`) → evidence; rejections create no evidence; errors never cached | One choke point for rule 4/6; harness validates args only after the credential check | 03 |
 | 2026-10-12 | Tests: fake MCP under the real gateway (`fixtureMcp.ts`) + store SQL on PGlite with real migrations; migrations applied by the agent at startup | Exercises the real code path without a key, Docker or Neon; no manual DB steps on deploy | 04, 05, 08 |
+| 2026-10-12 | Owner token = random bearer token (sha256 in DB, localStorage on the device) instead of an httpOnly cookie | Agent and web are different sites; an agent cookie would be third-party and blocked by Safari/Firefox/Brave | 04, 07 |
+| 2026-10-12 | Client IP for rate limits from `cf-connecting-ip` (CLIENT_IP_HEADER), not hop counting | Probes: Cloudflare overwrites it and 403s client-sent values; the free tier adds an in-container proxy so hop counts depend on the plan | 04, render.yaml |
+| 2026-10-12 | Phase 3 split: 3a (profiles, wizard) now; Stage 1 seed resolution after the key + Phase 0 | The real Qloo result shape and data quality decide the resolve/confirm design | 08 |
+| 2026-10-12 | Profile text uses the Qloo guard's PII patterns (moved to packages/shared/src/pii.ts); avoid "why" returned to owners only; limits 20/owner, 200/day, IPv6 per /64; 90-day retention purge; "Forget profiles on this device" | security-reviewer W1–W4 | 04, 07 |
+| 2026-10-12 | Wizard: Enter moves to the next step (never saves early), Back = previous step, draft kept in sessionStorage, field borders 3:1 (`--field-border`), plain year messages | ux-reviewer C1–C4, W1–W9 | 06 |
+| 2026-10-12 | Favourites 1–10 (spec said 1–5) | Some caregivers know more; 10 keeps Qloo calls bounded | 01 |
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-12: **Phase 3a code complete.** Profiles (create/list/get/delete), bearer owner token (sha256 in
+  DB), cf-connecting-ip client key, 4-step wizard + profile page + list, shared PII patterns for profile
+  text, profile limits + 90-day retention purge. ux-reviewer (4 Critical) and security-reviewer (0 Critical,
+  4 Warnings) findings fixed. 108 tests green (82 agent incl. PGlite routes, 14 shared, 12 web).
 - 2026-10-12: **Phase 2 code complete (no key needed).** Gateway `call()` with allow-list, strict arg
   schemas mirrored from `qloo_capabilities`, PII guard, Postgres cache/evidence/budget stores (+ in-memory
   for dev), per-profile limiter, bounded retries, honest error/quota results, health `quota_exhausted`,
@@ -77,18 +88,19 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 - Does Qloo support decade/age signals well enough for era fit? (Phase 0)
 - Coverage of older Indian content? (Phase 0)
 - Anthropic API budget for live app.
-- Render proxy chain: with TRUST_PROXY_HOPS 1 and 2, req.ip is still an internal 10.x address (probe
-  2026-10-12), so rate-limit buckets are per proxy node (not spoofable). Before Phase 2's per-IP limits,
-  log the raw X-Forwarded-For once and pin the right trust rule (hop count or `uniquelocal` subnets).
 - Before/with Phase 3 routes (security review W6, S4, S6, S10): per-IP + per-owner-token limits on every
   route that reaches the gateway and a cap on profile creation; per-stage call caps (docs/05); reuse one
   evidence id per (session, cacheKey) instead of a row per cache hit; `persistent` set server-side only;
   pre-warm demo caches; purge expired cache / old evidence rows and link evidence to profile/session with
   cascading delete ("Delete this profile"); map harness error codes to fixed user text (never forward
   harness `summary`/`recovery` to the browser or Claude); consider `pg_advisory_lock` around migrations.
-- Phase 3 auth: an owner_token cookie set by onrender.com and read from vercel.app is third-party
-  (blocked by Safari/Firefox/Brave). Decide before Phase 3: Vercel rewrites proxy (/api/agent/* → Render)
-  or a bearer token header. Rewrites change the trusted hop count and CSP.
+- Judge path: landing has no "Try a demo profile" yet (US1, docs/06 §1.6) — arrives with demo personas (Phase 8).
+- CSP still has script-src 'unsafe-inline' (Next static shell); the localStorage token makes XSS costly,
+  so `react/no-danger` is enforced. Consider nonce-based CSP before submission.
+- Evidence rows (qloo_calls) are not purged yet: Phase 4 links them to sessions; then purge unreferenced
+  rows and note Neon's point-in-time history window publicly.
+- Owner token lives in one browser: clearing site data or switching devices loses access to those
+  profiles (stated in the UI). A "transfer to another device" link could come later.
 - Supply chain: harness 0.1.26 is pinned but its deps float on each image build; pin it with a lockfile
   (`npm ci`) and pin `node:22-bookworm-slim` by digest before submission. Pin CI actions to SHAs.
 - Render free: 512 MB RAM / 0.1 CPU — watch memory of Node + `qloo mcp` child; first build verifies the Dockerfile (no local Docker).

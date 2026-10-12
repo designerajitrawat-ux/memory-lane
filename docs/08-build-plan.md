@@ -27,8 +27,8 @@ commit, deploy (from Phase 1 onward), update `docs/progress.md`. Prompts for eac
 - **Gate:** a script calls 3 tools live, records fixtures locally (gitignored); tests green on synthetic envelopes; no secret in logs; no Qloo response data committed.
 
 ## Phase 3 — Profiles & seed resolution
-- [ ] Shared zod schemas; DB schema + migrations; owner token cookie
-- [ ] Wizard UI (4 steps) + `POST /api/profiles`
+- [x] Shared zod schemas; DB schema + migrations; owner token (bearer header, hashed in DB — see docs/04 §4)
+- [x] Wizard UI (4 steps) + `POST /api/profiles`; profile page, "your profiles" list, delete (Phase 3a)
 - [ ] Stage 1 resolve (SSE) + confirm UI incl. needs_input candidates
 - **Gate:** new profile → favourites resolved/confirmed; unresolved never used.
 

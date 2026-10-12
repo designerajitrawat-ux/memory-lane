@@ -13,14 +13,20 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # Render has 2+ proxies in front of the service: with 1 or 2 trusted hops req.ip is still an
-      # internal 10.x address (not spoofable, but rate-limit buckets are per proxy node). Pin the
-      # exact chain (log raw X-Forwarded-For once) before Phase 2 adds per-IP limits.
+      # Client IP for rate limits: Cloudflare (Render's edge) always overwrites cf-connecting-ip and
+      # rejects requests that send it (probe 2026-10-12). Hop counting is not used: the free tier adds an
+      # in-container proxy (chain: Cloudflare → Render LB → 127.0.0.1), so its length depends on the plan.
+      - key: CLIENT_IP_HEADER
+        value: cf-connecting-ip
       - key: TRUST_PROXY_HOPS
-        value: "2"
-      # TEMPORARY: proxy-chain probe (remove after pinning the trust rule)
-      - key: LOG_PROXY_HEADERS
-        value: "1"
+        value: "0"
+      # Profile limits and retention (docs/07 §2.8)
+      - key: PROFILES_PER_OWNER
+        value: "20"
+      - key: PROFILES_PER_DAY
+        value: "200"
+      - key: PROFILE_RETENTION_DAYS
+        value: "90"
       # Live Qloo calls per UTC day (shared hackathon quota) and cache lifetime for user profiles.
       - key: DAILY_QLOO_CALL_BUDGET
         value: "500"

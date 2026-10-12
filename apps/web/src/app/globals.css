@@ -29,6 +29,7 @@
   --color-card: var(--card);
   --color-evidence: var(--evidence);
   --color-warning: var(--warning);
+  --color-field-border: var(--field-border);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -55,6 +56,7 @@
   --accent-foreground: #1f4f4b;
   --evidence: #2f6f6a;
   --warning: #8a4b00;
+  --field-border: #8c7f72; /* 3.65:1 on paper, 3.83:1 on cards */
   --destructive: #b42318;
   --border: #e7ddd1;
   --input: #e7ddd1;
@@ -80,6 +82,7 @@
     --accent-foreground: #cde7e4;
     --evidence: #6fb7af;
     --warning: #f2b45a;
+    --field-border: #8c7f72; /* 4.72:1 on background, 4.26:1 on cards */
     --destructive: #f97066;
     --border: #3a332a;
     --input: #3a332a;

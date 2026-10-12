@@ -10,7 +10,7 @@ Judges (and Qloo's kit) explicitly value responsible data handling. Treat this f
 | Places lived | Coarse only (state/region + country + years) | No addresses. Sent to Qloo only as public regional signals |
 | Favourites / avoid-list | Yes | Public cultural entities only |
 | Health / diagnosis | **No** | Not asked, not stored, never sent anywhere |
-| Caregiver identity | **No** | No login; random owner token cookie |
+| Caregiver identity | **No** | No login; a random owner token kept on the caregiver's device (localStorage), sent as a bearer header; the DB stores only its sha256 |
 | Reactions & notes | Yes | Notes stay in our DB; never sent to Qloo; sent to Claude only as needed for adaptation |
 
 ## 2. Rules (enforced in code)
@@ -24,7 +24,14 @@ Judges (and Qloo's kit) explicitly value responsible data handling. Treat this f
 5. Logs: pino with redaction paths for headers and args; no request bodies with notes.
 6. Rate limits + daily budget to protect the shared quota.
 7. Demo personas are fictional. State this on the demo picker.
-8. Data deletion: "Delete this profile" button removes profile + sessions + reactions.
+8. Data deletion: "Delete this profile" button removes profile + sessions + reactions (cascade).
+   Retention: profiles nobody has opened for 90 days are deleted automatically (daily purge in the
+   agent); expired Qloo cache rows too. "Forget profiles on this device" clears the owner token on shared
+   devices. Limits: 20 profiles per device token, 200 new profiles per day overall, 10/hour per client
+   (IPv6 counted per /64).
+9. Profile text is checked with the same personal-data patterns as the Qloo guard
+   (packages/shared/src/pii.ts): no health/medical details, contact details or street addresses, even in
+   the private "why" of an avoid item. The "why" is only ever returned to the profile's owner.
 
 ## 3. Content safety
 - Avoid-list is absolute (validator).

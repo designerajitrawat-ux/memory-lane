@@ -8,6 +8,8 @@ import { createMemoryCacheStore, createPgCacheStore } from "./qloo/cache";
 import { createMemoryEvidenceStore, createPgEvidenceStore } from "./qloo/evidence";
 import { createQlooGateway } from "./qloo/gateway";
 import { createQlooMcpClient } from "./qloo/mcpClient";
+import { createProfileStore } from "./profiles/store";
+import { purgeStaleData } from "./db/maintenance";
 
 async function main() {
   const env = loadEnv();
@@ -45,10 +47,16 @@ async function main() {
   const app = await buildApp({
     gateway,
     db,
+    profiles: db
+      ? createProfileStore(db.drizzle, {
+          perOwner: env.PROFILES_PER_OWNER,
+          perDay: env.PROFILES_PER_DAY,
+        })
+      : null,
     version: commit ? `${pkg.version}+${commit}` : pkg.version,
     webOrigins: env.WEB_ORIGIN,
     trustProxyHops: env.TRUST_PROXY_HOPS,
-    logProxyHeaders: env.LOG_PROXY_HEADERS,
+    clientIpHeader: env.CLIENT_IP_HEADER,
     dbSetupFailed,
   });
 
@@ -62,6 +70,21 @@ async function main() {
   process.once("SIGINT", () => void shutdown("SIGINT"));
 
   await app.listen({ host: "0.0.0.0", port: env.PORT });
+
+  // Retention: purge idle profiles and expired cache rows shortly after start, then daily.
+  if (db && !dbSetupFailed) {
+    const purge = () =>
+      purgeStaleData(db.drizzle, { profileRetentionDays: env.PROFILE_RETENTION_DAYS })
+        .then((n) => app.log.info({ purged: n }, "retention purge"))
+        .catch((err: unknown) =>
+          app.log.warn(
+            { code: (err as { code?: string }).code ?? "unknown" },
+            "retention purge failed",
+          ),
+        );
+    setTimeout(() => void purge(), 60_000).unref();
+    setInterval(() => void purge(), 24 * 60 * 60 * 1000).unref();
+  }
 
   // Warm up `qloo mcp` (cold start is ~10 s) so the first health check is quick.
   void gateway.capabilities().then((q) => app.log.info({ qloo: q.state }, "qloo readiness"));

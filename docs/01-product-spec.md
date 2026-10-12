@@ -48,7 +48,7 @@ The app includes a **"Without Qloo" comparison** so judges can see the differenc
 2. **Profile wizard** in 4 short steps:
    - basics: nickname, birth year, languages
    - places: country and region per life stage (coarse only)
-   - favourites: 1–5 known items across music, film, food, and places
+   - favourites: 1–10 known items across music, film, food, and places (most people know 1–5)
    - avoid-list: topics, songs, or eras to avoid
 3. **Seed confirmation.** The agent resolves favourites through Qloo. Ambiguous matches (`needs_input`) are
    shown as candidates for the caregiver to pick from.
