@@ -13,8 +13,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Render puts two proxies in front of the service (verified 2026-10-12 via a spoofed
+      # X-Forwarded-For probe: one hop left req.ip on an internal 10.x address).
       - key: TRUST_PROXY_HOPS
-        value: "1"
+        value: "2"
       # Hackathon keys only work against the hackathon API.
       - key: QLOO_BASE_URL
         value: https://hackathon.api.qloo.com
