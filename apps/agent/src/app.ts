@@ -12,6 +12,8 @@ export interface AppDeps {
   version: string;
   webOrigins: string[];
   trustProxyHops?: number;
+  /** TEMPORARY (proxy-chain probe): log proxy headers for /api/health/live?probe=… requests only. */
+  logProxyHeaders?: boolean;
   /** True when startup migrations failed: the DB may answer pings but lack our tables. */
   dbSetupFailed?: boolean;
   logger?: FastifyServerOptions["logger"];
@@ -105,7 +107,24 @@ export async function buildApp(deps: AppDeps) {
 
   // Liveness only: the host's health check and the keep-alive ping. Touches neither Qloo nor the
   // DB, so deploys succeed while they aren't ready and the DB can still scale to zero.
-  app.get("/api/health/live", { config: { rateLimit: false } }, async () => ({ ok: true }));
+  app.get("/api/health/live", { config: { rateLimit: false } }, async (req) => {
+    if (deps.logProxyHeaders && typeof (req.query as { probe?: unknown }).probe === "string") {
+      const h = req.headers;
+      req.log.info(
+        {
+          probe: {
+            xff: h["x-forwarded-for"],
+            tci: h["true-client-ip"],
+            cf: h["cf-connecting-ip"],
+            xri: h["x-real-ip"],
+            socket: req.socket.remoteAddress,
+          },
+        },
+        "proxy headers probe",
+      );
+    }
+    return { ok: true };
+  });
 
   // Readiness: what the web status strip (and an hourly uptime check) read.
   app.get("/api/health", async (_req, reply) => {

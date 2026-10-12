@@ -48,6 +48,7 @@ async function main() {
     version: commit ? `${pkg.version}+${commit}` : pkg.version,
     webOrigins: env.WEB_ORIGIN,
     trustProxyHops: env.TRUST_PROXY_HOPS,
+    logProxyHeaders: env.LOG_PROXY_HEADERS,
     dbSetupFailed,
   });
 

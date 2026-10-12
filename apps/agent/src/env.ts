@@ -34,6 +34,8 @@ const EnvSchema = z
     QLOO_MCP_COMMAND: z.string().default("qloo"),
     // Number of reverse proxies in front of the agent (see render.yaml), so rate limits see the client IP.
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
+    // TEMPORARY: "1" logs proxy headers for /api/health/live?probe=… so the trust rule can be pinned.
+    LOG_PROXY_HEADERS: z.enum(["0", "1"]).default("0").transform((v) => v === "1"),
     // Live Qloo calls per UTC day (shared hackathon quota); cache hits don't count.
     DAILY_QLOO_CALL_BUDGET: z.coerce.number().int().min(0).default(500),
     QLOO_CACHE_TTL_DAYS: z.coerce.number().positive().default(7),

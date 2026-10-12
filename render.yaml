@@ -18,6 +18,9 @@ services:
       # exact chain (log raw X-Forwarded-For once) before Phase 2 adds per-IP limits.
       - key: TRUST_PROXY_HOPS
         value: "2"
+      # TEMPORARY: proxy-chain probe (remove after pinning the trust rule)
+      - key: LOG_PROXY_HEADERS
+        value: "1"
       # Live Qloo calls per UTC day (shared hackathon quota) and cache lifetime for user profiles.
       - key: DAILY_QLOO_CALL_BUDGET
         value: "500"
