@@ -27,7 +27,7 @@ flowchart LR
 | DB | Postgres + Drizzle ORM + drizzle-kit migrations | simple, typed |
 | Cache | Postgres table `qloo_cache` (no Redis needed) | fewer moving parts |
 | Rate limit | `@fastify/rate-limit` + DB daily budget counter | quota safety |
-| Testing | Vitest (unit), recorded Qloo fixtures, Playwright (2–3 e2e smoke flows) | reliability |
+| Testing | Vitest (unit) with synthetic Qloo envelopes (committed) + locally recorded fixtures (gitignored — no Qloo response data in the public repo), Playwright (2–3 e2e smoke flows) | reliability |
 | Lint/format | ESLint + Prettier | consistency |
 | CI | GitHub Actions: typecheck, lint, test | judges see quality |
 | Hosting | Vercel (web), **Render free** (agent, `apps/agent/Dockerfile` via `render.yaml`), **Neon free** (DB); all US East | MCP needs a container; all free. Render free sleeps after 15 min idle → UptimeRobot 5-min keep-alive on `/api/health/live` (750 free h/month covers 24/7; touches no DB). Readiness monitor on `/api/health` only **hourly**, because Neon free has ~100 CU-h/month and a 5-min DB ping would keep it awake 24/7 |

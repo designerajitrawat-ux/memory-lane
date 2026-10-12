@@ -55,7 +55,8 @@ run typecheck/lint/tests, and give me exact deploy steps for Vercel + Railway (o
 Implement Phase 2 from docs/08-build-plan.md following docs/03-qloo-integration.md sections 4-6
 exactly: long-lived MCP client (pass env: process.env), allow-list, redact.ts with unit tests,
 Postgres cache, qloo_calls evidence log, envelope status handling, bounded retries only when
-error.retryable, rate limit + daily budget, and a FixtureGateway + recorder script. Plan first.
+error.retryable, rate limit + daily budget, and a FixtureGateway + recorder script (recordings go to the
+gitignored test/fixtures/recorded/; committed tests use synthetic envelopes). Plan first.
 ```
 
 ### Phase 3 — profiles & seeds
@@ -63,7 +64,7 @@ error.retryable, rate limit + daily budget, and a FixtureGateway + recorder scri
 Implement Phase 3: shared zod schemas, Drizzle schema/migrations from docs/04-architecture.md §4,
 owner-token cookie, the 4-step wizard (docs/06-ui-ux.md screen 3), and Stage 1 seed resolution with
 SSE progress + confirm UI for needs_input (docs/05-agent-design.md Stage 1). Plan first. Use
-recorded fixtures in tests.
+synthetic Qloo envelopes in committed tests (never commit real Qloo responses).
 ```
 
 ### Phase 4 — taste profile
@@ -106,7 +107,8 @@ ux-reviewer and fix everything it flags.
 ```
 Run security-reviewer, then hackathon-judge on the live URL and repo. Fix all critical findings.
 Then draft README.md from docs/10-submission-kit.md (fill real details, screenshots list, redacted
-request-to-result example from a real qloo_calls record) and the Devpost description text.
+request-to-result example from a real qloo_calls record: request shape + status + entity names only, no raw
+response payload) and the Devpost description text.
 ```
 
 ## 4. When things go wrong

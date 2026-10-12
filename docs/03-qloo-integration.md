@@ -20,6 +20,13 @@ On a server: set env var `QLOO_API_KEY` (secret) plus `QLOO_BASE_URL` / `QLOO_TR
 secret; in `render.yaml`). Never use `--api-key` on CLI (shell history). Without the base URLs the harness
 targets `https://api.qloo.com`, where hackathon keys fail. `.mcp.json` sets them for Claude Code's own
 `qloo` server. Keys arrive by email, usually within one business day. Leaked key → email ian@qloo.com.
+**From Qloo's developer guide** (docs.qloo.com → qloo-llm-hackathon-developer-guide, read 12 Oct 2026):
+keys are issued manually via the form and emailed (check spam; resubmit if nothing after a few business days);
+key goes in the `X-Api-Key` header (the harness handles this); `/v2/insights` is a GET with query params;
+legacy `/recommendations` / `/recs` are unsupported; private server-side caching is allowed with no time limit;
+**do not store Qloo response data in a public repository** (→ committed tests use synthetic envelopes, real
+recordings stay in gitignored `apps/agent/test/fixtures/recorded/`); quota raises via Discord #api-help;
+keys are deactivated after the hackathon closes.
 Kit starters worth comparing with our gateway: `starter/cli-workflow` (`qloo exec find_tags
 --input-file request.json`) and `starter/mcp-client`; submission checklist: kit `docs/SUBMISSION.md`.
 

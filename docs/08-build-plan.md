@@ -21,9 +21,9 @@ commit, deploy (from Phase 1 onward), update `docs/progress.md`. Prompts for eac
 
 ## Phase 2 — Qloo gateway
 - [ ] MCP client (long-lived, reconnect), allow-list, redact, cache, evidence log, envelope rules, retries, rate limit, budget
-- [ ] Fixture recorder + `FixtureGateway` for tests
+- [ ] Fixture recorder (writes to gitignored `test/fixtures/recorded/`) + `FixtureGateway`; CI uses synthetic envelopes
 - [ ] Unit tests: redact, envelope handling, cache key, budget
-- **Gate:** a script calls 3 tools live, records fixtures; tests green; no secret in logs.
+- **Gate:** a script calls 3 tools live, records fixtures locally (gitignored); tests green on synthetic envelopes; no secret in logs; no Qloo response data committed.
 
 ## Phase 3 — Profiles & seed resolution
 - [ ] Shared zod schemas; DB schema + migrations; owner token cookie

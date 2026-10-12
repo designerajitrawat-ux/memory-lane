@@ -8,7 +8,8 @@
 - [ ] Setup from a fresh clone tested by following only the README (`.env.example` lists every variable)
 - [ ] No secrets in repo/history/bundle/screenshots (`security-reviewer` clean)
 - [ ] Devpost: description, built-with tags, demo URL, repo URL, testing instructions, images
-- [ ] Known limitations + Qloo tools used + redacted request-to-result example included
+- [ ] Known limitations + Qloo tools used + redacted request-to-result example included (request shape, status,
+  entity names only — no raw Qloo response payload in the public repo, per Qloo's developer guide)
 - [ ] Submitted by **Oct 29 IST** (deadline Oct 30, 11:45 pm EDT = Oct 31, 9:15 am IST)
 
 ## 2. README template

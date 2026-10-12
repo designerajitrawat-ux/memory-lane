@@ -43,7 +43,9 @@ every item grounded in Qloo's taste graph, and a learning loop from caregiver-lo
 - Subagents: `qloo-data-scout`, `security-reviewer` (before deploys), `ux-reviewer` (after UI work),
   `hackathon-judge` (end of phases).
 - TypeScript strict; zod schemas in `packages/shared` are the single source of truth; small commits.
-- Use recorded Qloo fixtures in tests; keep live calls minimal (shared quota).
+- Tests use synthetic Qloo envelopes committed in the repo. Real recorded Qloo responses stay local in
+  gitignored `apps/agent/test/fixtures/recorded/` (Qloo rule: no Qloo response data in a public repo).
+  Keep live calls minimal (shared quota).
 
 ## Commands (fill in once scaffolded)
 - install: `pnpm install` · dev: `pnpm dev` · test: `pnpm test` · lint: `pnpm lint` · typecheck: `pnpm typecheck`

@@ -19,7 +19,8 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
    user env vars, then run `qloo setup --qloo` yourself in a terminal (never paste the key in chat) →
    `qloo setup --status` shows "Qloo data: ready" → reload Claude Code so the `qloo` MCP server
    connects. Add QLOO_API_KEY on Render (Environment tab; you paste it) → the Phase-1 gate
-   ("Agent ✓ · Qloo ✓ · DB ✓" on the public URL) passes. Record a real "ready" capabilities fixture.
+   ("Agent ✓ · Qloo ✓ · DB ✓" on the public URL) passes. Record a real "ready" capabilities fixture
+   (harness-local metadata, not Qloo response data, so it may be committed).
 2. Run Phase-0 validation; fill `docs/qloo-findings.md`.
 3. While waiting: join Discord, get an Anthropic API key (Console billing) for Phase 4.
 
@@ -38,6 +39,7 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-12 | Qloo harness child gets an allow-listed env (QLOO_API_KEY, QLOO_HOME, QLOO_BASE_URL, QLOO_TRUSTED_BASE_URL) instead of process.env | security-reviewer: harness is third-party and bundles an LLM agent runtime; DATABASE_URL / ANTHROPIC_API_KEY must not reach it | 03 |
 | 2026-10-12 | Keep-alive ping on `/api/health/live`; readiness check only hourly | Neon free ≈ 100 CU-h/month; a 5-min DB ping would keep compute on 24/7 | 04 |
 | 2026-10-12 | Deployed: Vercel `memory-lane` + Render Blueprint `memory-lane` + Neon `memory-lane`; Neon direct (unpooled) connection; strip `channel_binding` from DATABASE_URL | Long-lived single agent process; postgres.js forwards unknown URL params to the server | 04 |
+| 2026-10-12 | Never commit real Qloo responses: committed tests use synthetic envelopes; recordings go to gitignored `apps/agent/test/fixtures/recorded/`; README example shows request shape + entity names only | Qloo developer guide: "do not store Qloo response data in a public repository"; our repo is public | CLAUDE.md, 03, 04, 05, 08, 09, 10, README |
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done

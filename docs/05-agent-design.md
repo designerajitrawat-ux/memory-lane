@@ -119,7 +119,9 @@ Qloo tools are passed through from `listTools()` but **filtered** by the gateway
 - Per stage: max tool calls (Stage 2: 12, Stage 4: 6), max LLM tokens, wall clock 60 s.
 - On budget hit → return best partial result + note "partial" (never crash).
 - Use Claude **prompt caching** for system prompts + tool definitions.
-- Record/replay: in tests, a `FixtureGateway` serves recorded envelopes from `apps/agent/test/fixtures/`.
+- Record/replay: in tests, a `FixtureGateway` serves synthetic envelopes from `apps/agent/test/fixtures/`
+  (committed). Real recordings live only locally in gitignored `apps/agent/test/fixtures/recorded/`, because
+  Qloo's guide forbids storing Qloo response data in a public repository.
 
 ## 7. What judges should notice (call out in README)
 1. Real tool chain (resolve → confirm → recommend/rank → compose → validate → adapt).

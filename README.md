@@ -37,7 +37,7 @@ ready. Without a Qloo key it honestly shows "Qloo: waiting for API key".
 
 | Command | |
 |---|---|
-| `pnpm test` | unit tests (Vitest, recorded Qloo fixtures — no live calls) |
+| `pnpm test` | unit tests (Vitest, synthetic Qloo envelopes — no live calls) |
 | `pnpm typecheck` · `pnpm lint` | strict TypeScript · ESLint |
 | `pnpm build` | Next.js build + single-file agent bundle |
 
