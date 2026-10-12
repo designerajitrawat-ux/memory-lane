@@ -59,7 +59,9 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 - 2026-10-12: **Phase 3a code complete.** Profiles (create/list/get/delete), bearer owner token (sha256 in
   DB), cf-connecting-ip client key, 4-step wizard + profile page + list, shared PII patterns for profile
   text, profile limits + 90-day retention purge. ux-reviewer (4 Critical) and security-reviewer (0 Critical,
-  4 Warnings) findings fixed. 108 tests green (82 agent incl. PGlite routes, 14 shared, 12 web).
+  4 Warnings) findings fixed. 108 tests green (82 agent incl. PGlite routes, 14 shared, 12 web). Live
+  check on Vercel+Render: create → list → delete works; Enter moves steps; Back keeps answers; health
+  terms refused. Found live: typing before hydration was wiped, so the form now renders after hydration.
 - 2026-10-12: **Phase 2 code complete (no key needed).** Gateway `call()` with allow-list, strict arg
   schemas mirrored from `qloo_capabilities`, PII guard, Postgres cache/evidence/budget stores (+ in-memory
   for dev), per-profile limiter, bounded retries, honest error/quota results, health `quota_exhausted`,

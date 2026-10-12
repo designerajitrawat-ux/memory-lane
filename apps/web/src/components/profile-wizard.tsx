@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm, type FieldPath } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
@@ -36,6 +36,16 @@ const addButton = "h-12 px-4 text-base";
 // Names of people, songs and places: phone keyboards shouldn't "correct" them.
 const nameInput = { autoCorrect: "off", spellCheck: false, autoCapitalize: "words" } as const;
 
+// True only after hydration. Until then the form is not shown: react-hook-form resets inputs when it
+// registers them, so text typed into the server-rendered form on a slow phone would be lost.
+const noop = () => () => {};
+const useHydrated = () =>
+  useSyncExternalStore(
+    noop,
+    () => true,
+    () => false,
+  );
+
 function readDraft(): ProfileFormValues | null {
   try {
     const raw = window.sessionStorage.getItem(DRAFT_KEY);
@@ -56,6 +66,7 @@ function writeDraft(values: ProfileFormValues | null) {
 
 export function ProfileWizard() {
   const router = useRouter();
+  const hydrated = useHydrated();
   const [step, setStep] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [remembers, setRemembers] = useState(true);
@@ -190,6 +201,14 @@ export function ProfileWizard() {
     return (node as { message?: string } | undefined)?.message;
   };
   const enterKeyHint = isLast ? "done" : "next";
+
+  if (!hydrated) {
+    return (
+      <p role="status" className="text-lg text-muted-foreground">
+        Loading the form…
+      </p>
+    );
+  }
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-8">
