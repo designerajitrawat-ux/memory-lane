@@ -66,7 +66,7 @@ memory-lane/
 |---|---|
 | `profiles` | id (uuid), owner_token_hash (sha256 of the device's owner token), nickname, birth_year, languages[], life_stages jsonb [{region, from_year, to_year}], is_demo bool, created_at |
 | `seeds` | id, profile_id, raw_text, domain (music/film/tv/food/place/other), qloo_entity_id, qloo_entity_type, display_name, status (pending/needs_input/confirmed/rejected/unresolved, CHECK), note (not_found/no_clear_match/personal_info/invalid/lookup_failed: why it wasn't matched, shown as fixed text), source (caregiver/learned), evidence_id (FK → qloo_calls; CHECK: confirmed ⇒ evidence_id + qloo_entity_id) |
-| `seed_candidates` | seed_id (cascade), position, entity_id, name, entity_type, year, evidence_id (not null, FK → qloo_calls): the matches Stage 1 found; confirm only accepts one of these, then the seed's candidates are deleted |
+| `seed_candidates` | seed_id (cascade), position, entity_id, name, entity_type (raw Qloo type URN), year, description (one line from Qloo), evidence_id (not null, FK → qloo_calls): the matches Stage 1 found; confirm only accepts one of these, then the seed's candidates are deleted |
 | `avoid_items` | id, profile_id, text, qloo_entity_id nullable, reason, source (caregiver/learned) |
 | `taste_profiles` | id, profile_id, version, items jsonb [{domain, entity_id, name, caption, evidence_ids[]}], created_at |
 | `sessions` | id, profile_id, number, status (planned/in_progress/done), plan jsonb, what_changed text, created_at |

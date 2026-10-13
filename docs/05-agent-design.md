@@ -27,16 +27,38 @@ flowchart TD
 
 ### Stage 1 — Resolve seeds
 - Input: raw favourites text + domain hints.
-- Tools: `qloo_describe`, `qloo_find_tags`.
+- Tools: `qloo_describe` for singers, films, TV and places (type from the wizard domain);
+  `qloo_find_tags` for food and "something else" (dishes and interests are tags in Qloo, not entities).
 - Output: per seed → `needs_input` with up to 5 stored candidates (each with an evidence id), or
   `unresolved` (nothing found, or refused by the PII guard). The caregiver then confirms **every** seed,
   single matches included: a single match is preselected, never auto-confirmed. "None of these" →
   `rejected`. No key / quota / outage → the seed stays `pending` and the UI says so; nothing is guessed.
   The run stops at the first failed lookup (the rest would most likely fail too and spend budget); that
   seed keeps the note `lookup_failed`. Stage 1 writes only touch seeds that are still `pending`.
-- Rule: **never** use an unconfirmed seed downstream. UI shows candidates with name/type/year.
-- Mapping `qloo_describe` results → candidates lives in `apps/agent/src/stage1/mapDescribe.ts` and is
-  provisional until real recordings exist (Phase 0).
+- Rule: **never** use an unconfirmed seed downstream. UI shows candidates with name · type · year and
+  Qloo's one-line description (what tells namesakes apart).
+- Candidates (pinned against local recordings, 2026-10-13; `stage1/mapDescribe.ts`, `mapFindTags.ts`):
+  describe returns a selected entity + "alternatives". Exact match → selected + same-name, same-type
+  alternatives only (the rest is fuzzy noise, e.g. WALL·E for Mughal-e-Azam). Non-exact matches and
+  **places** → all same-type alternatives (Phase 0: "Golden Temple" matched exactly to a temple in another
+  city). find_tags → one candidate per distinct name; food keeps food tags only, preferring cuisine.
+  The raw Qloo type URN is stored (`urn:entity:artist`, `urn:tag:cuisine:qloo`) so Stage 2 knows entity
+  vs tag; labels ("film", "dish") are display only.
+
+### Phase 0 findings that shape Stages 2–4 (details: docs/qloo-findings.md)
+- Stage 2 calls Qloo with **confirmed entity IDs** (`signals`) and tag URNs (`signal_tags`), never names:
+  bare names are ambiguous across types (needs_input).
+- **No era filter exists** (decade tags match films *set* in an era; `demographic` age bands are dropped).
+  Era comes from: artist→artist recommends (≈9/10 era-correct), a **code validator on `release_year`**
+  against the person's window (≈ birth year + 5 … + 40) for films/TV, and `qloo_rank` of LLM-proposed
+  candidates (era names rank first with a clear gap).
+- Domain order by data quality: music (spine) → TV → film → places → food. Food items carry **tag
+  evidence** (cuisine tags) and become conversation prompts, labelled honestly; tag-only place
+  recommends are junk.
+- Places: resolve named landmarks, then `filter_location` with a coarse city; `where_popular` returns only
+  geohash cells, so it is not shown.
+- Avoid-list validation must also read Qloo descriptions (some films touch war/trauma themes).
+- The gateway runs ≤3 live calls at once (bursts of 8 hit a 429).
 
 ### Stage 2 — Life Taste Profile
 Agent loop (max ~12 tool calls, budget-guarded). Allowed tools: `qloo_recommend`, `qloo_rank`,

@@ -9,8 +9,11 @@ import { SeedNoteSchema, SeedStatusSchema, type SeedNote } from "./profile";
 export const CandidateSchema = z.object({
   id: z.string(),
   name: z.string(),
+  /** Plain-language type ("film", "dish"). */
   type: z.string().nullable(),
   year: z.number().int().nullable(),
+  /** One line from Qloo that helps tell same-name matches apart. */
+  description: z.string().nullable(),
 });
 
 export const SeedResolutionSchema = z.object({

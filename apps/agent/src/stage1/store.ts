@@ -7,6 +7,7 @@ import {
 } from "@memory-lane/shared";
 import { seedCandidates, seeds } from "../db/schema";
 import type { AppDb } from "../db/types";
+import { typeLabel } from "./labels";
 import type { MappedCandidate } from "./mapDescribe";
 
 export interface PendingSeed {
@@ -57,6 +58,7 @@ export function createResolutionStore(db: AppDb): ResolutionStore {
             name: c.name,
             entityType: c.entityType,
             year: c.year,
+            description: c.description,
             evidenceId,
           })),
         );
@@ -101,7 +103,13 @@ export function createResolutionStore(db: AppDb): ResolutionStore {
             s.status === "needs_input"
               ? candidateRows
                   .filter((c) => c.seedId === s.id)
-                  .map((c) => ({ id: c.id, name: c.name, type: c.entityType, year: c.year }))
+                  .map((c) => ({
+                    id: c.id,
+                    name: c.name,
+                    type: typeLabel(c.entityType),
+                    year: c.year,
+                    description: c.description,
+                  }))
               : [],
           note,
           message: note ? SEED_NOTE_MESSAGES[note] : null,

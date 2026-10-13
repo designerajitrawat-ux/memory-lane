@@ -13,6 +13,10 @@ const CALLS = [
   { tool: "qloo_find_tags", args: { query: "ghazal", limit: 5 } },
   { tool: "qloo_describe", args: { entity: "Mohammed Rafi", type: "artist" } },
   { tool: "qloo_recommend", args: { target_type: "movie", signals: ["Mohammed Rafi"], limit: 5 } },
+  // Stage 1 shapes: a film (year?), a short ambiguous name, and a dish (no Qloo entity type for food).
+  { tool: "qloo_describe", args: { entity: "Mughal-e-Azam", type: "movie" } },
+  { tool: "qloo_describe", args: { entity: "Rafi", type: "artist" } },
+  { tool: "qloo_describe", args: { entity: "Butter chicken" } },
 ] as const;
 
 const out = (line: string) => process.stdout.write(`${line}\n`);

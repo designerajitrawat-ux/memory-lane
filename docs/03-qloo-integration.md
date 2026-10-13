@@ -121,7 +121,10 @@ Phase 2), in this order:
 Health reports `quota_exhausted` once the daily budget is used. Tests run the real gateway on a fake MCP
 (`qloo/fixtureMcp.ts`: gitignored recordings → committed synthetic envelopes) and the real SQL on PGlite.
 
-## 7. How we get "era" and "region" (hypothesis — VERIFY in Phase 0)
+## 7. How we get "era" and "region" (tested in Phase 0 — results in docs/qloo-findings.md)
+**Verified 2026-10-13:** tags (1) and `demographic` do **not** give era; seeds (2) and rank (3) do; region
+(4) via `where_popular` is geohash-only. Working strategy is in docs/05 "Phase 0 findings". Original
+hypothesis kept below for the record.
 The documented tools have no explicit "year" filter. Strategy, in order of preference:
 1. **Tags**: `qloo_find_tags` for concepts like "1960s", "oldies", "golden era Bollywood",
    "ghazal", "doo-wop", "rock and roll" → use tags as signals.

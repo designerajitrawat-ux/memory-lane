@@ -138,8 +138,9 @@ export const seedCandidates = pgTable(
     position: integer("position").notNull(),
     entityId: text("entity_id").notNull(),
     name: text("name").notNull(),
-    entityType: text("entity_type"),
+    entityType: text("entity_type"), // raw Qloo type URN: urn:entity:artist, urn:tag:cuisine:qloo, …
     year: integer("year"),
+    description: text("description"), // one line from Qloo to tell same-name matches apart
     evidenceId: uuid("evidence_id")
       .notNull()
       .references(() => qlooCalls.id),

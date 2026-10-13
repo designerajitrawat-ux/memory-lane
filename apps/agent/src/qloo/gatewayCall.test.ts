@@ -303,3 +303,23 @@ describe("gateway.call", () => {
     expect(logs).not.toMatch(/secret|params/);
   });
 });
+
+describe("createSemaphore", () => {
+  it("never runs more than the limit at once", async () => {
+    const { createSemaphore } = await import("./gateway");
+    const slot = createSemaphore(3);
+    let active = 0;
+    let peak = 0;
+    await Promise.all(
+      Array.from({ length: 8 }, () =>
+        slot(async () => {
+          active++;
+          peak = Math.max(peak, active);
+          await new Promise((r) => setTimeout(r, 5));
+          active--;
+        }),
+      ),
+    );
+    expect(peak).toBe(3);
+  });
+});

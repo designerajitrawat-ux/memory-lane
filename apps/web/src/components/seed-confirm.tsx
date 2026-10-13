@@ -19,22 +19,34 @@ const BUSY =
 
 type Problem = { kind: ResolveProblem | "stopped"; message: string };
 
-/** name · type · year, read by screen readers as "name, type, year". */
+/**
+ * name · type · year (read as "name, type, year"), then Qloo's one-line description, which is what
+ * tells same-name matches apart (two films called the same, a temple in another city).
+ */
 function CandidateLabel({ c }: { c: Candidate }) {
   const parts = [c.name, c.type, c.year === null ? null : String(c.year)].filter(
     (x): x is string => !!x,
   );
-  return parts.map((part, i) => (
-    <span key={i}>
-      {i > 0 && (
-        <>
-          <span aria-hidden="true"> · </span>
-          <span className="sr-only">, </span>
-        </>
+  return (
+    <span className="block">
+      <span className="block">
+        {parts.map((part, i) => (
+          <span key={i} className={i === 0 ? "font-bold" : undefined}>
+            {i > 0 && (
+              <>
+                <span aria-hidden="true"> · </span>
+                <span className="sr-only">, </span>
+              </>
+            )}
+            {part}
+          </span>
+        ))}
+      </span>
+      {c.description && (
+        <span className="mt-0.5 block text-base text-muted-foreground">{c.description}</span>
       )}
-      {part}
     </span>
-  ));
+  );
 }
 
 // Keeps choices that still fit the list and preselects single matches (still saved by a person).
@@ -337,7 +349,7 @@ export function SeedConfirm() {
                 {options.map((opt) => (
                   <label
                     key={opt.value}
-                    className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-lg has-checked:border-primary has-checked:bg-secondary has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring"
+                    className="flex min-h-12 cursor-pointer items-start gap-3 rounded-xl border border-transparent px-3 py-2 text-lg has-checked:border-primary has-checked:bg-secondary has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring"
                   >
                     <input
                       type="radio"
@@ -345,9 +357,9 @@ export function SeedConfirm() {
                       value={opt.value}
                       checked={choices[r.seedId] === opt.value}
                       onChange={() => setChoices((c) => ({ ...c, [r.seedId]: opt.value }))}
-                      className="size-6 shrink-0 accent-primary outline-none"
+                      className="mt-0.5 size-6 shrink-0 accent-primary outline-none"
                     />
-                    <span>{opt.label}</span>
+                    <span className="min-w-0 flex-1">{opt.label}</span>
                   </label>
                 ))}
               </fieldset>

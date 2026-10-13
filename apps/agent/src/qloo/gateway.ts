@@ -56,6 +56,8 @@ export interface GatewayDeps {
   profileLimiter?: RateLimiter;
   cacheTtlMs?: number;
   log?: { warn(obj: object, msg: string): void };
+  /** Live calls in flight at once (Phase 0: bursts of 8 parallel calls hit Qloo's 429). */
+  maxConcurrent?: number;
   /** Injected for tests. */
   sleep?: (ms: number) => Promise<void>;
   now?: () => number;
@@ -87,7 +89,9 @@ export function createQlooGateway(deps: GatewayDeps): QlooGateway {
     log,
     sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
     now = Date.now,
+    maxConcurrent = 3,
   } = deps;
+  const slot = createSemaphore(maxConcurrent);
 
   // Store failures are logged by error code only (driver messages can carry SQL parameters).
   function storeError(tool: string, err: unknown) {
@@ -99,7 +103,9 @@ export function createQlooGateway(deps: GatewayDeps): QlooGateway {
     let envelope: QlooEnvelope;
     for (let attempt = 0; ; attempt++) {
       try {
-        const res = await mcp.callTool(tool, args as Record<string, unknown>, CALL_TIMEOUT_MS);
+        const res = await slot(() =>
+          mcp.callTool(tool, args as Record<string, unknown>, CALL_TIMEOUT_MS),
+        );
         envelope = parseEnvelope(res.structuredContent, tool);
       } catch (err) {
         // A timed-out request may already have reached Qloo, so only a crashed transport is retried.
@@ -247,6 +253,22 @@ export function createQlooGateway(deps: GatewayDeps): QlooGateway {
         return { kind: "unavailable", message: EVIDENCE_UNAVAILABLE };
       }
     },
+  };
+}
+
+/** Runs at most `max` tasks at once; the rest wait in order. */
+export function createSemaphore(max: number) {
+  let active = 0;
+  const waiting: (() => void)[] = [];
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    if (active >= max) await new Promise<void>((resolve) => waiting.push(resolve));
+    active++;
+    try {
+      return await task();
+    } finally {
+      active--;
+      waiting.shift()?.();
+    }
   };
 }
 

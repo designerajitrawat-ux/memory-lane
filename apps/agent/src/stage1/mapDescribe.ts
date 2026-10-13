@@ -3,54 +3,65 @@ import type { Domain, QlooEnvelope } from "@memory-lane/shared";
 export interface MappedCandidate {
   entityId: string;
   name: string;
+  /** Raw Qloo type URN ("urn:entity:artist", "urn:tag:cuisine:qloo"); labels come from labels.ts. */
   entityType: string | null;
   year: number | null;
+  /** One line from Qloo that helps tell same-name matches apart (shown, never sent anywhere). */
+  description: string | null;
 }
 
-const MAX_CANDIDATES = 5;
+export const MAX_CANDIDATES = 5;
+const MAX_DESCRIPTION = 160;
+
+type Rec = Record<string, unknown>;
+
+const PLACE_TYPES = new Set(["urn:entity:place", "urn:entity:locality", "urn:entity:destination"]);
 
 /**
- * PROVISIONAL: turns a `qloo_describe` envelope into candidates the caregiver can choose from. The real
- * result shape is only known once the Qloo key arrives (Phase 0); until then this reads the common
- * fields generically. TODO(phase-0): pin the field names against recorded fixtures.
+ * Turns a `qloo_describe` envelope into the matches a caregiver chooses from (shape pinned against
+ * local recordings, 2026-10-13). Qloo returns one selected entity plus "alternatives". For an exact
+ * match the alternatives are mostly fuzzy noise (WALL·E for "Mughal-e-Azam"), so only alternatives with
+ * the same name and type are offered (a remake, a namesake). For a non-exact match, and for places
+ * (whose names mislead: "Golden Temple" matched exactly to a temple in another city — Phase 0), all
+ * alternatives of the same type are offered. Envelopes without a resolution block fall back to `results`.
  */
 export function mapDescribe(envelope: QlooEnvelope): MappedCandidate[] {
-  const results = envelope.results;
-  const list = Array.isArray(results)
-    ? results
-    : results && typeof results === "object"
-      ? (Object.values(results).find(Array.isArray) ?? [])
-      : [];
-  const out: MappedCandidate[] = [];
-  for (const raw of list as unknown[]) {
-    if (!raw || typeof raw !== "object") continue;
-    const r = raw as Record<string, unknown>;
-    const props = (r.properties && typeof r.properties === "object" ? r.properties : {}) as Record<
-      string,
-      unknown
-    >;
-    const entityId = str(r.entity_id ?? r.id);
-    const name = str(r.name ?? r.title);
-    if (!entityId || !name) continue;
-    out.push({
-      entityId,
-      name,
-      entityType: humanType(str(r.type ?? r.subtype ?? r.entity_type)),
-      year: yearOf(
-        props.release_year ??
-          r.release_year ??
-          props.year ??
-          r.year ??
-          props.release_date ??
-          r.release_date,
-      ),
-    });
+  const outcome = firstOutcome(envelope.resolution);
+  const interpreted = obj(obj(envelope.interpretation)?.entity);
+  const results = list(envelope.results);
+
+  const selectedRaw = obj(outcome?.selected);
+  const selected = selectedRaw
+    ? fromResolution(selectedRaw)
+    : interpreted
+      ? candidate(interpreted.entityId, interpreted.name, interpreted.type, null, null)
+      : null;
+  if (!selected) return fromResults(results);
+
+  // The selected entity's full record (year, description) is in `results`.
+  const detail = results.find((r) => str(r.entity_id ?? r.id) === selected.entityId);
+  if (detail) {
+    const props = obj(detail.properties) ?? {};
+    selected.year = yearOf(props.release_year ?? props.year ?? props.release_date) ?? selected.year;
+    selected.description ??=
+      short(str(props.short_description ?? props.description)) ?? addressLine(props.address);
+  }
+
+  const isPlace = PLACE_TYPES.has(selected.entityType ?? "");
+  const exact = !isPlace && str(outcome?.match ?? interpreted?.match) === "exact";
+  const out = [selected];
+  for (const raw of list(outcome?.alternatives)) {
+    const alt = fromResolution(raw);
+    if (!alt || out.some((c) => c.entityId === alt.entityId)) continue;
+    if (alt.entityType !== selected.entityType) continue;
+    if (exact && normalise(alt.name) !== normalise(selected.name)) continue;
+    out.push(alt);
     if (out.length >= MAX_CANDIDATES) break;
   }
   return out;
 }
 
-/** The Qloo entity type to ask for, per wizard domain (provisional; food/other let Qloo decide). */
+/** The Qloo entity type to ask for, per wizard domain. Food and "other" go through find_tags. */
 export function describeTypeFor(domain: Domain): string | undefined {
   switch (domain) {
     case "music":
@@ -66,16 +77,87 @@ export function describeTypeFor(domain: Domain): string | undefined {
   }
 }
 
-const str = (v: unknown) =>
+function fromResolution(r: Rec | undefined): MappedCandidate | null {
+  if (!r) return null;
+  const description = short(str(r.description));
+  return candidate(r.id ?? r.entity_id, r.name, r.type, yearInText(description), description);
+}
+
+function fromResults(results: Rec[]): MappedCandidate[] {
+  const out: MappedCandidate[] = [];
+  for (const r of results) {
+    const props = obj(r.properties) ?? {};
+    const c = candidate(
+      r.entity_id ?? r.id,
+      r.name ?? r.title,
+      r.type ?? r.subtype,
+      yearOf(props.release_year ?? r.release_year ?? props.release_date ?? r.release_date),
+      short(str(props.short_description ?? props.description)),
+    );
+    if (c) out.push(c);
+    if (out.length >= MAX_CANDIDATES) break;
+  }
+  return out;
+}
+
+function candidate(
+  id: unknown,
+  name: unknown,
+  type: unknown,
+  year: number | null,
+  description: string | null,
+): MappedCandidate | null {
+  const entityId = str(id);
+  const n = str(name);
+  if (!entityId || !n) return null;
+  return { entityId, name: n, entityType: str(type) ?? null, year, description };
+}
+
+function firstOutcome(resolution: unknown): Rec | undefined {
+  return list(obj(resolution)?.outcomes)[0];
+}
+
+const obj = (v: unknown): Rec | undefined =>
+  v && typeof v === "object" && !Array.isArray(v) ? (v as Rec) : undefined;
+
+const list = (v: unknown): Rec[] => (Array.isArray(v) ? v.filter((x): x is Rec => !!obj(x)) : []);
+
+export const str = (v: unknown) =>
   typeof v === "string" && v.trim() ? v.trim().slice(0, 200) : undefined;
 
-/** "urn:entity:tv_show" → "tv show". */
-function humanType(t: string | undefined): string | null {
-  if (!t) return null;
-  return (t.split(":").pop() ?? t).replace(/_/g, " ");
+/** Case, accents and punctuation don't make a different name ("Mughal-E-Azam" = "mughal e azam"). */
+export const normalise = (s: string) =>
+  s
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+
+function short(s: string | undefined): string | null {
+  if (!s) return null;
+  if (s.length <= MAX_DESCRIPTION) return s;
+  const cut = s.slice(0, MAX_DESCRIPTION);
+  return `${cut.slice(0, cut.lastIndexOf(" ") > 80 ? cut.lastIndexOf(" ") : MAX_DESCRIPTION).trimEnd()}…`;
+}
+
+/** A place's address, shortened to its last parts (city, country): enough to tell namesakes apart. */
+function addressLine(v: unknown): string | null {
+  const a = str(v);
+  if (!a) return null;
+  const parts = a
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return short(parts.slice(-2).join(", "));
 }
 
 function yearOf(v: unknown): number | null {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v.slice(0, 4)) : Number.NaN;
   return Number.isInteger(n) && n >= 1000 && n <= 2100 ? n : null;
+}
+
+/** "WALL·E (2008), directed by…" → 2008: alternatives carry their year only in the description. */
+function yearInText(s: string | null): number | null {
+  const m = s ? /\((1[89]\d\d|20\d\d)\b/.exec(s) : null;
+  return m ? Number(m[1]) : null;
 }

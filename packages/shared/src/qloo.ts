@@ -26,6 +26,8 @@ export const QlooEnvelopeSchema = z.object({
   status: QlooStatusSchema,
   summary: z.string().optional(),
   interpretation: z.unknown().optional(),
+  // describe: how the input was matched (selected entity + close alternatives) — Stage 1 candidates.
+  resolution: z.unknown().optional(),
   results: z.unknown().optional(),
   result_count: z.number().int().nonnegative().optional(),
   warnings: z.array(z.string()).optional(),

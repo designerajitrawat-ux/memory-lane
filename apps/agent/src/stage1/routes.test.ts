@@ -9,6 +9,7 @@ import {
 } from "@memory-lane/shared";
 import authError from "../../test/fixtures/harness/qloo-auth-error.json";
 import describeFixture from "../../test/fixtures/synthetic/qloo_describe.json";
+import findTagsFixture from "../../test/fixtures/synthetic/qloo_find_tags.json";
 import { createTestDb } from "../../test/pglite";
 import { buildApp } from "../app";
 import { qlooCalls, seedCandidates, seeds } from "../db/schema";
@@ -33,6 +34,7 @@ const INPUT: ProfileInput = {
 };
 
 const twoMatches = { structuredContent: describeFixture.structuredContent };
+const dishTags = { structuredContent: findTagsFixture.structuredContent };
 const empty = {
   structuredContent: {
     ...describeFixture.structuredContent,
@@ -50,12 +52,14 @@ const upstreamDown = {
   },
 };
 
-function scripted(...answers: McpToolResult[]): QlooMcpClient & { calls: number } {
+function scripted(...answers: McpToolResult[]): QlooMcpClient & { calls: number; tools: string[] } {
   let i = 0;
   const mcp = {
     calls: 0,
-    async callTool() {
+    tools: [] as string[],
+    async callTool(name: string) {
       mcp.calls++;
+      mcp.tools.push(name);
       return answers[Math.min(i++, answers.length - 1)] as McpToolResult;
     },
     async close() {},
@@ -146,12 +150,33 @@ describe("Stage 1: resolve and confirm", () => {
     if (done?.type !== "done") throw new Error("no done event");
     expect(done.message).toBe("Done. 2 favourites need your choice.");
     expect(done.data.map((r) => r.status)).toEqual(["needs_input", "needs_input"]);
-    expect(done.data[0]?.candidates.map((c) => c.name)).toEqual([
-      "Example Artist A",
-      "Example Artist A (tribute band)",
+    expect(done.data[0]?.candidates).toEqual([
+      expect.objectContaining({
+        name: "Example Artist A",
+        type: "singer or band",
+        description: "Example singer known for example songs.",
+      }),
+      expect.objectContaining({ name: "Example Artist A", year: 1975 }),
     ]);
     const evidence = await db.select().from(qlooCalls).where(eq(qlooCalls.profileId, p.id));
     expect(evidence).toHaveLength(2);
+  });
+
+  it("looks dishes up as Qloo tags, one candidate per dish name", async () => {
+    const mcp = scripted(dishTags);
+    const a = await start(mcp);
+    const p = await newProfile(a, {
+      ...INPUT,
+      favourites: [{ domain: "food", text: "Sarson da saag" }],
+    });
+    const { events: ev } = await resolve(a, p.id, p.token);
+    expect(mcp.tools).toEqual(["qloo_find_tags"]);
+    const done = ev.at(-1);
+    if (done?.type !== "done") throw new Error("no done event");
+    expect(done.data[0]?.candidates.map((c) => [c.name, c.type])).toEqual([
+      ["Example Dish", "dish"],
+      ["Example Dish Pizza", "dish"],
+    ]);
   });
 
   it("stops honestly without a Qloo key: seeds stay pending, no harness text", async () => {
@@ -287,7 +312,7 @@ describe("Stage 1: resolve and confirm", () => {
     await store.confirm(p.id, [{ seedId: first.seedId, candidateId: first.candidates[0].id }]);
     await store.saveCandidates(
       first.seedId,
-      [{ entityId: "late", name: "Late", entityType: null, year: null }],
+      [{ entityId: "late", name: "Late", entityType: null, year: null, description: null }],
       randomUUID(),
     );
     await store.markUnresolved(first.seedId, "not_found");

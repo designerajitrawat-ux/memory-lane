@@ -1,16 +1,39 @@
 {
-  "_note": "SYNTHETIC: hand-written for tests, shaped like the harness envelope. Not Qloo data.",
+  "_note": "SYNTHETIC: hand-written for tests, shaped like the real harness envelope (shape pinned 2026-10-13 from local recordings). Not Qloo data.",
   "isError": false,
   "structuredContent": {
     "schema_version": "1.0-preview.1",
     "operation": "find_tags",
     "status": "ok",
-    "summary": "Found 2 tags.",
+    "interpretation": { "query": "example dish", "semantic": true },
     "results": [
-      { "id": "urn:tag:genre:example:a", "name": "Example Genre A", "type": "urn:tag:genre" },
-      { "id": "urn:tag:keyword:example:b", "name": "Example Keyword B", "type": "urn:tag:keyword" }
+      {
+        "id": "urn:tag:specialty_dish:place:example_dish",
+        "name": "Example Dish",
+        "type": "urn:tag:specialty_dish:place"
+      },
+      {
+        "id": "urn:tag:cuisine:qloo:example_dish",
+        "name": "Example Dish",
+        "type": "urn:tag:cuisine:qloo"
+      },
+      {
+        "id": "urn:tag:cuisine:qloo:example_dish_pizza",
+        "name": "Example Dish Pizza",
+        "type": "urn:tag:cuisine:qloo"
+      },
+      {
+        "id": "urn:tag:genre:qloo:example_genre",
+        "name": "Example Genre",
+        "type": "urn:tag:genre:qloo"
+      }
     ],
-    "result_count": 2,
-    "execution": { "transport": "mcp", "transport_name": "Qloo canonical MCP", "correlation_id": "synthetic-1", "duration_ms": 0 }
+    "result_count": 4,
+    "execution": {
+      "transport": "mcp",
+      "transport_name": "Qloo canonical MCP",
+      "correlation_id": "synthetic-1",
+      "duration_ms": 0
+    }
   }
 }

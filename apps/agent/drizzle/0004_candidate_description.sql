@@ -1,0 +1,1 @@
+ALTER TABLE "seed_candidates" ADD COLUMN "description" text;

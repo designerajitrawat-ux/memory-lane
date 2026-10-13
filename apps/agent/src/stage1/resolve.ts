@@ -7,7 +7,8 @@ import {
   type SeedResolution,
 } from "@memory-lane/shared";
 import type { QlooGateway } from "../qloo/gateway";
-import { describeTypeFor, mapDescribe } from "./mapDescribe";
+import { describeTypeFor, mapDescribe, type MappedCandidate } from "./mapDescribe";
+import { mapFindTags } from "./mapFindTags";
 import type { ResolutionStore } from "./store";
 
 export interface ResolveInput {
@@ -64,7 +65,9 @@ const OUTCOME_LINES: Record<SeedNote, (text: string) => string> = {
 };
 
 /**
- * Stage 1 (docs/05): looks each pending favourite up with qloo_describe and stores the candidates for
+ * Stage 1 (docs/05): looks each pending favourite up in Qloo — singers, films, TV and places with
+ * qloo_describe, dishes and other interests with qloo_find_tags (they are tags in Qloo, not entities) —
+ * and stores the candidates for
  * the caregiver to confirm. Nothing is confirmed here: a person always picks (US3). Stops early, with
  * an honest reason, when Qloo isn't connected or the budget is used up.
  */
@@ -87,17 +90,24 @@ export async function resolveSeeds(
     }
     emit({ type: "step", message: `Looking up “${seed.rawText}” in Qloo…` });
 
-    const type = describeTypeFor(seed.domain as Domain);
-    const result = await deps.gateway.call(
-      "qloo_describe",
-      type ? { entity: seed.rawText, type } : { entity: seed.rawText },
-      {
-        nickname: input.nickname,
-        profileId: input.profileId,
-        allowedTools: ["qloo_describe"],
-        reserve: deps.budgetReserve ?? 0,
-      },
-    );
+    const domain = seed.domain as Domain;
+    const asTag = domain === "food" || domain === "other";
+    const type = describeTypeFor(domain);
+    const ctx = {
+      nickname: input.nickname,
+      profileId: input.profileId,
+      allowedTools: ["qloo_describe", "qloo_find_tags"] as const,
+      reserve: deps.budgetReserve ?? 0,
+    };
+    const result = asTag
+      ? await deps.gateway.call("qloo_find_tags", { query: seed.rawText, limit: 10 }, ctx)
+      : await deps.gateway.call(
+          "qloo_describe",
+          type ? { entity: seed.rawText, type } : { entity: seed.rawText },
+          ctx,
+        );
+    const toCandidates = (envelope: Parameters<typeof mapDescribe>[0]): MappedCandidate[] =>
+      asTag ? mapFindTags(envelope, domain) : mapDescribe(envelope);
 
     let stop: StopReason | null = null;
     let note: SeedNote | null = null;
@@ -106,7 +116,7 @@ export async function resolveSeeds(
     switch (result.kind) {
       case "usable":
       case "needs_input": {
-        const candidates = mapDescribe(result.envelope);
+        const candidates = toCandidates(result.envelope);
         if (candidates.length > 0) {
           await deps.store.saveCandidates(seed.id, candidates, result.evidenceId);
           found = candidates.length;

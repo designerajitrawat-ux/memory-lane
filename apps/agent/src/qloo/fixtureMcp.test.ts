@@ -13,7 +13,7 @@ describe("fixture MCP client", () => {
       kind: "usable",
     });
     expect(await gateway.call("qloo_describe", { entity: "Example Artist A" }, NONE)).toMatchObject(
-      { kind: "needs_input" },
+      { kind: "usable" }, // real describe answers are ok + a resolution block (2026-10-13)
     );
     expect((await gateway.capabilities()).state).toBe("no_credential");
   });

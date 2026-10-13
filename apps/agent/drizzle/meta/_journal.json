@@ -29,6 +29,13 @@
       "when": 1791827086022,
       "tag": "0003_seed_resolution",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791913644558,
+      "tag": "0004_candidate_description",
+      "breakpoints": true
     }
   ]
 }

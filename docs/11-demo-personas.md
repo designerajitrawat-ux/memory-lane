@@ -14,14 +14,15 @@ seed Qloo can't resolve well. Seeds are public cultural entities only.
 ## Persona B — "Harjeet" (India)
 - Born 1950 · Amritsar, Punjab (1950–1975) → Delhi (1975–2015) · Punjabi, Hindi, English
 - Known favourites: Mohammed Rafi (music) · *Mughal-e-Azam* (film) · Raj Kapoor films ·
-  sarson da saag & makki di roti (food) · Golden Temple / Amritsar (place)
+  sarson da saag & makki di roti (food) · Sri Harmandir Sahib, Amritsar (place; "Golden Temple" alone
+  resolves to the wrong temple — Phase 0)
 - Avoid-list: Partition memories · 1984
 - Sample reactions: engaged by Punjabi folk; sang with a Rafi song; neutral on Western items.
 
 ## Persona C — "Margaret" (UK)
 - Born 1944 · Liverpool (1944–1970) → Manchester (1970–2012) · English
 - Known favourites: Cilla Black (music) · The Beatles (music) · *Coronation Street* (TV) ·
-  fish and chips (food) · Blackpool seaside (place)
+  fish and chips (food) · The Blackpool Tower (place; bare "Blackpool" is ambiguous — Phase 0)
 - Avoid-list: the Blitz / wartime bombing
 - Sample reactions: engaged with Merseybeat; smiled at seaside memories.
 
