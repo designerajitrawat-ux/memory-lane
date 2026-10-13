@@ -86,14 +86,3 @@ export const LOCATION_FIELDS = new Set(["signal_location", "filter_location", "w
 
 /** Free-text concept fields (not entity names): postcodes and street addresses are refused here. */
 export const FREE_TEXT_FIELDS = new Set(["query"]);
-
-/** Fields that may carry Qloo identifiers (entity UUIDs, tag URNs) instead of names. */
-export const ID_FIELDS = new Set([
-  "signals",
-  "options",
-  "entities",
-  "entity",
-  "signal_tags",
-  "include_tags",
-  "exclude_tags",
-]);

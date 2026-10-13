@@ -43,6 +43,13 @@
       "when": 1791914505911,
       "tag": "0005_taste_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791916696059,
+      "tag": "0006_sessions",
+      "breakpoints": true
     }
   ]
 }

@@ -33,7 +33,7 @@ export function validateTasteItems(
   for (const item of items) {
     const reason: DropReason | null = !grounded(item)
       ? "no_evidence"
-      : isAvoided(item.name, item.description)
+      : isAvoided(item.name, item.description, item.caption, ...item.becauseOf)
         ? "avoid"
         : !captionAllowed(item.caption)
           ? "language"

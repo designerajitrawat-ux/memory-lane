@@ -25,21 +25,35 @@ describe("checkArgs (PII guard before Qloo)", () => {
       expect(checkArgs(args, NONE), JSON.stringify(args)).toEqual({ ok: true });
   });
 
-  it("passes exact Qloo identifiers in ID fields, but nothing else that looks like a number", () => {
-    const uuid = "23e081cf-cefb-4e12-8337-867f25f5d1fc"; // its digits once matched the phone rule
-    expect(
-      checkArgs(
-        { target_type: "artist", signals: [uuid], signal_tags: ["urn:tag:cuisine:qloo:saag"] },
-        nick("Bauji"),
-      ),
-    ).toEqual({ ok: true });
-    // Only an exact identifier is exempt, and only in ID fields.
-    expect(
-      checkArgs({ target_type: "artist", signals: [`${uuid} call 9876543210`] }, NONE),
-    ).toMatchObject({
-      ok: false,
+  it("lets through only the confirmed seed ids the server vouches for, in signals (review W1)", () => {
+    // Synthetic UUID whose digits trip the phone rule, like real entity ids can.
+    const uuid = "12345678-9012-4345-8678-901234567890";
+    const trusted = { nickname: "Bauji", trustedIds: new Set([uuid]) };
+    expect(checkArgs({ target_type: "artist", signals: [uuid.toUpperCase()] }, trusted)).toEqual({
+      ok: true,
     });
-    expect(checkArgs({ query: uuid }, NONE)).toMatchObject({ ok: false, reason: "phone" });
+    // Not vouched for, or not in signals, or not exactly a UUID: the normal checks apply.
+    expect(checkArgs({ target_type: "artist", signals: [uuid] }, nick("Bauji"))).toMatchObject({
+      ok: false,
+      reason: "phone",
+    });
+    expect(checkArgs({ query: uuid }, trusted)).toMatchObject({ ok: false, reason: "phone" });
+    expect(
+      checkArgs({ target_type: "artist", signals: [`${uuid} call 9876543210`] }, trusted),
+    ).toMatchObject({ ok: false });
+  });
+
+  it("no longer exempts URN-shaped text, so a nickname or health term can't hide in one", () => {
+    const bimla = { nickname: "Bimla" };
+    for (const entity of [
+      "urn:tag:keyword:bimla",
+      "urn:tag:keyword:dementia",
+      "urn:tag:keyword:Ｂｉｍｌａ",
+      "urn:tag:keyword:bi​mla",
+    ]) {
+      expect(checkArgs({ entity }, bimla), entity).toMatchObject({ ok: false });
+    }
+    expect(checkArgs({ signals: ["urn:tag:x:9876543210"] }, bimla)).toMatchObject({ ok: false });
   });
 
   it("refuses the nickname without echoing it", () => {
@@ -141,7 +155,7 @@ describe("checkArgs (PII guard before Qloo)", () => {
 describe("normalizeText", () => {
   it("folds width, accents, invisible characters, lookalikes, digits and spaces", () => {
     expect(normalizeText("Ｂim​lа  Devi")).toBe("Bimla Devi");
-    expect(normalizeText("José")).toBe("José");
+    expect(normalizeText("Jose\u0301")).toBe("Jose"); // Latin accents are dropped (review S9)
     expect(normalizeText("२१ / ２１")).toBe("21 / 21");
   });
 });

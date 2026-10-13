@@ -2,6 +2,10 @@ import { z } from "zod";
 import {
   ApiErrorSchema,
   EvidenceViewSchema,
+  SessionItemSchema,
+  SessionListResponseSchema,
+  SessionResponseSchema,
+  type Reaction,
   ResolveEventSchema,
   SeedResolutionSchema,
   TasteEventSchema,
@@ -37,6 +41,8 @@ export type ApiResult<T> =
       kind: ApiFailureKind;
       message: string;
       fields?: { path: string; message: string }[];
+      /** The agent's error code (e.g. "nothing_confirmed"), so a page can tell 409s apart. */
+      code?: string;
     };
 
 const MESSAGES: Record<ApiFailureKind, string> = {
@@ -68,6 +74,15 @@ const kindForStatus = (status: number): ApiFailureKind =>
             ? "unavailable"
             : "server";
 
+/** A failed response as a kind, plus the agent's own error code and field messages. */
+async function failureFrom<T>(res: Response): Promise<ApiResult<T>> {
+  const body = ApiErrorSchema.safeParse(await res.json().catch(() => null));
+  const extra: Partial<ApiResult<T>> = body.success
+    ? { code: body.data.error, ...(body.data.fields ? { fields: body.data.fields } : {}) }
+    : {};
+  return failure<T>(kindForStatus(res.status), extra);
+}
+
 /** One request to the agent: bearer token attached, response validated, failures turned into kinds. */
 export async function request<S extends z.ZodType>(
   path: string,
@@ -92,11 +107,7 @@ export async function request<S extends z.ZodType>(
     );
   }
 
-  if (!res.ok) {
-    const body = ApiErrorSchema.safeParse(await res.json().catch(() => null));
-    const fields = body.success ? body.data.fields : undefined;
-    return failure(kindForStatus(res.status), fields ? { fields } : {});
-  }
+  if (!res.ok) return failureFrom<z.infer<S>>(res);
   if (!schema) return { ok: true, data: undefined as z.infer<S> };
   const parsed = schema.safeParse(await res.json().catch(() => null));
   return parsed.success ? { ok: true, data: parsed.data } : failure("server");
@@ -145,6 +156,25 @@ export const api = {
     ),
   getEvidence: (id: string) =>
     request(`/api/evidence/${encodeURIComponent(id)}`, EvidenceViewSchema),
+
+  planSession: (profileId: string) =>
+    request(`/api/profiles/${encodeURIComponent(profileId)}/sessions`, SessionResponseSchema, {
+      method: "POST",
+    }),
+  listSessions: (profileId: string) =>
+    request(`/api/profiles/${encodeURIComponent(profileId)}/sessions`, SessionListResponseSchema),
+  getSession: (id: string) =>
+    request(`/api/sessions/${encodeURIComponent(id)}`, SessionResponseSchema),
+  react: (itemId: string, value: Reaction | null, note?: string) =>
+    request(
+      `/api/session-items/${encodeURIComponent(itemId)}/reaction`,
+      z.object({ item: SessionItemSchema }),
+      { method: "POST", body: JSON.stringify(note === undefined ? { value } : { value, note }) },
+    ),
+  completeSession: (id: string) =>
+    request(`/api/sessions/${encodeURIComponent(id)}/complete`, SessionResponseSchema, {
+      method: "POST",
+    }),
 };
 
 /**
@@ -171,7 +201,8 @@ async function stream<S extends z.ZodType>(
       typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "unreachable",
     );
   }
-  if (!res.ok || !res.body) return failure(res.ok ? "server" : kindForStatus(res.status));
+  if (!res.ok) return failureFrom<null>(res);
+  if (!res.body) return failure("server");
   try {
     for await (const data of readSse(res.body)) {
       const parsed = schema.safeParse(JSON.parse(data));

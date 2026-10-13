@@ -51,7 +51,9 @@ describe("avoidMatcher", () => {
 
   it("brings the related words of well-known painful topics", () => {
     // Wagah's description never says "Partition" (live check).
-    expect(avoided("Wagah Border", "Ceremonial India–Pakistan border crossing.")).toBe(true);
+    expect(avoided("Example Border Post", "A daily ceremony at the India Pakistan border.")).toBe(
+      true,
+    );
     expect(
       avoidMatcher(["the Blitz / wartime bombing"])("Example", "An air raid shelter tour."),
     ).toBe(true);
@@ -155,5 +157,15 @@ describe("similarNames when one name adds a word", () => {
   it("merges a name with the same name plus one word, not more", () => {
     expect(similarNames("Diner", "American Diner Food")).toBe(true);
     expect(similarNames("Amritsari Naan", "Amritsari Chur Chur Naan And Cholle")).toBe(false);
+  });
+});
+
+describe("avoidMatcher precision", () => {
+  it("needs every word of a longer entry, so common words don't block everything", () => {
+    const avoided = avoidMatcher(["Unchained Melody", "U2"]);
+    expect(avoided("Example Singer", "Known for a soaring melody.")).toBe(false);
+    expect(avoided("Example Singer", "Famous for Unchained Melody.")).toBe(true);
+    expect(avoided("U2", null)).toBe(true); // two letters are enough (review W3a)
+    expect(avoided("Ultravox", null)).toBe(false);
   });
 });

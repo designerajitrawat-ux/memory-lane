@@ -37,6 +37,25 @@ describe("ProfileInputSchema: same personal-data rules as the Qloo guard (securi
     expect(issues({ ...valid, favourites: [{ domain: "other", text: "music therapy" }] })).toEqual([
       "favourites.0.text",
     ]);
+    // Security review W5/S9: underscores, digits and accents don't hide a health term.
+    for (const text of ["songs_for_dementia", "qloo_alzheimers", "Alzhéimer songs", "dementia2"]) {
+      expect(issues({ ...valid, favourites: [{ domain: "other", text }] }), text).toEqual([
+        "favourites.0.text",
+      ]);
+    }
+  });
+
+  it("keeps places at town level: no street names", () => {
+    for (const region of ["Lawrence Road, Amritsar", "Gali Kashmirian, Amritsar"]) {
+      expect(issues({ ...valid, lifeStages: [{ region, fromYear: 1950, toYear: 1960 }] })).toEqual([
+        "lifeStages.0.region",
+      ]);
+    }
+    for (const region of ["St Helens, England", "Dayton, Ohio", "Amritsar, Punjab, India"]) {
+      expect(issues({ ...valid, lifeStages: [{ region, fromYear: 1950, toYear: 1960 }] })).toEqual(
+        [],
+      );
+    }
   });
 
   it("refuses addresses written with any digits or in free text", () => {

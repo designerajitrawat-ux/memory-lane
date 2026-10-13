@@ -53,8 +53,8 @@ const PLACEMENT_ORDER: Record<EraPlacement, number> = { fits: 0, unknown: 1, lat
 
 // Places worth reminiscing about are the lasting ones: landmarks, markets, parks, the seaside. Most of
 // what Qloo returns near a town is new (live check, Amritsar: hotels, banquet halls, bars, a spa), and
-// a 1950s childhood didn't happen there. Qloo descriptions open with the kind of place ("Budget hotel
-// near…", "Living museum recreating…"), so the name and the opening words decide.
+// a 1950s childhood didn't happen there. Qloo descriptions open with the kind of place (a hotel, a
+// museum, a garden…), so the name and the opening words decide.
 const NOT_A_MEMORY_PLACE =
   /\b(hotels?|resorts?|spas?|wellness|banquets?|event venues?|wedding venues?|hostels?|guest ?houses?|lodges?|motels?|inns?|bnb|b&b|bed and breakfast|homestays?|farmstays?|niwas|dharamshala|sarai|accommodation|gyms?|fitness|salons?|hospitals?|clinics?|apartments?|residenc(?:y|es)|offices?|coworking|bars?|pubs?|nightclubs?|microbrewer(?:y|ies)|malls?|multiplex|water parks?|go-karts?)\b/i;
 const MEMORY_PLACE =
@@ -86,11 +86,26 @@ interface Found {
   countryCode: string | null;
 }
 
+type FailCause = "device" | "profile" | "daily" | "outage" | "rejected";
+
 type Outcome =
   | { kind: "found"; found: Found[] }
   | { kind: "stop"; problem: ResolveProblem }
-  | { kind: "failed"; reason: string }
+  | { kind: "failed"; cause: FailCause; reason: string }
   | { kind: "skipped" };
+
+// When every research step failed: nothing is saved and the person keeps the version they had.
+const ALL_FAILED: Record<FailCause, string> = {
+  device:
+    "Lots of research was done from here today, so nothing new was built. Your current version stays; please try again tomorrow.",
+  profile:
+    "This profile has done a lot of research this hour, so nothing new was built. Your current version stays; please try again later.",
+  daily:
+    "We've hit today's research limit, so nothing new was built. Your current version stays; please try again tomorrow.",
+  outage:
+    "Qloo couldn't be reached just now, so nothing new was built. Your current version stays; please try again.",
+  rejected: "The research couldn't be sent, so nothing new was built. Your current version stays.",
+};
 
 /**
  * Stage 2 (docs/05): turns the confirmed favourites into a Life Taste Profile with Qloo. The plan is
@@ -118,15 +133,18 @@ export async function buildTasteProfile(
 
   const era = eraFor(ctx.birthYear);
   const isAvoided = avoidMatcher(ctx.avoid);
+  // A favourite that is also on the avoid-list never steers the research (rule 9; review W3b).
   const entitySeeds = ctx.seeds
     .filter((s) => s.entityType?.startsWith("urn:entity:"))
+    .filter((s) => !isAvoided(s.name, s.description))
     .sort((a, b) => order(a.domain) - order(b.domain));
   const signals = entitySeeds.slice(0, 5).map((s) => s.entityId);
-  const placeSignals = entitySeeds
-    .filter((s) => s.domain === "place")
-    .slice(0, 3)
-    .map((s) => s.entityId);
+  const trustedIds = new Set(entitySeeds.map((s) => s.entityId.toLowerCase()));
+  const placeSeeds = entitySeeds.filter((s) => s.domain === "place").slice(0, 3);
+  const placeSignals = placeSeeds.map((s) => s.entityId);
   const because = entitySeeds.slice(0, 2).map((s) => s.name);
+  // Captions only ever name favourites that were actually sent for that call (review W9).
+  const placeBecause = placeSeeds.length ? placeSeeds.slice(0, 2).map((s) => s.name) : because;
   const youth = ctx.regions[0] ?? null;
   const youthLabel = youth?.split(",")[0]?.trim() || null;
 
@@ -135,14 +153,19 @@ export async function buildTasteProfile(
     message: `Starting from ${count(ctx.seeds.length, "confirmed favourite")}. Films and TV will be kept to ${era.from}–${era.to}, the years they were young and busy.`,
   });
 
-  const call = async (tool: (typeof TOOLS)[number], args: Rec): Promise<GatewayResult | null> => {
+  const call = async (
+    tool: (typeof TOOLS)[number],
+    args: Rec,
+  ): Promise<GatewayResult | "refused" | null> => {
     if (isAborted()) return null;
-    if (deps.allowCall && !deps.allowCall()) return null;
+    // A used-up allowance is a failure to report, never a silent skip (review W4/C3).
+    if (deps.allowCall && !deps.allowCall()) return "refused";
     return deps.gateway.call(tool, args, {
       nickname: input.nickname,
       profileId: input.profileId,
       allowedTools: TOOLS,
       reserve: deps.budgetReserve ?? 0,
+      trustedIds,
     });
   };
 
@@ -193,6 +216,22 @@ export async function buildTasteProfile(
   if (stop?.kind === "stop") {
     emit({ type: "error", problem: stop.problem, message: STOP_MESSAGES[stop.problem] });
     emit({ type: "done", message: "Nothing was built.", data: null });
+    return null;
+  }
+  // Every research step failed: keep the version they have rather than save a weaker one (review W2).
+  const attempted = Object.values(outcomes).filter((o) => o.kind !== "skipped");
+  if (attempted.length > 0 && attempted.every((o) => o.kind === "failed")) {
+    const causes = new Set(attempted.map((o) => (o.kind === "failed" ? o.cause : "outage")));
+    const cause = (["device", "profile", "daily", "outage", "rejected"] as const).find((c) =>
+      causes.has(c),
+    );
+    const message = ALL_FAILED[cause ?? "outage"];
+    emit({
+      type: "error",
+      problem: cause === "outage" || cause === "rejected" ? "unavailable" : "quota",
+      message,
+    });
+    emit({ type: "done", message: "Nothing new was saved.", data: null });
     return null;
   }
 
@@ -363,10 +402,11 @@ export async function buildTasteProfile(
   return profile;
 
   function fromFound(f: Found, domain: TasteDomain, where: string | null = null): TasteItem {
-    const names = f.becauseOf.length ? f.becauseOf : domain === "food" ? [] : because;
+    const fallback = domain === "food" ? [] : domain === "places" ? placeBecause : because;
+    const names = f.becauseOf.length ? f.becauseOf : fallback;
     const caption =
       domain === "food"
-        ? `Qloo links this dish with ${where ?? "the places they lived"}.`
+        ? `Found in Qloo's food tags for ${where ?? "where they grew up"}.`
         : names.length
           ? `People who enjoy ${join(names)} often also enjoy ${f.name}${domain === "places" && where ? `, in ${where}` : ""}.`
           : "Often enjoyed by people with similar tastes.";
@@ -411,10 +451,17 @@ const STOP_MESSAGES: Record<ResolveProblem, string> = {
 
 /** Maps one gateway answer to an outcome; only "not connected" stops the whole build. */
 function read(
-  result: GatewayResult | null,
+  result: GatewayResult | "refused" | null,
   parse: (envelope: Rec, evidenceId: string) => Found[],
 ): Outcome {
   if (!result) return { kind: "skipped" };
+  if (result === "refused") {
+    return {
+      kind: "failed",
+      cause: "device",
+      reason: "today's research for this device is used up",
+    };
+  }
   switch (result.kind) {
     case "usable":
     case "needs_input":
@@ -423,13 +470,19 @@ function read(
     case "error":
       return result.envelope.error?.code === "QLOO_AUTH"
         ? { kind: "stop", problem: "qloo_not_connected" }
-        : { kind: "failed", reason: "Qloo didn't answer" };
+        : { kind: "failed", cause: "outage", reason: "Qloo didn't answer" };
     case "quota":
-      return { kind: "failed", reason: "today's research limit was reached" };
+      return result.scope === "profile"
+        ? {
+            kind: "failed",
+            cause: "profile",
+            reason: "this profile's research for the hour is used up",
+          }
+        : { kind: "failed", cause: "daily", reason: "today's research limit was reached" };
     case "unavailable":
-      return { kind: "failed", reason: "Qloo couldn't be reached" };
+      return { kind: "failed", cause: "outage", reason: "Qloo couldn't be reached" };
     case "rejected":
-      return { kind: "failed", reason: "the request couldn't be sent" };
+      return { kind: "failed", cause: "rejected", reason: "the request couldn't be sent" };
   }
 }
 

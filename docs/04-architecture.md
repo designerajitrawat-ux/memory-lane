@@ -69,9 +69,8 @@ memory-lane/
 | `seed_candidates` | seed_id (cascade), position, entity_id, name, entity_type (raw Qloo type URN), year, description (one line from Qloo), evidence_id (not null, FK → qloo_calls): the matches Stage 1 found; confirm only accepts one of these, then the seed's candidates are deleted |
 | `avoid_items` | id, profile_id, text, qloo_entity_id nullable, reason, source (caregiver/learned) |
 | `taste_profiles` | id, profile_id (cascade), version (unique per profile; the newest is shown), era_from, era_to, partial, items jsonb (`TasteItemSchema`: domain, entityId, entityType URN, typeLabel, name, year, description, caption, source favourite/qloo, becauseOf[], evidenceIds[]), notes jsonb, created_at |
-| `sessions` | id, profile_id, number, status (planned/in_progress/done), plan jsonb, what_changed text, created_at |
-| `session_items` | id, session_id, order, kind (song/film/food/place/tv/other), qloo_entity_id, title, why text, prompts text[], link_url, evidence_ids[] |
-| `reactions` | id, session_item_id, value (engaged/sang/neutral/distressed), note, created_at |
+| `sessions` | id, profile_id (cascade), number (unique per profile), status (planned/in_progress/done, CHECK), taste_profile_id (set null), what_changed jsonb, created_at |
+| `session_items` | id, session_id (cascade), position, kind (song/film/tv/food/place), domain, entity_id, entity_type, name, year, why, prompts text[], minutes, link jsonb, alt_link jsonb, evidence_ids text[] (CHECK non-empty), reaction (sang/engaged/neutral/distressed, CHECK), note (the caregiver's words; never sent to Qloo), reacted_at |
 | `qloo_calls` | id, profile_id nullable (cascade on profile delete), tool, args_checked jsonb (as sent, after the PII guard), status, summary, result_count, results_digest jsonb, cached bool, latency_ms, created_at |
 | `qloo_cache` | key (sha256), tool, args jsonb, envelope jsonb, expires_at |
 | `budget` | day, qloo_calls, llm_tokens, profiles_created |
@@ -103,10 +102,11 @@ profiles get an owner hash no token can produce. Limits: 20 profiles per owner, 
 | POST `/api/profiles/:id/seeds/confirm` | owner only, 30/min/IP: `{decisions:[{seedId, candidateId \| null}]}`; a candidate must be one stored for that seed (else 409 `choice_out_of_date`); null = "None of these" → `rejected` |
 | GET `/api/profiles/:id/taste-profile` | owner only: the newest Life Taste Profile, or null |
 | POST `/api/profiles/:id/taste-profile` | owner only, SSE, 4/min/IP: Stage 2 builds a new version (`TasteEventSchema`); 409 `nothing_confirmed` before any favourite is confirmed; shares the research allowance and the per-profile run lock with Stage 1 |
-| POST `/api/profiles/:id/sessions` | SSE: agent composes next session (uses reactions history) |
-| GET `/api/sessions/:id` | session + items |
-| POST `/api/session-items/:id/reaction` | log reaction |
-| POST `/api/sessions/:id/complete` | SSE: adapt step → `what_changed` + learned seeds/avoids |
+| POST `/api/profiles/:id/sessions` | owner only, 10/min: Stage 3 plans the next session from the newest taste profile (no Qloo call; JSON) → 201 `{session}`; 409 `no_taste_profile` |
+| GET `/api/profiles/:id/sessions` | owner only: session summaries (number, status, item and reaction counts) |
+| GET `/api/sessions/:id` | owner of its profile only: session + items |
+| POST `/api/session-items/:id/reaction` | owner only, 60/min: `{value: sang|engaged|neutral|distressed|null, note?}` (≤300 chars) |
+| POST `/api/sessions/:id/complete` | owner only: marks it done (Stage 4 adapts when the next one is planned) |
 | GET `/api/profiles/:id/compare` | baseline (LLM-only) vs grounded plan (cached) |
 | GET `/api/evidence/:id` | owner of the profile it was made for only: tool, args (as sent, after the PII guard), status, result count, cached, time — never the harness summary |
 

@@ -7,6 +7,7 @@ import {
   PHONE,
   POSTCODE,
   STREET,
+  STREET_WORD,
   UNIT_NUMBER,
   URL_LIKE,
 } from "./pii";
@@ -83,7 +84,11 @@ export const LifeStageSchema = z
         (s) => !(EMAIL.test(normalizeText(s)) || URL_LIKE.test(normalizeText(s))),
         "City or region only, please.",
       )
-      .refine((s) => !HEALTH.test(normalizeText(s)), "City or region only, please."),
+      .refine((s) => !HEALTH.test(normalizeText(s)), "City or region only, please.")
+      .refine(
+        (s) => !STREET_WORD.test(normalizeText(s)),
+        "The town or city is enough, please. No street names.",
+      ),
     fromYear: year(),
     toYear: year(),
   })

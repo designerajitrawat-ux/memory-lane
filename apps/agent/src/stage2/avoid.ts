@@ -4,7 +4,7 @@
  * descriptions are read too: Phase 0 found films touching war and trauma themes that titles hide.
  *
  * Well-known painful topics also bring their related words: an avoid-list saying "Partition" must keep
- * out Wagah Border, whose description says "India–Pakistan border crossing" and never "Partition"
+ * out a border-crossing landmark whose description talks about the frontier and never says "Partition"
  * (live check, 2026-10-13).
  */
 const FILLER = new Set([
@@ -73,22 +73,26 @@ const words = (s: string) => text(s).split(" ").filter(Boolean);
 
 export function avoidMatcher(avoid: readonly string[]) {
   const normalised = avoid.map(text).filter(Boolean);
-  const phrases = new Set(normalised.filter((p) => p.length >= 3));
+  // Two letters is enough ("U2", "Om"): matching is whole-word, so short entries stay precise (review W3a).
+  const phrases = new Set(normalised.filter((p) => p.length >= 2));
   for (const entry of normalised) {
     for (const [topic, related] of Object.entries(RELATED)) {
       if (` ${entry} `.includes(` ${topic} `)) for (const r of related) phrases.add(r);
     }
   }
-  const keys = new Set(
-    avoid.flatMap(words).filter((w) => (w.length >= 5 && !FILLER.has(w)) || /^\d{4}$/.test(w)),
-  );
+  // Beyond the exact phrase: a one-word entry ("Partition", "1984") matches on that word; a longer one
+  // needs all its meaningful words ("Unchained Melody" mustn't block every song described as a melody).
+  const wordSets = avoid
+    .map((entry) =>
+      words(entry).filter((w) => (w.length >= 3 && !FILLER.has(w)) || /^\d{4}$/.test(w)),
+    )
+    .filter((ws) => ws.length > 0);
   return (...fields: (string | null | undefined)[]): boolean => {
     const hay = text(fields.filter(Boolean).join(" "));
     if (!hay) return false;
     const padded = ` ${hay} `;
     for (const p of phrases) if (padded.includes(` ${p} `)) return true;
     const present = new Set(hay.split(" "));
-    for (const k of keys) if (present.has(k)) return true;
-    return false;
+    return wordSets.some((ws) => ws.every((w) => present.has(w)));
   };
 }

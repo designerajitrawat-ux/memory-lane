@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, max } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lte, max } from "drizzle-orm";
 import type { TasteItem, TasteProfile } from "@memory-lane/shared";
 import { avoidItems, profiles, qlooCalls, seeds, tasteProfiles } from "../db/schema";
 import type { AppDb } from "../db/types";
@@ -141,6 +141,15 @@ export function createTasteStore(db: AppDb): TasteStore {
           })
           .returning();
         if (!row) throw new Error("taste profile insert returned no row");
+        // Keep the newest three versions; older ones only take space (security review S5).
+        await tx
+          .delete(tasteProfiles)
+          .where(
+            and(
+              eq(tasteProfiles.profileId, profileId),
+              lte(tasteProfiles.version, row.version - 3),
+            ),
+          );
         return toProfile(row);
       });
     },

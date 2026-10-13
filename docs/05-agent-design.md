@@ -83,10 +83,18 @@ places such as Gobindgarh Fort, Sadda Pind, Carillon Historical Park.
 **With the Claude key (next):** `propose_candidates` adds era-typical names per domain, which only
 survive through `qloo_rank` / `qloo_describe` with evidence (Phase 0: rank pushes modern names down).
 
-### Stage 3 — Compose session
-- Mostly LLM (structured JSON output, zod-validated) using ONLY items from the taste profile (plus
-  learned seeds). It may NOT introduce new entities — if it wants one, it must go back through
-  Qloo (tool call) to get evidence.
+### Stage 3 — Compose session (built: `apps/agent/src/stage3/`)
+- Code fills the template from the newest taste profile (`compose.ts`): favourites open, items from the
+  last session rotate out, an empty domain becomes another song; Stage 4 weights (reactions) and the
+  best-landing domain ("your choice") plug in here. Prompts come from gentle templates (`prompts.ts`),
+  links from `links.ts`. With the Claude key the LLM writes warmer, item-specific prompts — still only
+  for taste-profile items, and through the same validators.
+- Validators (`validate.ts`): the item must be a taste-profile item carrying that item's evidence (an
+  invented or re-badged entity is dropped), avoid-list (name + Qloo descriptions), language policy on
+  `why`, links only to YouTube/Spotify/Google Maps search pages; memory-test prompts are replaced.
+- Original plan (LLM-led): mostly LLM (structured JSON output, zod-validated) using ONLY items from the
+  taste profile (plus learned seeds). It may NOT introduce new entities — if it wants one, it must go
+  back through Qloo (tool call) to get evidence.
 - Session template (20–30 min): opener song → film/TV memory → food & senses → place/journey →
   "your choice" (best-reacted domain) → closing song.
 - Per item: `why` (1 sentence, aggregate wording, referencing evidence), 2–3 prompts (open,

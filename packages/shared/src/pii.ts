@@ -54,13 +54,19 @@ const CONFUSABLE_RE = new RegExp(`[${Object.keys(CONFUSABLES).join("")}]`, "gu")
  * digits of any script into 0-9, collapse spaces.
  */
 export function normalizeText(s: string): string {
-  return s
-    .normalize("NFKC")
-    .replace(/[\p{Cf}­]/gu, "")
-    .replace(CONFUSABLE_RE, (c) => CONFUSABLES[c] ?? c)
-    .replace(/\p{Nd}/gu, asciiDigit)
-    .replace(/[\s\p{Z}]+/gu, " ")
-    .trim();
+  return (
+    s
+      .normalize("NFKC")
+      // Latin accents off ("Bímla" = "Bimla", "Alzhéimer" = "Alzheimer"); other scripts' marks stay.
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .normalize("NFC")
+      .replace(/[\p{Cf}­]/gu, "")
+      .replace(CONFUSABLE_RE, (c) => CONFUSABLES[c] ?? c)
+      .replace(/\p{Nd}/gu, asciiDigit)
+      .replace(/[\s\p{Z}]+/gu, " ")
+      .trim()
+  );
 }
 
 // Unicode decimal digits come in contiguous runs of ten (0-9), so a digit's value is its offset
@@ -88,7 +94,12 @@ export const POSTCODE = /(?<!\p{Nd})(?:\p{Nd}{6}|\p{Nd}{5}(?:-\p{Nd}{4})?)(?!\p{
 export const STREET =
   /\b\p{Nd}{1,5}[a-z]?,?\s+(?:[\p{L}.'-]+\s+){0,3}(?:road|rd|street|st|lane|ln|marg|nagar|colony|sector|block|gali|avenue|ave)\b/iu;
 export const DIGIT = /\p{Nd}/u;
+// A street name in a place field ("Lawrence Road, Amritsar"): places stay at town level (docs/07).
+export const STREET_WORD =
+  /(?<![\p{L}\p{N}])(?:road|rd|street|lane|marg|gali|avenue|boulevard|blvd)(?![\p{L}\p{N}])/iu;
 // Health and care context: never stored in profiles, never sent to Qloo. Stem-tolerant, but kept
 // away from titles like "Memory" or "General Hospital".
+// Bounded by "not a letter" rather than \b, so "songs_for_dementia", "qloo_alzheimers" or "dementia2"
+// can't slip through (\b treats "_" and digits as part of a word).
 export const HEALTH =
-  /\b(?:dement(?:ia|ias|ed)|alzheimer\w*|parkinson\w*|amnesi\w*|diagnos\w*|medications?|medicines?|meds|prescriptions?|therap(?:y|ies|ist|ists)|hospice|patients?|caregiv\w*|carers?|lewy|mci|stroke|memory\s+(?:loss|care)|(?:nursing|care)\s+homes?|cognitive\s+(?:decline|impairment))\b/iu;
+  /(?<!\p{L})(?:dement(?:ia|ias|ed)|alzheimer\p{L}*|parkinson\p{L}*|amnesi\p{L}*|diagnos\p{L}*|medications?|medicines?|meds|prescriptions?|therap(?:y|ies|ist|ists)|hospice|patients?|caregiv\p{L}*|carers?|lewy|mci|stroke|memory\s+(?:loss|care)|(?:nursing|care)\s+homes?|cognitive\s+(?:decline|impairment))(?!\p{L})/iu;

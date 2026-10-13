@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { Candidate, ResolveProblem, SeedResolution } from "@memory-lane/shared";
+import { AgentLog, ProblemBanner } from "@/components/agent-run";
 import { Button } from "@/components/ui/button";
 import { api, type ApiFailureKind } from "@/lib/api";
 
@@ -279,30 +280,8 @@ export function SeedConfirm() {
               : "There are no favourites to check."}
           </p>
         )}
-        {(running || log.length > 0) && (
-          <div
-            role="log"
-            aria-label="What Memory Lane is doing"
-            className="rounded-xl border bg-card p-4 text-base"
-          >
-            <ol className="space-y-1">
-              {log.map((line, i) => (
-                <li key={i}>{line}</li>
-              ))}
-            </ol>
-          </div>
-        )}
-        {problem && (
-          // Focused when shown (read once on focus), so it is not also a live region.
-          <div
-            ref={problemRef}
-            tabIndex={-1}
-            className="rounded-xl border border-destructive p-4 text-base outline-none"
-          >
-            <span className="sr-only">Problem: </span>
-            {problem.message}
-          </div>
-        )}
+        {(running || log.length > 0) && <AgentLog lines={log} />}
+        {problem && <ProblemBanner ref={problemRef} message={problem.message} />}
       </section>
 
       {notes.length > 0 && (

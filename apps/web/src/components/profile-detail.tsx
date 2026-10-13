@@ -46,6 +46,9 @@ const NOT_SENT_CHIP = {
   className: "text-muted-foreground",
 };
 
+const secondaryLink =
+  "inline-flex min-h-12 items-center justify-center rounded-lg border-2 border-primary px-6 py-2 text-base font-bold outline-hidden hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+
 const primaryLink =
   "inline-flex min-h-12 items-center justify-center rounded-lg bg-primary px-6 py-2 text-base font-bold text-primary-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
@@ -161,7 +164,8 @@ export function ProfileDetail() {
   const toChoose = profile.seeds.filter((s) => s.status === "needs_input").length;
   const confirmed = profile.seeds.filter((s) => s.status === "confirmed").length;
   const nothingMatched = isOwner && toCheck === 0 && toChoose === 0 && confirmed === 0;
-  const readyForProfile = isOwner && toCheck === 0 && toChoose === 0 && confirmed > 0;
+  // One confirmed favourite is enough to build from; the rest can be checked later.
+  const readyForProfile = isOwner && confirmed > 0 && toChoose === 0;
   const hasNextStep = isOwner && (toCheck > 0 || toChoose > 0 || confirmed > 0);
 
   return (
@@ -213,7 +217,11 @@ export function ProfileDetail() {
                 ? "Qloo found possible matches. Please choose the right ones."
                 : "Next, Memory Lane looks each favourite up in Qloo and asks you to confirm the match. Nothing is guessed."}
             </p>
-            <Link href={`/profiles/${profile.id}/confirm`} className={primaryLink}>
+            <Link
+              href={`/profiles/${profile.id}/confirm`}
+              // With the profile ready to open, this is the second action, not the first.
+              className={readyForProfile ? secondaryLink : primaryLink}
+            >
               {toChoose > 0 ? "Choose matches" : "Check favourites with Qloo"}
             </Link>
           </div>
@@ -221,11 +229,11 @@ export function ProfileDetail() {
         {readyForProfile && (
           <div className="space-y-3">
             <p className="text-base text-muted-foreground">
-              Every favourite is checked. Next, Memory Lane builds their Life Taste Profile with
-              Qloo: music, films and TV, food and places from their years.
+              Their Life Taste Profile is built with Qloo from the confirmed favourites: music,
+              films and TV, food and places from their years.
             </p>
             <Link href={`/profiles/${profile.id}/taste`} className={primaryLink}>
-              Life Taste Profile
+              Open the Life Taste Profile
             </Link>
           </div>
         )}

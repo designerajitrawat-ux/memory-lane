@@ -9,6 +9,7 @@ import { clientIpResolver } from "./clientIp";
 import { profileRoutes } from "./profiles/routes";
 import { resolveRoutes, type ResolveRouteDeps } from "./stage1/routes";
 import { tasteRoutes, type TasteRouteDeps } from "./stage2/routes";
+import { sessionRoutes, type SessionRouteDeps } from "./stage3/routes";
 import type { ProfileStore } from "./profiles/store";
 import { createResearchAllowance, type ResearchLimits } from "./limits";
 import { createRunLock } from "./sse";
@@ -22,6 +23,8 @@ export interface AppDeps {
   resolution?: ResolveRouteDeps | null;
   /** Stage 2 Life Taste Profile; null without a database (routes then answer 503). */
   taste?: TasteRouteDeps | null;
+  /** Stage 3 sessions and reactions; null without a database (routes then answer 503). */
+  sessions?: SessionRouteDeps | null;
   /** Shared quota protection for every user-triggered research route. */
   research?: ResearchLimits;
   version: string;
@@ -131,6 +134,7 @@ export async function buildApp(deps: AppDeps) {
   };
   await app.register(resolveRoutes, { deps: deps.resolution ?? null, ...research });
   await app.register(tasteRoutes, { deps: deps.taste ?? null, ...research });
+  await app.register(sessionRoutes, { deps: deps.sessions ?? null });
 
   const startedAt = Date.now();
   let cached: { at: number; checks: Promise<[QlooCheck, DbCheck]> } | null = null;

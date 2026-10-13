@@ -12,6 +12,8 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 - **Phase 4 — Qloo pipeline done, LLM step pending the Anthropic key**: Stage 2 builds a Life Taste Profile
   from confirmed seed IDs (music, films/TV in era, places, food) with evidence on every item, avoid-list +
   gentle filters, validators; screen 5 with evidence drawer. Checked live on all three personas.
+- **Phase 5 — done (code templates; LLM prompts pending the key)**: Stage 3 composer + validators, sessions
+  and reactions API, plan / player / summary screens. Checked locally end to end with real Qloo data.
 - Next: Phase 5 (session plan + player + reactions), then 6–9. **Blocking for the LLM steps (proposing
   era candidates, session prompts, "what changed" text, compare view): an Anthropic API key** — the
   developer creates it in the Anthropic Console (billing) and pastes it on Render (ANTHROPIC_API_KEY).
@@ -25,10 +27,9 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
   use `qloo.cmd` in PowerShell (the .ps1 shim is blocked by the execution policy).
 
 ## Next steps
-1. Phase 5: Stage 3 compose (session template, prompts, link URLs built in code) + validators; plan
-   screen, player, reactions API. Works without the LLM using code-written prompt templates; Claude adds
-   warmer prompts once ANTHROPIC_API_KEY exists.
-2. Phase 6 adaptation, Phase 7 compare/how-it-works, Phase 8 demo personas + landing, Phase 9 submission.
+1. Phase 6 adaptation (reactions → weights, distressed never returns, learned seeds via qloo_recommend,
+   "what changed").
+2. Then, Phase 7 compare/how-it-works, Phase 8 demo personas + landing, Phase 9 submission.
 3. Developer: create an Anthropic API key (Console → billing) and add it on Render; join Discord.
 
 ## Decisions (ADR-lite)
@@ -71,9 +72,17 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-13 | Places kept by the opening words of Qloo's description (landmarks yes, hotels/bars no) + same-country rule | Live: hotels, banquet halls, a spa, Wagah (Pakistan) came back for Amritsar | 05 |
 | 2026-10-13 | Avoid-list reads Qloo's full description, with related words for well-known painful topics; gentle filter for atrocities/suicide/abuse | Live: Wagah Border passed a "Partition" avoid; "Sophie's Choice" came back | 05, 07 |
 | 2026-10-13 | Gateway runs ≤3 live calls at once | Phase 0: bursts of 8 hit a 429 | 03 |
+| 2026-10-14 | Sessions planned in code from the taste profile (template + rotation + gentle prompt templates), plain JSON route; LLM prompts later through the same validators | Works before the Anthropic key; no Qloo call needed (the profile carries the evidence) | 04, 05, 06 |
+| 2026-10-14 | PII guard: only server-vouched confirmed-seed UUIDs are exempt, in `signals` only; health terms bounded by letters (not ); Latin accents folded; places refuse street names | security-reviewer W1, W5, S1, S9 | 03, 07 |
+| 2026-10-14 | Stage 2 never saves when every Qloo call failed or the allowance is used up (honest error, current version stays); avoid-list also checks captions/"because of" and keeps avoided favourites out of the signals; multi-word avoid entries need all their words | security-reviewer W3, W4; ux-reviewer C3, W2 | 05 |
+| 2026-10-14 | Taste profile UX: badges stacked above names, "Found by Qloo" tag, summary "N favourites you confirmed, M more found by Qloo", partial chip, evidence drawer retry + plain status words, dialogs scroll / bottom sheet on phones | ux-reviewer C1, C2, W4–W11 | 06 |
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-14: **Phase 5 + review fixes.** Stage 3 (`stage3/`: compose, prompts, links, validate, store,
+  routes), migration 0006 (`sessions`, `session_items`), screens 6–8; security W1–W5 and most suggestions
+  (trusted seed ids, avoid gaps, honest allowance, health/accents/street rules, lock + semaphore, version
+  pruning, orphan evidence purge); UX C1–C3 and W1–W11. Agent 138 tests, shared 15, web 14.
 - 2026-10-13: **Phase 0 done, Phase 1/2 gates passed, Stage 1 on real Qloo, Phase 4 Qloo pipeline.** Key set up
   locally (env var) and on Render; live health Agent ✓ · Qloo ✓ · DB ✓. qloo-data-scout validation
   (persona gate passes). Stage 1 candidates pinned against recordings. Stage 2: `stage2/` (era, avoid,

@@ -39,6 +39,8 @@ export interface CallContext {
   allowedTools?: readonly QlooToolName[];
   /** Daily budget units this call must leave untouched (kept for demo personas). Server-side only. */
   reserve?: number;
+  /** Entity ids of confirmed seeds, read by the server: the only UUIDs the PII guard lets through. */
+  trustedIds?: ReadonlySet<string>;
 }
 
 export type GatewayResult =
@@ -170,7 +172,10 @@ export function createQlooGateway(deps: GatewayDeps): QlooGateway {
         return { kind: "rejected", reason: "invalid_args", ...(field ? { field } : {}) };
       }
       const args = parsedArgs.data;
-      const pii = checkArgs(args, { nickname: ctx.nickname });
+      const pii = checkArgs(args, {
+        nickname: ctx.nickname,
+        ...(ctx.trustedIds ? { trustedIds: ctx.trustedIds } : {}),
+      });
       if (!pii.ok) {
         // Reason and field only — never the value.
         log?.warn({ tool, reason: pii.reason, field: pii.field }, "qloo call rejected");
@@ -261,13 +266,16 @@ export function createSemaphore(max: number) {
   let active = 0;
   const waiting: (() => void)[] = [];
   return async <T>(task: () => Promise<T>): Promise<T> => {
+    // A finished task hands its slot straight to the next waiter, so a newcomer can't slip in
+    // between and exceed the limit (security review S3).
     if (active >= max) await new Promise<void>((resolve) => waiting.push(resolve));
-    active++;
+    else active++;
     try {
       return await task();
     } finally {
-      active--;
-      waiting.shift()?.();
+      const next = waiting.shift();
+      if (next) next();
+      else active--;
     }
   };
 }

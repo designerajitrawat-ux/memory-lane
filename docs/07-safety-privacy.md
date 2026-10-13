@@ -27,8 +27,10 @@ Judges (and Qloo's kit) explicitly value responsible data handling. Treat this f
 8. Data deletion: "Delete this profile" button removes profile + sessions + reactions (cascade),
    including its seeds, Qloo candidates and the Qloo call records (`qloo_calls.profile_id`). The shared
    Qloo cache keeps the looked-up favourite text with Qloo's answer (no profile link) until it expires
-   (7 days, +1 day until the purge). Stage 1 lookups are capped per device token and per client IP per
-   day, and part of the daily Qloo budget is kept for demo personas.
+   (7 days, +1 day until the purge). All user-triggered Qloo research (Stage 1 lookups and Stage 2 builds)
+   shares one allowance per device token and per client IP per day (`STAGE1_LOOKUPS_PER_*` env names are
+   historical), and part of the daily Qloo budget is kept for demo personas. Taste profiles keep their
+   newest 3 versions; Qloo call records made for no profile are purged after 30 days.
    Retention: profiles nobody has opened for 90 days are deleted automatically (daily purge in the
    agent); expired Qloo cache rows too. "Forget profiles on this device" clears the owner token on shared
    devices. Limits: 20 profiles per device token, 200 new profiles per day overall, 10/hour per client

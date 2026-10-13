@@ -67,7 +67,13 @@ export async function tasteRoutes(
       }
       if (!lock.tryAcquire(profile.id)) return reply.code(409).send(BUSY);
       const client = clientIp(req);
-      const sse = startSse(reply);
+      let sse: ReturnType<typeof startSse>;
+      try {
+        sse = startSse(reply);
+      } catch (err) {
+        lock.release(profile.id); // never leave the profile locked (security review S2)
+        throw err;
+      }
       const send = (event: TasteEvent) => sse.send(event);
       try {
         await buildTasteProfile(

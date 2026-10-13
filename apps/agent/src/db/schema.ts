@@ -172,3 +172,59 @@ export const tasteProfiles = pgTable(
   },
   (t) => [uniqueIndex("taste_profiles_profile_version_idx").on(t.profileId, t.version)],
 );
+
+/** Stage 3 sessions (docs/05): planned from a taste profile version; items carry their evidence. */
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    status: text("status").notNull().default("planned"), // planned | in_progress | done
+    tasteProfileId: uuid("taste_profile_id").references(() => tasteProfiles.id, {
+      onDelete: "set null",
+    }),
+    whatChanged: jsonb("what_changed").notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("sessions_profile_number_idx").on(t.profileId, t.number),
+    check("sessions_status_check", sql`${t.status} in ('planned', 'in_progress', 'done')`),
+  ],
+);
+
+export const sessionItems = pgTable(
+  "session_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    kind: text("kind").notNull(), // song | film | tv | food | place
+    domain: text("domain").notNull(),
+    entityId: text("entity_id").notNull(),
+    entityType: text("entity_type"),
+    name: text("name").notNull(),
+    year: integer("year"),
+    why: text("why").notNull(),
+    prompts: text("prompts").array().notNull(),
+    minutes: integer("minutes").notNull(),
+    link: jsonb("link").notNull(),
+    altLink: jsonb("alt_link"),
+    evidenceIds: text("evidence_ids").array().notNull(),
+    reaction: text("reaction"), // sang | engaged | neutral | distressed
+    note: text("note"), // the caregiver's own words; never sent to Qloo
+    reactedAt: timestamp("reacted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("session_items_session_idx").on(t.sessionId),
+    check(
+      "session_items_reaction_check",
+      sql`${t.reaction} is null or ${t.reaction} in ('sang', 'engaged', 'neutral', 'distressed')`,
+    ),
+    check("session_items_evidence_check", sql`cardinality(${t.evidenceIds}) > 0`),
+  ],
+);

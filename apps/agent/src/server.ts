@@ -12,6 +12,7 @@ import { createQlooMcpClient } from "./qloo/mcpClient";
 import { createFixtureMcpClient } from "./qloo/fixtureMcp";
 import { createResolutionStore } from "./stage1/store";
 import { createTasteStore } from "./stage2/store";
+import { createSessionStore } from "./stage3/store";
 import { createProfileStore } from "./profiles/store";
 import { purgeStaleData } from "./db/maintenance";
 
@@ -71,6 +72,14 @@ async function main() {
     taste:
       dataDb && profiles
         ? { profiles, store: createTasteStore(dataDb.drizzle), gateway, db: dataDb.drizzle }
+        : null,
+    sessions:
+      dataDb && profiles
+        ? {
+            profiles,
+            taste: createTasteStore(dataDb.drizzle),
+            sessions: createSessionStore(dataDb.drizzle),
+          }
         : null,
     research: {
       lookupsPerOwnerPerDay: env.STAGE1_LOOKUPS_PER_OWNER_DAY,

@@ -79,12 +79,17 @@ const INPUT: ProfileInput = {
 };
 
 /** Answers by tool (and target type), the way the real harness would. */
-function fakeQloo(stage2: "ok" | "no_key" = "ok"): QlooMcpClient & { calls: string[] } {
+function fakeQloo(
+  stage2: "ok" | "no_key" = "ok",
+): QlooMcpClient & { calls: string[]; sent: string[] } {
   const mcp = {
     calls: [] as string[],
+    /** Every argument object exactly as it reached "Qloo", for privacy assertions. */
+    sent: [] as string[],
     async callTool(name: string, args: Record<string, unknown>): Promise<McpToolResult> {
       const target = typeof args.target_type === "string" ? `:${args.target_type}` : "";
       mcp.calls.push(`${name}${target}`);
+      mcp.sent.push(JSON.stringify(args));
       if (name === "qloo_describe") return { structuredContent: describeFixture.structuredContent };
       if (name === "qloo_find_tags" && String(args.query).endsWith(" food")) {
         return stage2 === "no_key" ? NO_KEY : DISHES;
@@ -120,7 +125,7 @@ afterEach(async () => {
   app = undefined;
 });
 
-async function start(mcp: QlooMcpClient) {
+async function start(mcp: QlooMcpClient, research?: { lookupsPerOwnerPerDay: number }) {
   const gateway = createQlooGateway({
     mcp,
     evidence: createPgEvidenceStore(db),
@@ -132,6 +137,7 @@ async function start(mcp: QlooMcpClient) {
     profiles,
     resolution: { profiles, resolutions: createResolutionStore(db), gateway },
     taste: { profiles, store: createTasteStore(db), gateway, db },
+    ...(research ? { research } : {}),
     version: "test",
     webOrigins: ["https://web.example"],
     clientIpHeader: "cf-connecting-ip",
@@ -232,6 +238,7 @@ describe("Stage 2: Life Taste Profile", () => {
     expect(profile.notes.join(" ")).toMatch(/things to avoid/);
     // Never the nickname or the avoid text in what reached Qloo (the PII guard sits in front).
     expect(mcp.calls.filter((c) => c.startsWith("qloo_recommend"))).toHaveLength(4);
+    expect(mcp.sent.join(" ")).not.toMatch(/Harjeet|Partition/i);
     expect(res.body).not.toMatch(/Harjeet/);
   });
 
@@ -300,5 +307,64 @@ describe("Stage 2: Life Taste Profile", () => {
       const res = await a.inject({ method: "GET", url, headers: headers(stranger) });
       expect(res.statusCode, url).toBe(404);
     }
+  });
+});
+
+describe("Stage 2 honesty and the avoid-list (security review W3/W4)", () => {
+  it("stops honestly when the device's research is used up, and keeps the current version", async () => {
+    // Stage 1 uses the 2 lookups (two favourites); every Stage 2 call is then refused.
+    const a = await start(fakeQloo(), { lookupsPerOwnerPerDay: 2 });
+    const { id, token } = await confirmedProfile(a);
+    const { events: ev } = await build(a, id, token);
+    expect(ev.find((e) => e.type === "error")).toMatchObject({ problem: "quota" });
+    expect(ev.at(-1)).toMatchObject({ type: "done", data: null });
+    const got = await a.inject({
+      method: "GET",
+      url: `/api/profiles/${id}/taste-profile`,
+      headers: headers(token),
+    });
+    expect(got.json().tasteProfile).toBeNull();
+  });
+
+  it("never lets a favourite that is on the avoid-list steer the research", async () => {
+    const mcp = fakeQloo();
+    const a = await start(mcp);
+    const created = await a.inject({
+      method: "POST",
+      url: "/api/profiles",
+      payload: { ...INPUT, avoid: [{ text: "Example Artist A" }] },
+      headers: headers(),
+    });
+    const body = CreateProfileResponseSchema.parse(created.json());
+    const id = body.profile.id;
+    const token = body.ownerToken ?? "";
+    await a.inject({
+      method: "POST",
+      url: `/api/profiles/${id}/seeds/resolve`,
+      headers: headers(token),
+    });
+    const listed = await a.inject({
+      method: "GET",
+      url: `/api/profiles/${id}/seeds`,
+      headers: headers(token),
+    });
+    const decisions = listed
+      .json()
+      .resolutions.map((r: { seedId: string; candidates: { id: string }[] }) => ({
+        seedId: r.seedId,
+        candidateId: r.candidates[0]?.id ?? null,
+      }));
+    await a.inject({
+      method: "POST",
+      url: `/api/profiles/${id}/seeds/confirm`,
+      headers: headers(token),
+      payload: { decisions },
+    });
+    mcp.calls.length = 0;
+    const { events: ev } = await build(a, id, token);
+    expect(mcp.calls.some((c) => c.startsWith("qloo_recommend"))).toBe(false);
+    const done = ev.at(-1);
+    if (done?.type !== "done" || !done.data) throw new Error("no profile");
+    expect(done.data.items.map((i) => i.name)).not.toContain("Example Artist A");
   });
 });
