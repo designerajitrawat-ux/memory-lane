@@ -23,9 +23,13 @@ const PLACE_TYPES = new Set(["urn:entity:place", "urn:entity:locality", "urn:ent
  * match the alternatives are mostly fuzzy noise (WALL·E for "Mughal-e-Azam"), so only alternatives with
  * the same name and type are offered (a remake, a namesake). For a non-exact match, and for places
  * (whose names mislead: "Golden Temple" matched exactly to a temple in another city — Phase 0), all
- * alternatives of the same type are offered. Envelopes without a resolution block fall back to `results`.
+ * alternatives of the same type are offered. When Qloo can't pick (status needs_input) the choices are
+ * in `resolution.issues[0].candidates`; listings of the same place (same name and address — Qloo had
+ * five for one shrine) are offered once. Envelopes without a resolution block fall back to `results`.
  */
 export function mapDescribe(envelope: QlooEnvelope): MappedCandidate[] {
+  const issue = list(obj(envelope.resolution)?.issues)[0];
+  if (issue) return fromIssue(issue);
   const outcome = firstOutcome(envelope.resolution);
   const interpreted = obj(obj(envelope.interpretation)?.entity);
   const results = list(envelope.results);
@@ -75,6 +79,32 @@ export function describeTypeFor(domain: Domain): string | undefined {
     default:
       return undefined;
   }
+}
+
+function fromIssue(issue: Rec): MappedCandidate[] {
+  const out: MappedCandidate[] = [];
+  const seen = new Set<string>();
+  for (const raw of list(issue.candidates)) {
+    const c = fromResolution(raw);
+    if (!c) continue;
+    const address = str(raw.address);
+    const key = address ? `${normalise(c.name)}|${normalise(address)}` : c.entityId;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (address) c.description = withPlace(c.description, addressLine(address));
+    out.push(c);
+    if (out.length >= MAX_CANDIDATES) break;
+  }
+  return out;
+}
+
+/** "Iconic shrine…" + "Amritsar, India" → "Iconic shrine… (Amritsar, India)", kept short. */
+function withPlace(description: string | null, where: string | null): string | null {
+  if (!where) return description;
+  if (!description) return where;
+  const room = Math.max(40, MAX_DESCRIPTION - where.length - 3);
+  const text = description.length > room ? `${description.slice(0, room).trimEnd()}…` : description;
+  return `${text} (${where})`;
 }
 
 function fromResolution(r: Rec | undefined): MappedCandidate | null {

@@ -107,7 +107,7 @@ export async function resolveSeeds(
           ctx,
         );
     const toCandidates = (envelope: Parameters<typeof mapDescribe>[0]): MappedCandidate[] =>
-      asTag ? mapFindTags(envelope, domain) : mapDescribe(envelope);
+      asTag ? mapFindTags(envelope, domain, seed.rawText) : mapDescribe(envelope);
 
     let stop: StopReason | null = null;
     let note: SeedNote | null = null;

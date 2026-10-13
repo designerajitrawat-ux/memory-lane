@@ -12,7 +12,7 @@ const PREFERRED: Partial<Record<Domain, string[]>> = {
  * Turns a `qloo_find_tags` envelope into one candidate per distinct concept name, in Qloo's order.
  * Used for food and "something else" favourites, which are tags in Qloo rather than entities.
  */
-export function mapFindTags(envelope: QlooEnvelope, domain: Domain): MappedCandidate[] {
+export function mapFindTags(envelope: QlooEnvelope, domain: Domain, query = ""): MappedCandidate[] {
   const order = PREFERRED[domain] ?? [];
   const rank = (type: string | null) => {
     const i = order.indexOf(tagCategory(type) ?? "");
@@ -37,5 +37,34 @@ export function mapFindTags(envelope: QlooEnvelope, domain: Domain): MappedCandi
       byName.set(key, { ...seen, entityId: id, entityType: type });
     }
   }
-  return [...byName.values()];
+  const found = [...byName.values()];
+  // With an exact name match, keep only tags that share a real word with what was typed ("Sarson Ka
+  // Saag" and "Saag" for "Sarson da saag", not "Saj" or "Savaji").
+  const words = significantWords(query);
+  if (!found.some((c) => normalise(c.name) === normalise(query)) || words.size === 0) return found;
+  return found.filter((c) => [...significantWords(c.name)].some((w) => words.has(w)));
+}
+
+const FILLER = new Set([
+  "and",
+  "the",
+  "with",
+  "da",
+  "di",
+  "de",
+  "ka",
+  "ki",
+  "ke",
+  "of",
+  "la",
+  "le",
+]);
+
+function significantWords(s: string): Set<string> {
+  return new Set(
+    s
+      .split(/[^\p{L}\p{N}]+/u)
+      .map(normalise)
+      .filter((w) => w.length >= 3 && !FILLER.has(w)),
+  );
 }

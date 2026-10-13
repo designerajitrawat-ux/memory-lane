@@ -167,3 +167,71 @@ describe("mapDescribe for places", () => {
     ]);
   });
 });
+
+describe("mapDescribe when Qloo asks to choose (needs_input)", () => {
+  it("offers each place once (same name and address = same place) with where it is", () => {
+    const cand = (id: string, address: string) => ({
+      id,
+      name: "Example Shrine",
+      type: "urn:entity:place",
+      description: "An example shrine.",
+      address,
+    });
+    const out = mapDescribe(
+      parseEnvelope(
+        {
+          ...describeFixture.structuredContent,
+          status: "needs_input",
+          resolution: {
+            issues: [
+              {
+                kind: "ambiguous",
+                candidates: [
+                  cand("s1", "1 Example Lane, Example City, Example Country"),
+                  cand("s2", "1 Example Lane, Example City, Example Country"),
+                  cand("s3", "9 Other Road, Other Town, Example Country"),
+                ],
+              },
+            ],
+          },
+          results: [],
+        },
+        "qloo_describe",
+      ),
+    );
+    expect(out.map((c) => [c.entityId, c.description])).toEqual([
+      ["s1", "An example shrine. (Example City, Example Country)"],
+      ["s3", "An example shrine. (Other Town, Example Country)"],
+    ]);
+  });
+});
+
+describe("mapFindTags with an exact match", () => {
+  it("drops tags that share no real word with what was typed", () => {
+    const tag = (slug: string, name: string) => ({
+      id: `urn:tag:cuisine:qloo:${slug}`,
+      name,
+      type: "urn:tag:cuisine:qloo",
+    });
+    const env = parseEnvelope(
+      {
+        ...findTagsFixture.structuredContent,
+        results: [
+          tag("a", "Example Da Dish"),
+          tag("b", "Example Ka Dish"),
+          tag("c", "Dish"),
+          tag("d", "Exa"),
+          tag("e", "Unrelated Bread"),
+        ],
+      },
+      "qloo_find_tags",
+    );
+    expect(mapFindTags(env, "food", "Example da dish").map((c) => c.name)).toEqual([
+      "Example Da Dish",
+      "Example Ka Dish",
+      "Dish",
+    ]);
+    // Without an exact match everything Qloo offered stays (the caregiver decides).
+    expect(mapFindTags(env, "food", "Something else")).toHaveLength(5);
+  });
+});
