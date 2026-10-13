@@ -220,7 +220,7 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
   }
   if (upset.length) {
     whatChanged.push(
-      `${names(upset)} won't come back: ${upset.length === 1 ? "it" : "they"} seemed to upset them, so ${upset.length === 1 ? "it's" : "they're"} now on the things to avoid.`,
+      `${names(upset)} won't come back: ${upset.length === 1 ? "that one" : "those"} seemed to upset them, so ${upset.length === 1 ? "it's" : "they're"} now on the things to avoid.`,
     );
   }
   if (quiet.length) {
