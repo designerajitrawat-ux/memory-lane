@@ -1,5 +1,10 @@
 import { and, asc, count, desc, eq, lt, or, sql } from "drizzle-orm";
-import type { ProfileInputParsed, ProfileSummary, ProfileView } from "@memory-lane/shared";
+import type {
+  DemoProfile,
+  ProfileInputParsed,
+  ProfileSummary,
+  ProfileView,
+} from "@memory-lane/shared";
 import { avoidItems, budget, profiles, seeds } from "../db/schema";
 import type { AppDb } from "../db/types";
 
@@ -24,6 +29,8 @@ export interface ProfileStore {
   /** Owner (by token hash) or demo only: anything else is indistinguishable from "not found". */
   get(id: string, ownerTokenHash: string | null): Promise<StoredProfile | null>;
   listByOwner(ownerTokenHash: string): Promise<ProfileSummary[]>;
+  /** The public demo personas, oldest first. */
+  listDemos(): Promise<DemoProfile[]>;
   ownerHasProfiles(ownerTokenHash: string): Promise<boolean>;
   /** Deletes the profile (seeds and avoid items cascade) only if this owner holds it. */
   delete(id: string, ownerTokenHash: string): Promise<boolean>;
@@ -182,6 +189,29 @@ export function createProfileStore(
         .orderBy(desc(profiles.createdAt))
         .limit(50);
       return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
+    },
+
+    async listDemos() {
+      const rows = await db
+        .select()
+        .from(profiles)
+        .where(eq(profiles.isDemo, true))
+        .orderBy(profiles.createdAt);
+      const out: DemoProfile[] = [];
+      for (const p of rows) {
+        const [seedRows] = await children(p.id);
+        out.push({
+          id: p.id,
+          nickname: p.nickname,
+          birthYear: p.birthYear,
+          regions: p.lifeStages.map((s) => s.region),
+          favourites: seedRows
+            .filter((s) => s.status === "confirmed")
+            .slice(0, 4)
+            .map((s) => s.displayName ?? s.rawText),
+        });
+      }
+      return out;
     },
 
     async ownerHasProfiles(ownerTokenHash) {

@@ -3,17 +3,20 @@ import { z } from "zod";
 import { ReactionRequestSchema, type ApiError } from "@memory-lane/shared";
 import { hashOwnerToken, readOwnerToken } from "../auth/ownerToken";
 import { createResearchAllowance } from "../limits";
-import { needsDatabase, notFound, ownedProfile, privateResponse } from "../profiles/owned";
+import {
+  needsDatabase,
+  notFound,
+  ownedProfile,
+  privateResponse,
+  readableProfile,
+} from "../profiles/owned";
 import type { ProfileStore } from "../profiles/store";
 import type { QlooGateway } from "../qloo/gateway";
 import { createRunLock } from "../sse";
 import { BUSY, type ResearchRouteOpts } from "../stage1/routes";
-import { avoidMatcher } from "../stage2/avoid";
 import type { TasteStore } from "../stage2/store";
-import { adapt, type Adaptation } from "../stage4/adapt";
-import { composeSession } from "./compose";
+import { planNextSession } from "./plan";
 import type { SessionStore } from "./store";
-import { validateSessionItems } from "./validate";
 
 export interface SessionRouteDeps {
   profiles: ProfileStore;
@@ -68,98 +71,50 @@ export async function sessionRoutes(
       const owned = await ownedProfile(req, deps.profiles);
       if (!owned) return notFound(reply);
       const profileId = owned.profile.id;
-      const [taste, ctx, recent, existing] = await Promise.all([
-        deps.taste.latest(profileId),
-        deps.taste.context(profileId),
-        deps.sessions.lastSessionEntities(profileId),
-        deps.sessions.list(profileId),
-      ]);
-      if (!taste || taste.items.length === 0) {
+      if (!lock.tryAcquire(profileId)) return reply.code(409).send(BUSY);
+      let result;
+      try {
+        const client = clientIp(req);
+        result = await planNextSession(
+          { profileId, nickname: owned.profile.nickname },
+          {
+            taste: deps.taste,
+            sessions: deps.sessions,
+            ...(deps.gateway ? { gateway: deps.gateway } : {}),
+            allowCall: () => allowance.take(owned.ownerHash, client),
+            budgetReserve: allowance.budgetReserve,
+          },
+        );
+      } finally {
+        lock.release(profileId);
+      }
+      if (result.kind === "no_taste_profile") {
         return reply.code(409).send({
           error: "no_taste_profile",
           message: "Build the Life Taste Profile first.",
         } satisfies ApiError);
       }
-      const sessionNumber = (existing[0]?.number ?? 0) + 1;
-      if (!lock.tryAcquire(profileId)) return reply.code(409).send(BUSY);
-      let profile = taste;
-      let learned: Adaptation | null = null;
-      try {
-        // Stage 4: learn from the last session before planning this one.
-        if (existing.length > 0 && ctx) {
-          const client = clientIp(req);
-          learned = await adapt(
-            {
-              profileId,
-              nickname: owned.profile.nickname,
-              profile: taste,
-              ctx,
-              reactions: await deps.sessions.reactions(profileId),
-              lastSessionNumber: existing[0]?.number ?? 0,
-            },
-            {
-              gateway: deps.gateway ?? { call: async () => ({ kind: "unavailable", message: "" }) },
-              store: deps.taste,
-              allowCall: () => !!deps.gateway && allowance.take(owned.ownerHash, client),
-              budgetReserve: allowance.budgetReserve,
-            },
-          );
-          await deps.sessions.addLearnedAvoid(profileId, learned.learnedAvoid);
-          if (learned.learnedItems.length) {
-            profile = await deps.taste.save(profileId, {
-              era: taste.era,
-              partial: taste.partial,
-              items: [...taste.items, ...learned.learnedItems],
-              notes: [
-                ...taste.notes,
-                `Learned from session ${sessionNumber - 1}: ${learned.learnedItems.map((i) => i.name).join(", ")}.`,
-              ],
-            });
-          }
-        }
-      } finally {
-        lock.release(profileId);
-      }
-      const composed = composeSession({
-        profile,
-        sessionNumber,
-        recent,
-        ...(learned ? { weights: learned.weights, favouriteDomain: learned.favouriteDomain } : {}),
-      });
-      const { kept } = validateSessionItems(
-        composed,
-        profile.items,
-        avoidMatcher([...(ctx?.avoid ?? []), ...(learned?.learnedAvoid.map((a) => a.text) ?? [])]),
-        sessionNumber,
-      );
-      if (kept.length === 0) {
+      if (result.kind === "nothing_to_plan") {
         return reply.code(409).send({
           error: "nothing_to_plan",
           message: "There's nothing in the profile that can go into a session yet.",
         } satisfies ApiError);
       }
-      const session = await deps.sessions.create(
-        profileId,
-        profile.id,
-        kept,
-        learned?.whatChanged ?? [],
-      );
-      return reply.code(201).send({ session });
+      return reply.code(201).send({ session: result.session });
     },
   );
 
   app.get("/api/profiles/:id/sessions", async (req, reply) => {
-    const owned = await ownedProfile(req, deps.profiles);
-    if (!owned) return notFound(reply);
-    return { sessions: await deps.sessions.list(owned.profile.id) };
+    const readable = await readableProfile(req, deps.profiles);
+    if (!readable) return notFound(reply);
+    return { sessions: await deps.sessions.list(readable.profile.id) };
   });
 
   app.get("/api/sessions/:id", async (req, reply) => {
     const params = IdParams.safeParse(req.params);
-    const ownerHash = ownerHashOf(req);
-    if (!params.success || !ownerHash) return sessionNotFound(reply);
-    const session = await deps.sessions.get(params.data.id, ownerHash);
-    return session ? { session } : sessionNotFound(reply);
+    if (!params.success) return sessionNotFound(reply);
+    const found = await deps.sessions.get(params.data.id, ownerHashOf(req));
+    return found ? { session: found.session, readOnly: found.readOnly } : sessionNotFound(reply);
   });
 
   app.post(

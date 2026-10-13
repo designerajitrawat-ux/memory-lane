@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Clock } from "lucide-react";
 import type { Session } from "@memory-lane/shared";
+import { DemoBanner } from "@/components/demo-banner";
 import { KIND_ICONS, REACTION_LABEL, slotLabel } from "@/components/session-labels";
 import { Button } from "@/components/ui/button";
 import { api, type ApiFailureKind } from "@/lib/api";
@@ -16,6 +17,7 @@ const primaryLink =
 export function SessionPlan() {
   const { id } = useParams<{ id: string }>();
   const [session, setSession] = useState<Session | null>(null);
+  const [readOnly, setReadOnly] = useState(false);
   const [error, setError] = useState<{ kind: ApiFailureKind; message: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
 
@@ -23,8 +25,10 @@ export function SessionPlan() {
     let active = true;
     api.getSession(id).then((r) => {
       if (!active) return;
-      if (r.ok) setSession(r.data.session);
-      else setError({ kind: r.kind, message: r.message });
+      if (r.ok) {
+        setSession(r.data.session);
+        setReadOnly(r.data.readOnly);
+      } else setError({ kind: r.kind, message: r.message });
     });
     return () => {
       active = false;
@@ -72,6 +76,7 @@ export function SessionPlan() {
   const done = session.status === "done";
   return (
     <div className="space-y-8">
+      {readOnly && <DemoBanner />}
       <div className="space-y-2">
         <h1 className="font-heading text-4xl leading-tight">Session {session.number}</h1>
         <p className="flex items-center gap-2 text-lg text-muted-foreground">

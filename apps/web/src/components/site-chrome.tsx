@@ -26,9 +26,25 @@ export function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="border-t px-4 py-6 text-center text-base text-muted-foreground">
-      Memory Lane supports reminiscence activities. It is not a medical device and does not diagnose
-      or treat any condition.
+    <footer className="space-y-3 border-t px-4 py-6 text-center text-base text-muted-foreground">
+      <nav aria-label="More" className="flex flex-wrap justify-center gap-x-6">
+        <Link
+          href="/demo"
+          className="inline-flex min-h-12 items-center underline underline-offset-4"
+        >
+          Try a demo profile
+        </Link>
+        <Link
+          href="/how-it-works"
+          className="inline-flex min-h-12 items-center underline underline-offset-4"
+        >
+          How it works
+        </Link>
+      </nav>
+      <p>
+        Memory Lane supports reminiscence activities. It is not a medical device and does not
+        diagnose or treat any condition.
+      </p>
     </footer>
   );
 }

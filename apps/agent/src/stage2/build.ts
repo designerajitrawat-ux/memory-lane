@@ -25,6 +25,8 @@ export interface TasteDeps {
   allowCall?: () => boolean;
   /** Daily budget units user research must leave for demo personas (gateway `reserve`). */
   budgetReserve?: number;
+  /** Demo personas: Qloo answers are cached without expiry. Server-side only. */
+  persistent?: boolean;
 }
 
 const PER_DOMAIN = 6;
@@ -166,6 +168,7 @@ export async function buildTasteProfile(
       allowedTools: TOOLS,
       reserve: deps.budgetReserve ?? 0,
       trustedIds,
+      persistent: deps.persistent ?? false,
     });
   };
 

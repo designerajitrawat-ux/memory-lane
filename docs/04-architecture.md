@@ -92,7 +92,7 @@ profiles get an owner hash no token can produce. Limits: 20 profiles per owner, 
 |---|---|
 | GET `/api/health/live` | liveness only, always 200 (Render health-check path, so deploys succeed while Qloo/DB aren't ready) |
 | GET `/api/health` | readiness: agent + `qloo_capabilities` (`adapter.ready`) + DB `select 1`; 200 when all ok, 503 when degraded; body = `HealthResponseSchema` |
-| GET `/api/demo-profiles` | list seeded personas |
+| GET `/api/demo-profiles` | the fictional demo personas (seeded at startup in production through the real pipeline: Stage 1 first matches, Stage 2, session 1 + sample reactions, session 2 by Stage 4; Qloo answers cached without expiry; `SEED_DEMOS`). Demo profiles, their taste profiles, sessions and evidence are readable by anyone; every mutation stays owner-only (404) |
 | POST `/api/profiles` | create profile (shared zod schema); mints an owner token if the request has none; 10/hour/IP |
 | GET `/api/profiles` | the caller's profiles (by owner token) |
 | GET `/api/profiles/:id` | profile + seeds (+ taste profile + sessions later); owner or demo, else 404 |

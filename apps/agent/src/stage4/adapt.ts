@@ -46,6 +46,8 @@ export interface AdaptDeps {
   store: TasteStore;
   allowCall?: () => boolean;
   budgetReserve?: number;
+  /** Demo personas: Qloo answers are cached without expiry. Server-side only. */
+  persistent?: boolean;
 }
 
 export interface Adaptation {
@@ -119,6 +121,7 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
       allowedTools: ["qloo_recommend"],
       reserve: deps.budgetReserve ?? 0,
       trustedIds,
+      persistent: deps.persistent ?? false,
     });
   };
   const screenTarget = screen[0]?.entityType?.endsWith(":movie") ? "movie" : "tv_show";

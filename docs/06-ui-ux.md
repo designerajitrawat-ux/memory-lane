@@ -22,8 +22,8 @@
 ## 3. Screens
 | # | Screen | Key elements |
 |---|---|---|
-| 1 | **Landing** | Headline ("Reminiscence sessions, personal to them."), 3-line explainer, primary CTA **Try a demo profile**, secondary **Create a profile**, "How it works" link, disclaimer footer |
-| 2 | **Demo picker** | 3 persona cards (birth year, regions, 2 seed hints) → open |
+| 1 | **Landing** (`/`) | "For families and carers", headline, explainer naming Qloo, **Try a demo profile** (primary), **Create a profile** (outline), **How it works**; "Three steps"; status strip; footer links + disclaimer |
+| 2 | **Demo picker** (`/demo`) | "Three fictional people…"; a card per persona (name, born, regions, confirmed favourites) → their Life Taste Profile. Demo screens show a banner ("A fictional demo profile… Create your own") and hide every change action; the player works but reactions aren't saved |
 | 3 | **Profile wizard** (4 steps, progress bar) | Basics · Places (life-stage rows: region + years) · Favourites (chips by domain, free text) · Avoid-list. Privacy note: "Nickname only, like "Dad" or "Nani". It stays in Memory Lane and is never sent to Qloo or the AI." (it is stored in our DB, so "never sent anywhere" would be untrue) |
 | 4 | **Confirm matches** (`/profiles/[id]/confirm`, owner only) | "Not checked yet" list + **Check N favourites with Qloo** → live agent log (`role="log"`, one outcome line per favourite) → focus moves to **Choose the right matches**; per seed a radio group "Which “X” did you mean?" of candidates (name · type · year) + "None of these" (whole row tappable, single match preselected); "Won't be used" notes (not found / not sent: personal info); **Save choices** → profile with a focused "Choices saved." (+ how many still need a choice); no-key / quota / outage / stopped banner (focused, not a live region, so it is read once). Check turns secondary while choices wait or Qloo can't answer. Profile page chips: Not checked yet · Choose a match · Confirmed with Qloo · Not found in Qloo · Not sent to Qloo · Not used |
 | 5 | **Life Taste Profile** (`/profiles/[id]/taste`) | Intro + **Build the profile** → live agent log; then a summary line ("20 things to share, from 5 favourites", era years), section jump-chips with counts, 4 domain sections of cards (2 columns from `sm`): name, type · year, "Their favourite" badge + Qloo's one line for favourites, aggregate caption for Qloo finds, evidence chip ("Qloo · recommended") → drawer with Qloo's description and the recorded call (what, asked, answer, when). "What Memory Lane did" notes; **Build again** (outline); **Plan a session** (Phase 5) |
@@ -31,7 +31,7 @@
 | 7 | **Session player** (`/sessions/[id]/play`, no site nav) | "Session N · 2 of 6", Pause, progress bar; card: slot label, title (focused per item), big "Listen on YouTube" (+ Spotify) opening a new tab, prompts at 2xl, why; reactions as 4 toggle buttons (Sang along / Engaged / Neutral / Seemed upset — upset shows a gentle "it's fine to stop; it won't be suggested again"), optional note; saves on tap (polite status); Back / Next / **Finish the session**; resumes at the first item without a reaction |
 | 8 | **Session summary** (`/sessions/[id]/summary`) | "How session N went" (n of 6 landed well), each item with its reaction and note, **Plan the next session**; Stage 4's "What I learned" (Phase 6) |
 | 9 | **Compare** | Two columns "Generic AI" vs "Memory Lane (Qloo-grounded)"; grounded count; genericness metric; short explanation |
-| 10 | **How it works** | Diagram of the tool chain, list of Qloo tools used, evidence model, limitations, safety, research links |
+| 10 | **How it works** (`/how-it-works`) | Timeline of the 4 stages (who decides at each), "Grounded, every time", where the AI fits, privacy and safety, what it doesn't do, research links (docs/02) |
 | — | **Evidence drawer** | tool, redacted inputs, status badge, summary, time, cached? |
 
 ## 4. States to design (don't skip — judges click everything)

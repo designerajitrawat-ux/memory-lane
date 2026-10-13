@@ -22,6 +22,7 @@ import type {
   TasteProfile,
 } from "@memory-lane/shared";
 import { AgentLog, ProblemBanner } from "@/components/agent-run";
+import { DemoBanner } from "@/components/demo-banner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -60,6 +61,8 @@ export function TasteProfileView() {
   const { id } = useParams<{ id: string }>();
   const [profile, setProfile] = useState<TasteProfile | null | undefined>(undefined);
   const [seeds, setSeeds] = useState<SeedState | null>(null);
+  // A public demo persona (not this device's profile): look, don't change.
+  const [readOnly, setReadOnly] = useState(false);
   const [loadError, setLoadError] = useState<{ kind: ApiFailureKind; message: string } | null>(
     null,
   );
@@ -82,6 +85,7 @@ export function TasteProfileView() {
       }
       setProfile(t.data.tasteProfile);
       if (p.ok) {
+        setReadOnly(!p.data.isOwner);
         const s = p.data.profile.seeds;
         setSeeds({
           confirmed: s.filter((x) => x.status === "confirmed").length,
@@ -214,6 +218,17 @@ export function TasteProfileView() {
     </>
   );
 
+  if (!profile && readOnly) {
+    return (
+      <div className="space-y-4">
+        <p className="rounded-2xl border bg-card p-5 text-lg">
+          This demo profile is still being prepared with Qloo. Please come back in a few minutes.
+        </p>
+        <BackLink id={id} />
+      </div>
+    );
+  }
+
   if (!profile) {
     const nothingConfirmed = seeds !== null && seeds.confirmed === 0;
     return (
@@ -270,6 +285,7 @@ export function TasteProfileView() {
   const built = new Date(profile.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" });
   return (
     <div className="space-y-10">
+      {readOnly && <DemoBanner />}
       <div className="space-y-3">
         <h2
           ref={readyRef}
@@ -312,7 +328,7 @@ export function TasteProfileView() {
         </nav>
       </div>
 
-      <SessionsPanel profileId={id} />
+      <SessionsPanel profileId={id} readOnly={readOnly} />
 
       {DOMAINS.map(({ key, title, icon: Icon }) => {
         const items = profile.items.filter((i) => i.domain === key);
@@ -359,25 +375,27 @@ export function TasteProfileView() {
         </section>
       )}
 
-      <section aria-labelledby="rebuild-heading" className="space-y-3 border-t pt-6">
-        <h2 id="rebuild-heading" className="text-xl font-bold">
-          Build a fresh version
-        </h2>
-        <p className="text-base text-muted-foreground">
-          Useful after a partly built version, or a few days later. Version {profile.version} stays
-          unless the new one is ready.
-        </p>
-        <Button
-          variant="outline"
-          className={actionButton}
-          disabled={running}
-          focusableWhenDisabled
-          onClick={build}
-        >
-          {running ? "Building…" : "Build again"}
-        </Button>
-        {progress}
-      </section>
+      {!readOnly && (
+        <section aria-labelledby="rebuild-heading" className="space-y-3 border-t pt-6">
+          <h2 id="rebuild-heading" className="text-xl font-bold">
+            Build a fresh version
+          </h2>
+          <p className="text-base text-muted-foreground">
+            Useful after a partly built version, or a few days later. Version {profile.version}{" "}
+            stays unless the new one is ready.
+          </p>
+          <Button
+            variant="outline"
+            className={actionButton}
+            disabled={running}
+            focusableWhenDisabled
+            onClick={build}
+          >
+            {running ? "Building…" : "Build again"}
+          </Button>
+          {progress}
+        </section>
+      )}
 
       <BackLink id={id} />
     </div>
@@ -577,7 +595,7 @@ const SESSION_STATUS: Record<SessionSummary["status"], string> = {
 };
 
 /** The way on from the profile: plan a session (the screen's one primary action), see past ones. */
-function SessionsPanel({ profileId }: { profileId: string }) {
+function SessionsPanel({ profileId, readOnly }: { profileId: string; readOnly: boolean }) {
   const router = useRouter();
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
   const [planning, setPlanning] = useState(false);
@@ -615,12 +633,15 @@ function SessionsPanel({ profileId }: { profileId: string }) {
         Sessions
       </h2>
       <p className="text-base text-muted-foreground">
-        About 25 minutes together: six things from this profile, each with something to listen to or
-        look at, and gentle things to talk about.
+        {readOnly
+          ? "Session 1 has reactions logged. Session 2 shows what Memory Lane learned from them: open it and look for “What changed since last time”."
+          : "About 25 minutes together: six things from this profile, each with something to listen to or look at, and gentle things to talk about."}
       </p>
-      <Button className={actionButton} disabled={planning} focusableWhenDisabled onClick={plan}>
-        {planning ? "Planning…" : any ? "Plan the next session" : "Plan the first session"}
-      </Button>
+      {!readOnly && (
+        <Button className={actionButton} disabled={planning} focusableWhenDisabled onClick={plan}>
+          {planning ? "Planning…" : any ? "Plan the next session" : "Plan the first session"}
+        </Button>
+      )}
       {error && (
         <p role="alert" className="text-base font-bold text-destructive">
           {error}

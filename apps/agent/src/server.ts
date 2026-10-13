@@ -15,6 +15,7 @@ import { createTasteStore } from "./stage2/store";
 import { createSessionStore } from "./stage3/store";
 import { createProfileStore } from "./profiles/store";
 import { purgeStaleData } from "./db/maintenance";
+import { ensureDemoProfiles } from "./demo/seed";
 
 async function main() {
   const env = loadEnv();
@@ -120,8 +121,24 @@ async function main() {
     setInterval(() => void purge(), 24 * 60 * 60 * 1000).unref();
   }
 
-  // Warm up `qloo mcp` (cold start is ~10 s) so the first health check is quick.
-  void gateway.capabilities().then((q) => app.log.info({ qloo: q.state }, "qloo readiness"));
+  // Warm up `qloo mcp` (cold start is ~10 s) so the first health check is quick; then make sure the
+  // demo personas exist (Qloo calls once; cached without expiry, skipped when present).
+  const seedDemos = env.SEED_DEMOS ? env.SEED_DEMOS === "1" : env.NODE_ENV === "production";
+  void gateway.capabilities().then(async (q) => {
+    app.log.info({ qloo: q.state }, "qloo readiness");
+    if (!seedDemos || q.state !== "ok" || !dataDb || !profiles) return;
+    await ensureDemoProfiles({
+      db: dataDb.drizzle,
+      profiles,
+      resolutions: createResolutionStore(dataDb.drizzle),
+      taste: createTasteStore(dataDb.drizzle),
+      sessions: createSessionStore(dataDb.drizzle),
+      gateway,
+      log: app.log,
+    }).catch((err: unknown) =>
+      app.log.warn({ code: (err as { code?: string }).code ?? "error" }, "demo seeding failed"),
+    );
+  });
 }
 
 main().catch((err: unknown) => {

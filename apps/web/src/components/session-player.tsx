@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ExternalLink, Play } from "lucide-react";
 import type { Reaction, Session, SessionItem } from "@memory-lane/shared";
+import { DemoBanner } from "@/components/demo-banner";
 import { KIND_ICONS, REACTIONS, slotLabel } from "@/components/session-labels";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +22,8 @@ export function SessionPlayer() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
+  // A demo persona's session: reactions show how it works, but nothing is saved.
+  const [readOnly, setReadOnly] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [step, setStep] = useState(0);
   const [status, setStatus] = useState<string>("");
@@ -39,6 +42,7 @@ export function SessionPlayer() {
         return;
       }
       setSession(r.data.session);
+      setReadOnly(r.data.readOnly);
       // Carry on where it was left: the first item without a reaction.
       if (!started.current) {
         started.current = true;
@@ -65,6 +69,10 @@ export function SessionPlayer() {
   async function react(item: SessionItem, value: Reaction) {
     const next = item.reaction === value ? null : value; // tapping again clears it
     updateItem({ ...item, reaction: next });
+    if (readOnly) {
+      setStatus(next ? "Noted for this visit (demo reactions aren't saved)." : "Cleared.");
+      return;
+    }
     setStatus("Saving…");
     const r = await api.react(item.id, next, item.note ?? undefined);
     if (r.ok) {
@@ -77,6 +85,11 @@ export function SessionPlayer() {
   }
 
   async function saveNote(item: SessionItem, note: string) {
+    if (readOnly) {
+      updateItem({ ...item, note: note.trim() || null });
+      setStatus("Noted for this visit (demo notes aren't saved).");
+      return;
+    }
     setStatus("Saving the note…");
     const r = await api.react(item.id, item.reaction, note.trim());
     if (r.ok) {
@@ -88,6 +101,10 @@ export function SessionPlayer() {
   }
 
   async function finish() {
+    if (readOnly) {
+      router.push(`/sessions/${id}`);
+      return;
+    }
     setFinishing(true);
     const r = await api.completeSession(id);
     if (r.ok) {
@@ -129,6 +146,7 @@ export function SessionPlayer() {
 
   return (
     <div className="space-y-6">
+      {readOnly && <DemoBanner playing />}
       <div className="flex items-center justify-between gap-4">
         <p className="text-base font-bold text-muted-foreground">
           Session {session.number} · {step + 1} of {total}

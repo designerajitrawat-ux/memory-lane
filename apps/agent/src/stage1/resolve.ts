@@ -23,6 +23,8 @@ export interface ResolveDeps {
   allowLookup?: () => boolean;
   /** Daily budget units Stage 1 must leave for demo personas (gateway `reserve`). */
   budgetReserve?: number;
+  /** Demo personas: Qloo answers are cached without expiry. Server-side only. */
+  persistent?: boolean;
 }
 
 type StopReason =
@@ -98,6 +100,7 @@ export async function resolveSeeds(
       profileId: input.profileId,
       allowedTools: ["qloo_describe", "qloo_find_tags"] as const,
       reserve: deps.budgetReserve ?? 0,
+      persistent: deps.persistent ?? false,
     };
     const result = asTag
       ? await deps.gateway.call("qloo_find_tags", { query: seed.rawText, limit: 10 }, ctx)

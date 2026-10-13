@@ -54,6 +54,8 @@ const EnvSchema = z
     // Stage 1 favourite lookups per device token and per client IP (/64) in 24 h (in memory).
     STAGE1_LOOKUPS_PER_OWNER_DAY: z.coerce.number().int().min(1).default(50),
     STAGE1_LOOKUPS_PER_CLIENT_DAY: z.coerce.number().int().min(1).default(100),
+    // Seed the three fictional demo personas at startup (default: on in production, off elsewhere).
+    SEED_DEMOS: z.enum(["0", "1"]).optional(),
     // SQL migrations applied at startup (relative to the working directory).
     MIGRATIONS_DIR: z.string().default("drizzle"),
   })

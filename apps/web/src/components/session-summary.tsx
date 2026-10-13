@@ -13,6 +13,7 @@ export function SessionSummary() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
+  const [readOnly, setReadOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [planning, setPlanning] = useState(false);
 
@@ -20,8 +21,10 @@ export function SessionSummary() {
     let active = true;
     api.getSession(id).then((r) => {
       if (!active) return;
-      if (r.ok) setSession(r.data.session);
-      else setError(r.message);
+      if (r.ok) {
+        setSession(r.data.session);
+        setReadOnly(r.data.readOnly);
+      } else setError(r.message);
     });
     return () => {
       active = false;
@@ -92,14 +95,16 @@ export function SessionSummary() {
         </p>
       )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button
-          className="h-auto min-h-12 w-full whitespace-normal px-6 py-3 text-base sm:w-auto"
-          disabled={planning}
-          focusableWhenDisabled
-          onClick={planNext}
-        >
-          {planning ? "Planning…" : "Plan the next session"}
-        </Button>
+        {!readOnly && (
+          <Button
+            className="h-auto min-h-12 w-full whitespace-normal px-6 py-3 text-base sm:w-auto"
+            disabled={planning}
+            focusableWhenDisabled
+            onClick={planNext}
+          >
+            {planning ? "Planning…" : "Plan the next session"}
+          </Button>
+        )}
         <Link
           href={`/profiles/${session.profileId}/taste`}
           className="inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4"

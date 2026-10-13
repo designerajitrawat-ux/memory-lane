@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { z } from "zod";
 import type { ApiError, EvidenceView, TasteEvent } from "@memory-lane/shared";
 import { hashOwnerToken, readOwnerToken } from "../auth/ownerToken";
@@ -7,7 +7,13 @@ import { profiles, qlooCalls } from "../db/schema";
 import type { AppDb } from "../db/types";
 import { createResearchAllowance } from "../limits";
 import type { QlooGateway } from "../qloo/gateway";
-import { needsDatabase, notFound, ownedProfile, privateResponse } from "../profiles/owned";
+import {
+  needsDatabase,
+  notFound,
+  ownedProfile,
+  privateResponse,
+  readableProfile,
+} from "../profiles/owned";
 import type { ProfileStore } from "../profiles/store";
 import { BUSY, type ResearchRouteOpts } from "../stage1/routes";
 import { createRunLock, startSse } from "../sse";
@@ -46,10 +52,11 @@ export async function tasteRoutes(
   const allowance = opts.allowance ?? createResearchAllowance();
   const clientIp = opts.clientIp ?? ((req: FastifyRequest) => req.ip);
 
+  // Owners and anyone looking at a public demo persona may read it.
   app.get("/api/profiles/:id/taste-profile", async (req, reply) => {
-    const owned = await ownedProfile(req, deps.profiles);
-    if (!owned) return notFound(reply);
-    return { tasteProfile: await deps.store.latest(owned.profile.id) };
+    const readable = await readableProfile(req, deps.profiles);
+    if (!readable) return notFound(reply);
+    return { tasteProfile: await deps.store.latest(readable.profile.id) };
   });
 
   app.post(
@@ -103,11 +110,15 @@ export async function tasteRoutes(
   );
 
   // One Qloo call record, for the evidence drawer. Only the owner of the profile it was made for may
-  // read it. The harness summary is not returned (it can carry setup hints; security review S10).
+  // read it, or anyone for a public demo persona. The harness summary is not returned (it can carry
+  // setup hints; security review S10).
   app.get("/api/evidence/:id", async (req, reply) => {
     const params = EvidenceParams.safeParse(req.params);
     const token = readOwnerToken(req);
-    if (!params.success || !token) return notFound(reply);
+    if (!params.success) return notFound(reply);
+    const allowed = token
+      ? or(eq(profiles.ownerTokenHash, hashOwnerToken(token)), eq(profiles.isDemo, true))
+      : eq(profiles.isDemo, true);
     const [row] = await deps.db
       .select({
         id: qlooCalls.id,
@@ -120,9 +131,7 @@ export async function tasteRoutes(
       })
       .from(qlooCalls)
       .innerJoin(profiles, eq(profiles.id, qlooCalls.profileId))
-      .where(
-        and(eq(qlooCalls.id, params.data.id), eq(profiles.ownerTokenHash, hashOwnerToken(token))),
-      )
+      .where(and(eq(qlooCalls.id, params.data.id), allowed))
       .limit(1);
     if (!row) return notFound(reply);
     return { ...row, createdAt: row.createdAt.toISOString() } satisfies EvidenceView;

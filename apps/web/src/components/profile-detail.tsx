@@ -165,7 +165,7 @@ export function ProfileDetail() {
   const confirmed = profile.seeds.filter((s) => s.status === "confirmed").length;
   const nothingMatched = isOwner && toCheck === 0 && toChoose === 0 && confirmed === 0;
   // One confirmed favourite is enough to build from; the rest can be checked later.
-  const readyForProfile = isOwner && confirmed > 0 && toChoose === 0;
+  const readyForProfile = (isOwner || profile.isDemo) && confirmed > 0 && toChoose === 0;
   const hasNextStep = isOwner && (toCheck > 0 || toChoose > 0 || confirmed > 0);
 
   return (

@@ -16,6 +16,10 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
   and reactions API, plan / player / summary screens. Checked locally end to end with real Qloo data.
 - **Phase 6 — done**: Stage 4 learning loop (weights, learned neighbours from Qloo, learned avoid-list,
   "what changed"); gate test passes; live check (UK persona): Cilla Black → Gene Pitney, Sandie Shaw.
+- **Phase 7 — how-it-works done**; compare view waits for the Anthropic key (baseline = same model, no tools).
+- **Phase 8 — demo personas + landing done**: three fictional personas seeded through the real pipeline at
+  startup (public, read-only), `/demo` picker, new landing, demo banners and read-only screens. Live check
+  (local, real Qloo): e.g. Harjeet's session 2 learned Asha Bhosle, Hemant Kumar, Mera Naam Joker, Padosan.
 - Next: Phase 7–9. **Blocking for the LLM steps (proposing
   era candidates, session prompts, "what changed" text, compare view): an Anthropic API key** — the
   developer creates it in the Anthropic Console (billing) and pastes it on Render (ANTHROPIC_API_KEY).
@@ -29,8 +33,8 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
   use `qloo.cmd` in PowerShell (the .ps1 shim is blocked by the execution policy).
 
 ## Next steps
-1. Phase 7: how-it-works page; compare view needs the Anthropic key (baseline = same model, no tools).
-2. Phase 8: demo personas (seeded, public read-only) + landing "Try a demo profile" — the judge path.
+1. Phase 9 hardening: reviews (security, ux, hackathon-judge), README + screenshots, submission kit.
+2. With the Anthropic key: LLM proposals in Stage 2, warmer prompts in Stage 3, compare view.
 3. Then, Phase 7 compare/how-it-works, Phase 8 demo personas + landing, Phase 9 submission.
 3. Developer: create an Anthropic API key (Console → billing) and add it on Render; join Discord.
 
@@ -79,9 +83,13 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-14 | Stage 2 never saves when every Qloo call failed or the allowance is used up (honest error, current version stays); avoid-list also checks captions/"because of" and keeps avoided favourites out of the signals; multi-word avoid entries need all their words | security-reviewer W3, W4; ux-reviewer C3, W2 | 05 |
 | 2026-10-14 | Taste profile UX: badges stacked above names, "Found by Qloo" tag, summary "N favourites you confirmed, M more found by Qloo", partial chip, evidence drawer retry + plain status words, dialogs scroll / bottom sheet on phones | ux-reviewer C1, C2, W4–W11 | 06 |
 | 2026-10-14 | Stage 4 runs when the next session is planned (not on "finish"), learned items become a new taste profile version (`source: "learned"`), distressed items join the avoid-list | One place to learn and plan; the profile visibly evolves; avoid-list learning also protects future builds | 05, 04 |
+| 2026-10-14 | Demo personas seeded through the real pipeline at startup (SEED_DEMOS, default on in production), public read-only; demo players don't save reactions | The judge path needs ready profiles and sessions; using the real stages keeps it honest and grounded | 04, 06, 11 |
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-14: **Phases 7 (how it works) + 8 (demos, landing).** `demo/` (personas, seeder), read access for
+  demos, `planNextSession` shared by route and seeder, `/demo`, `/how-it-works`, new landing, footer
+  links, demo banners. Agent 140 tests.
 - 2026-10-14: **Phase 6 done.** `stage4/adapt.ts` + session route integration (allowance + lock), learned
   avoid items, learned taste items with badges, "what changed" on the plan screen. Gate test: "sang"
   shifts session 2 toward Qloo neighbours, "distressed" never returns. Agent 139 tests.

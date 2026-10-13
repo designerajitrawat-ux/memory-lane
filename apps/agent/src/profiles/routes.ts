@@ -36,6 +36,7 @@ export async function profileRoutes(app: FastifyInstance, opts: { store: Profile
       } satisfies ApiError);
     app.post("/api/profiles", create, unavailable);
     app.get("/api/profiles", unavailable);
+    app.get("/api/demo-profiles", unavailable);
     app.get("/api/profiles/:id", unavailable);
     app.delete("/api/profiles/:id", remove, unavailable);
     return;
@@ -69,6 +70,9 @@ export async function profileRoutes(app: FastifyInstance, opts: { store: Profile
       } satisfies ApiError);
     }
   });
+
+  // The fictional demo personas: public and read-only (the judge path, docs/06 §1.6).
+  app.get("/api/demo-profiles", async () => ({ profiles: await store.listDemos() }));
 
   app.get("/api/profiles", async (req) => {
     const token = readOwnerToken(req);

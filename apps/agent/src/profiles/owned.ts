@@ -38,3 +38,21 @@ export async function privateResponse(_req: unknown, reply: FastifyReply, payloa
   reply.header("Vary", vary ? `${String(vary)}, Authorization` : "Authorization");
   return payload;
 }
+
+/**
+ * The profile in `:id` for reading: the owner's, or a public demo persona (read-only). Mutations keep
+ * using `ownedProfile`, so demos can be looked at but never changed.
+ */
+export async function readableProfile(
+  req: FastifyRequest,
+  profiles: ProfileStore,
+): Promise<{ profile: ProfileView; isOwner: boolean } | null> {
+  const params = IdParams.safeParse(req.params);
+  if (!params.success) return null;
+  const token = readOwnerToken(req);
+  const stored = await profiles.get(params.data.id, token ? hashOwnerToken(token) : null);
+  if (!stored) return null;
+  return stored.isOwner || stored.view.isDemo
+    ? { profile: stored.view, isOwner: stored.isOwner }
+    : null;
+}

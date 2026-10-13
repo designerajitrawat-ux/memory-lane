@@ -56,7 +56,11 @@ export const SessionSummarySchema = z.object({
   reacted: z.number().int(),
 });
 
-export const SessionResponseSchema = z.object({ session: SessionSchema });
+export const SessionResponseSchema = z.object({
+  session: SessionSchema,
+  /** A public demo persona's session: it can be played, but reactions aren't saved. */
+  readOnly: z.boolean().default(false),
+});
 export const SessionListResponseSchema = z.object({ sessions: z.array(SessionSummarySchema) });
 
 export const ReactionRequestSchema = z.object({

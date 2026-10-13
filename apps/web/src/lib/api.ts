@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   ApiErrorSchema,
+  DemoProfilesResponseSchema,
   EvidenceViewSchema,
   SessionItemSchema,
   SessionListResponseSchema,
@@ -123,6 +124,7 @@ export const api = {
     return result;
   },
   listProfiles: () => request("/api/profiles", ProfileListResponseSchema),
+  listDemoProfiles: () => request("/api/demo-profiles", DemoProfilesResponseSchema),
   getProfile: (id: string) =>
     request(`/api/profiles/${encodeURIComponent(id)}`, ProfileResponseSchema),
   deleteProfile: (id: string) =>

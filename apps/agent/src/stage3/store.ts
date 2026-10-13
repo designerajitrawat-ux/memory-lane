@@ -31,8 +31,14 @@ export interface SessionStore {
     whatChanged: readonly string[],
   ): Promise<Session>;
   list(profileId: string): Promise<SessionSummary[]>;
-  /** The session if the owner token holds its profile; anyone else gets null (→ 404). */
-  get(sessionId: string, ownerHash: string): Promise<Session | null>;
+  /**
+   * The session if the owner token holds its profile, or if it belongs to a public demo persona
+   * (`readOnly`); anyone else gets null (→ 404).
+   */
+  get(
+    sessionId: string,
+    ownerHash: string | null,
+  ): Promise<{ session: Session; readOnly: boolean } | null>;
   /** Entity ids of the newest session, to rotate them out of the next one. */
   lastSessionEntities(profileId: string): Promise<Set<string>>;
   reactions(profileId: string): Promise<ReactedItem[]>;
@@ -167,8 +173,16 @@ export function createSessionStore(db: AppDb): SessionStore {
     },
 
     async get(sessionId, ownerHash) {
-      const row = await owned(sessionId, ownerHash);
-      return row ? load(row) : null;
+      const [row] = await db
+        .select({ session: sessions, owner: profiles.ownerTokenHash, isDemo: profiles.isDemo })
+        .from(sessions)
+        .innerJoin(profiles, eq(profiles.id, sessions.profileId))
+        .where(eq(sessions.id, sessionId))
+        .limit(1);
+      if (!row) return null;
+      const isOwner = ownerHash !== null && row.owner === ownerHash;
+      if (!isOwner && !row.isDemo) return null;
+      return { session: await load(row.session), readOnly: !isOwner };
     },
 
     async lastSessionEntities(profileId) {

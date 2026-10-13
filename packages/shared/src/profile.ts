@@ -174,6 +174,17 @@ export const ProfileViewSchema = z.object({
   createdAt: z.string(),
 });
 
+/** GET /api/demo-profiles: the public, fictional demo personas (docs/11). */
+export const DemoProfileSchema = z.object({
+  id: z.string(),
+  nickname: z.string().nullable(),
+  birthYear: z.number().int(),
+  regions: z.array(z.string()),
+  /** A few confirmed favourites, as hints on the demo picker. */
+  favourites: z.array(z.string()),
+});
+export const DemoProfilesResponseSchema = z.object({ profiles: z.array(DemoProfileSchema) });
+
 export const ProfileSummarySchema = ProfileViewSchema.pick({
   id: true,
   nickname: true,
@@ -205,5 +216,6 @@ export type ProfileInput = z.input<typeof ProfileInputSchema>;
 export type ProfileInputParsed = z.output<typeof ProfileInputSchema>;
 export type ProfileView = z.infer<typeof ProfileViewSchema>;
 export type ProfileSummary = z.infer<typeof ProfileSummarySchema>;
+export type DemoProfile = z.infer<typeof DemoProfileSchema>;
 export type CreateProfileResponse = z.infer<typeof CreateProfileResponseSchema>;
 export type ApiError = z.infer<typeof ApiErrorSchema>;
