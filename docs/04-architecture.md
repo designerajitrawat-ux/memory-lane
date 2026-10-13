@@ -102,7 +102,7 @@ profiles get an owner hash no token can produce. Limits: 20 profiles per owner, 
 | POST `/api/profiles/:id/seeds/confirm` | owner only, 30/min/IP: `{decisions:[{seedId, candidateId \| null}]}`; a candidate must be one stored for that seed (else 409 `choice_out_of_date`); null = "None of these" → `rejected` |
 | GET `/api/profiles/:id/taste-profile` | owner only: the newest Life Taste Profile, or null |
 | POST `/api/profiles/:id/taste-profile` | owner only, SSE, 4/min/IP: Stage 2 builds a new version (`TasteEventSchema`); 409 `nothing_confirmed` before any favourite is confirmed; shares the research allowance and the per-profile run lock with Stage 1 |
-| POST `/api/profiles/:id/sessions` | owner only, 10/min: Stage 3 plans the next session from the newest taste profile (no Qloo call; JSON) → 201 `{session}`; 409 `no_taste_profile` |
+| POST `/api/profiles/:id/sessions` | owner only, 10/min: Stage 4 learns from the last session (≤2 Qloo calls, shared allowance + run lock; may save a taste profile version with learned items and add learned avoid items), then Stage 3 plans → 201 `{session}` with `whatChanged`; 409 `no_taste_profile` / `already_checking` |
 | GET `/api/profiles/:id/sessions` | owner only: session summaries (number, status, item and reaction counts) |
 | GET `/api/sessions/:id` | owner of its profile only: session + items |
 | POST `/api/session-items/:id/reaction` | owner only, 60/min: `{value: sang|engaged|neutral|distressed|null, note?}` (≤300 chars) |

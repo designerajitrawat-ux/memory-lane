@@ -134,7 +134,7 @@ export async function buildApp(deps: AppDeps) {
   };
   await app.register(resolveRoutes, { deps: deps.resolution ?? null, ...research });
   await app.register(tasteRoutes, { deps: deps.taste ?? null, ...research });
-  await app.register(sessionRoutes, { deps: deps.sessions ?? null });
+  await app.register(sessionRoutes, { deps: deps.sessions ?? null, ...research });
 
   const startedAt = Date.now();
   let cached: { at: number; checks: Promise<[QlooCheck, DbCheck]> } | null = null;

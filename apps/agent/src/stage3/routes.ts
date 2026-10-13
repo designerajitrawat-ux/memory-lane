@@ -2,10 +2,15 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { ReactionRequestSchema, type ApiError } from "@memory-lane/shared";
 import { hashOwnerToken, readOwnerToken } from "../auth/ownerToken";
+import { createResearchAllowance } from "../limits";
 import { needsDatabase, notFound, ownedProfile, privateResponse } from "../profiles/owned";
 import type { ProfileStore } from "../profiles/store";
+import type { QlooGateway } from "../qloo/gateway";
+import { createRunLock } from "../sse";
+import { BUSY, type ResearchRouteOpts } from "../stage1/routes";
 import { avoidMatcher } from "../stage2/avoid";
 import type { TasteStore } from "../stage2/store";
+import { adapt, type Adaptation } from "../stage4/adapt";
 import { composeSession } from "./compose";
 import type { SessionStore } from "./store";
 import { validateSessionItems } from "./validate";
@@ -14,6 +19,8 @@ export interface SessionRouteDeps {
   profiles: ProfileStore;
   taste: TasteStore;
   sessions: SessionStore;
+  /** Stage 4 asks Qloo for more like what landed; without it, sessions adapt by weights only. */
+  gateway?: Pick<QlooGateway, "call">;
 }
 
 const IdParams = z.object({ id: z.uuid() });
@@ -30,11 +37,14 @@ function ownerHashOf(req: FastifyRequest): string | null {
 }
 
 /**
- * Stage 3 routes (docs/04 §5): plan a session from the newest Life Taste Profile, read it, log
- * reactions, finish it. Owner only; anyone else gets 404. Planning makes no Qloo call (the profile
- * already carries the evidence), so it is a plain JSON request.
+ * Stage 3 + 4 routes (docs/04 §5): plan a session from the newest Life Taste Profile (learning from the
+ * last session's reactions first), read it, log reactions, finish it. Owner only; anyone else gets
+ * 404. Learning may ask Qloo (≤2 calls), so it shares the research allowance and run lock.
  */
-export async function sessionRoutes(app: FastifyInstance, opts: { deps: SessionRouteDeps | null }) {
+export async function sessionRoutes(
+  app: FastifyInstance,
+  opts: ResearchRouteOpts & { deps: SessionRouteDeps | null },
+) {
   const { deps } = opts;
   app.addHook("onSend", privateResponse);
 
@@ -46,6 +56,10 @@ export async function sessionRoutes(app: FastifyInstance, opts: { deps: SessionR
     app.post("/api/sessions/:id/complete", needsDatabase);
     return;
   }
+
+  const lock = opts.lock ?? createRunLock();
+  const allowance = opts.allowance ?? createResearchAllowance();
+  const clientIp = opts.clientIp ?? ((req: FastifyRequest) => req.ip);
 
   app.post(
     "/api/profiles/:id/sessions",
@@ -67,11 +81,55 @@ export async function sessionRoutes(app: FastifyInstance, opts: { deps: SessionR
         } satisfies ApiError);
       }
       const sessionNumber = (existing[0]?.number ?? 0) + 1;
-      const composed = composeSession({ profile: taste, sessionNumber, recent });
+      if (!lock.tryAcquire(profileId)) return reply.code(409).send(BUSY);
+      let profile = taste;
+      let learned: Adaptation | null = null;
+      try {
+        // Stage 4: learn from the last session before planning this one.
+        if (existing.length > 0 && ctx) {
+          const client = clientIp(req);
+          learned = await adapt(
+            {
+              profileId,
+              nickname: owned.profile.nickname,
+              profile: taste,
+              ctx,
+              reactions: await deps.sessions.reactions(profileId),
+              lastSessionNumber: existing[0]?.number ?? 0,
+            },
+            {
+              gateway: deps.gateway ?? { call: async () => ({ kind: "unavailable", message: "" }) },
+              store: deps.taste,
+              allowCall: () => !!deps.gateway && allowance.take(owned.ownerHash, client),
+              budgetReserve: allowance.budgetReserve,
+            },
+          );
+          await deps.sessions.addLearnedAvoid(profileId, learned.learnedAvoid);
+          if (learned.learnedItems.length) {
+            profile = await deps.taste.save(profileId, {
+              era: taste.era,
+              partial: taste.partial,
+              items: [...taste.items, ...learned.learnedItems],
+              notes: [
+                ...taste.notes,
+                `Learned from session ${sessionNumber - 1}: ${learned.learnedItems.map((i) => i.name).join(", ")}.`,
+              ],
+            });
+          }
+        }
+      } finally {
+        lock.release(profileId);
+      }
+      const composed = composeSession({
+        profile,
+        sessionNumber,
+        recent,
+        ...(learned ? { weights: learned.weights, favouriteDomain: learned.favouriteDomain } : {}),
+      });
       const { kept } = validateSessionItems(
         composed,
-        taste.items,
-        avoidMatcher(ctx?.avoid ?? []),
+        profile.items,
+        avoidMatcher([...(ctx?.avoid ?? []), ...(learned?.learnedAvoid.map((a) => a.text) ?? [])]),
         sessionNumber,
       );
       if (kept.length === 0) {
@@ -80,7 +138,12 @@ export async function sessionRoutes(app: FastifyInstance, opts: { deps: SessionR
           message: "There's nothing in the profile that can go into a session yet.",
         } satisfies ApiError);
       }
-      const session = await deps.sessions.create(profileId, taste.id, kept, []);
+      const session = await deps.sessions.create(
+        profileId,
+        profile.id,
+        kept,
+        learned?.whatChanged ?? [],
+      );
       return reply.code(201).send({ session });
     },
   );

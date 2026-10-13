@@ -7,7 +7,7 @@ import type {
   SessionSummary,
 } from "@memory-lane/shared";
 import type { z } from "zod";
-import { profiles, sessionItems, sessions } from "../db/schema";
+import { avoidItems, profiles, sessionItems, sessions } from "../db/schema";
 import type { AppDb } from "../db/types";
 import type { ComposedItem } from "./compose";
 
@@ -43,6 +43,11 @@ export interface SessionStore {
     note: string | null,
   ): Promise<SessionItem | null>;
   complete(sessionId: string, ownerHash: string): Promise<Session | null>;
+  /** Stage 4: things that seemed to upset them join the avoid-list (once; the reason is owner-only). */
+  addLearnedAvoid(
+    profileId: string,
+    items: readonly { text: string; reason: string }[],
+  ): Promise<number>;
 }
 
 export function createSessionStore(db: AppDb): SessionStore {
@@ -231,6 +236,27 @@ export function createSessionStore(db: AppDb): SessionStore {
           .where(eq(sessions.id, hit.sessionId));
       }
       return updated ? toItem(updated) : null;
+    },
+
+    async addLearnedAvoid(profileId, items) {
+      if (items.length === 0) return 0;
+      const existing = await db
+        .select({ text: avoidItems.text, position: avoidItems.position })
+        .from(avoidItems)
+        .where(eq(avoidItems.profileId, profileId));
+      const known = new Set(existing.map((e) => e.text.trim().toLowerCase()));
+      let position = existing.reduce((m, e) => Math.max(m, e.position), -1);
+      const rows = items
+        .filter((i) => !known.has(i.text.trim().toLowerCase()))
+        .map((i) => ({
+          profileId,
+          position: ++position,
+          text: i.text.slice(0, 200),
+          reason: i.reason.slice(0, 200),
+          source: "learned",
+        }));
+      if (rows.length) await db.insert(avoidItems).values(rows);
+      return rows.length;
     },
 
     async complete(sessionId, ownerHash) {

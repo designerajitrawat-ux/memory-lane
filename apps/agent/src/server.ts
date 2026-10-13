@@ -79,6 +79,7 @@ async function main() {
             profiles,
             taste: createTasteStore(dataDb.drizzle),
             sessions: createSessionStore(dataDb.drizzle),
+            gateway,
           }
         : null,
     research: {

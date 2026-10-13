@@ -14,7 +14,9 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
   gentle filters, validators; screen 5 with evidence drawer. Checked live on all three personas.
 - **Phase 5 — done (code templates; LLM prompts pending the key)**: Stage 3 composer + validators, sessions
   and reactions API, plan / player / summary screens. Checked locally end to end with real Qloo data.
-- Next: Phase 5 (session plan + player + reactions), then 6–9. **Blocking for the LLM steps (proposing
+- **Phase 6 — done**: Stage 4 learning loop (weights, learned neighbours from Qloo, learned avoid-list,
+  "what changed"); gate test passes; live check (UK persona): Cilla Black → Gene Pitney, Sandie Shaw.
+- Next: Phase 7–9. **Blocking for the LLM steps (proposing
   era candidates, session prompts, "what changed" text, compare view): an Anthropic API key** — the
   developer creates it in the Anthropic Console (billing) and pastes it on Render (ANTHROPIC_API_KEY).
 - Live URLs: web: https://memory-lane-sable-rho.vercel.app · agent: https://memory-lane-agent.onrender.com
@@ -27,9 +29,9 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
   use `qloo.cmd` in PowerShell (the .ps1 shim is blocked by the execution policy).
 
 ## Next steps
-1. Phase 6 adaptation (reactions → weights, distressed never returns, learned seeds via qloo_recommend,
-   "what changed").
-2. Then, Phase 7 compare/how-it-works, Phase 8 demo personas + landing, Phase 9 submission.
+1. Phase 7: how-it-works page; compare view needs the Anthropic key (baseline = same model, no tools).
+2. Phase 8: demo personas (seeded, public read-only) + landing "Try a demo profile" — the judge path.
+3. Then, Phase 7 compare/how-it-works, Phase 8 demo personas + landing, Phase 9 submission.
 3. Developer: create an Anthropic API key (Console → billing) and add it on Render; join Discord.
 
 ## Decisions (ADR-lite)
@@ -76,9 +78,13 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-14 | PII guard: only server-vouched confirmed-seed UUIDs are exempt, in `signals` only; health terms bounded by letters (not ); Latin accents folded; places refuse street names | security-reviewer W1, W5, S1, S9 | 03, 07 |
 | 2026-10-14 | Stage 2 never saves when every Qloo call failed or the allowance is used up (honest error, current version stays); avoid-list also checks captions/"because of" and keeps avoided favourites out of the signals; multi-word avoid entries need all their words | security-reviewer W3, W4; ux-reviewer C3, W2 | 05 |
 | 2026-10-14 | Taste profile UX: badges stacked above names, "Found by Qloo" tag, summary "N favourites you confirmed, M more found by Qloo", partial chip, evidence drawer retry + plain status words, dialogs scroll / bottom sheet on phones | ux-reviewer C1, C2, W4–W11 | 06 |
+| 2026-10-14 | Stage 4 runs when the next session is planned (not on "finish"), learned items become a new taste profile version (`source: "learned"`), distressed items join the avoid-list | One place to learn and plan; the profile visibly evolves; avoid-list learning also protects future builds | 05, 04 |
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-14: **Phase 6 done.** `stage4/adapt.ts` + session route integration (allowance + lock), learned
+  avoid items, learned taste items with badges, "what changed" on the plan screen. Gate test: "sang"
+  shifts session 2 toward Qloo neighbours, "distressed" never returns. Agent 139 tests.
 - 2026-10-14: **Phase 5 + review fixes.** Stage 3 (`stage3/`: compose, prompts, links, validate, store,
   routes), migration 0006 (`sessions`, `session_items`), screens 6–8; security W1–W5 and most suggestions
   (trusted seed ids, avoid gaps, honest allowance, health/accents/street rules, lock + semaphore, version

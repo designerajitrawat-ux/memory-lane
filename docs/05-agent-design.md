@@ -100,7 +100,18 @@ survive through `qloo_rank` / `qloo_describe` with evidence (Phase 0: rank pushe
 - Per item: `why` (1 sentence, aggregate wording, referencing evidence), 2–3 prompts (open,
   gentle, never quiz-like), `link_url` (YouTube/Spotify search URL built in code, not by LLM).
 
-### Stage 4 — Adapt
+### Stage 4 — Adapt (built: `apps/agent/src/stage4/adapt.ts`, runs when the next session is planned)
+- Weights: sang +2, engaged +1, neutral −0.5, distressed → never again (composer drops ≤ −1). The domain
+  that landed best leads "your choice".
+- For sang/engaged **entities** of the last session, ≤2 `qloo_recommend` calls (artists from songs, the
+  same screen type from films/TV) with those exact ids as signals (server-vouched for the PII guard),
+  then the Stage 2 filters (era, avoid incl. learned, gentle) and validators. Survivors join a new taste
+  profile version as `source: "learned"` and start ahead in their domain.
+- Distressed items join the avoid-list (`source: "learned"`, owner-only reason). `what_changed`: 2–5 plain
+  sentences ("Cilla Black landed well, so Qloo was asked for more like that: Gene Pitney and Sandie Shaw.").
+  Live (UK persona): Cilla Black → Gene Pitney, Sandie Shaw; Coronation Street → Emmerdale Farm, Brookside.
+
+Original plan:
 - Inputs: reactions of the last session(s).
 - `sang`/`engaged` items → become `learned` seeds → `qloo_recommend` for neighbours.
 - `distressed` → avoid-list (entity + related tags), explained to caregiver.

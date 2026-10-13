@@ -49,7 +49,7 @@ const DOMAIN_NAMES: Record<TasteDomain, string> = {
   places: "Places",
 };
 
-const PLACEMENT_ORDER: Record<EraPlacement, number> = { fits: 0, unknown: 1, later: 2 };
+export const PLACEMENT_ORDER: Record<EraPlacement, number> = { fits: 0, unknown: 1, later: 2 };
 
 // Places worth reminiscing about are the lasting ones: landmarks, markets, parks, the seaside. Most of
 // what Qloo returns near a town is new (live check, Amritsar: hotels, banquet halls, bars, a spa), and
@@ -63,7 +63,7 @@ const lead = (f: { name: string; description: string | null }) =>
   `${f.name} ${(f.description ?? "").split(/\s+/).slice(0, 7).join(" ")}`;
 // A reminiscence session is gentle, whatever the avoid-list says: Qloo suggestions about atrocities or
 // suicide are left out (live check: "Sophie's Choice" came back for a 1946 US persona)…
-const HEAVY =
+export const HEAVY =
   /\b(massacres?|genocides?|holocaust|auschwitz|concentration camps?|death camps?|war crimes?|atrocit(?:y|ies)|suicides?|rapes?|abuse|abusive|torture)\b/i;
 // …and so are sites of grief.
 const HEAVY_PLACE =
@@ -72,7 +72,7 @@ const HEAVY_PLACE =
 type Rec = Record<string, unknown>;
 
 /** One thing Qloo returned, with the favourites Qloo says led to it. */
-interface Found {
+export interface Found {
   entityId: string;
   name: string;
   entityType: string | null;
@@ -88,7 +88,7 @@ interface Found {
 
 type FailCause = "device" | "profile" | "daily" | "outage" | "rejected";
 
-type Outcome =
+export type Outcome =
   | { kind: "found"; found: Found[] }
   | { kind: "stop"; problem: ResolveProblem }
   | { kind: "failed"; cause: FailCause; reason: string }
@@ -450,7 +450,7 @@ const STOP_MESSAGES: Record<ResolveProblem, string> = {
 };
 
 /** Maps one gateway answer to an outcome; only "not connected" stops the whole build. */
-function read(
+export function read(
   result: GatewayResult | "refused" | null,
   parse: (envelope: Rec, evidenceId: string) => Found[],
 ): Outcome {
@@ -486,10 +486,10 @@ function read(
   }
 }
 
-const found = (o: Outcome) => (o.kind === "found" ? o.found : []);
+export const found = (o: Outcome) => (o.kind === "found" ? o.found : []);
 
 /** recommend results: entity, year, description, and the favourites Qloo says contributed most. */
-function readRecommend(envelope: Rec, evidenceId: string): Found[] {
+export function readRecommend(envelope: Rec, evidenceId: string): Found[] {
   const names = new Map<string, string>();
   for (const s of list(obj(envelope.interpretation)?.signals)) {
     const id = str(s.entityId);

@@ -265,7 +265,8 @@ export function TasteProfileView() {
   }
 
   const favourites = profile.items.filter((i) => i.source === "favourite").length;
-  const found = profile.items.length - favourites;
+  const learned = profile.items.filter((i) => i.source === "learned").length;
+  const found = profile.items.length - favourites - learned;
   const built = new Date(profile.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" });
   return (
     <div className="space-y-10">
@@ -276,6 +277,7 @@ export function TasteProfileView() {
           className="font-heading text-2xl leading-snug outline-none"
         >
           {plural(favourites, "favourite")} you confirmed, {found} more found by Qloo
+          {learned > 0 && `, ${learned} learned from sessions`}
         </h2>
         <p className="text-base text-muted-foreground">
           Films and TV from {profile.era.from}
@@ -395,7 +397,7 @@ function ItemCard({ item }: { item: TasteItem }) {
       ) : (
         <span className="inline-flex items-center gap-1 self-start rounded-full bg-accent px-3 py-1 text-base text-accent-foreground">
           <Sparkles aria-hidden="true" className="size-4" />
-          Found by Qloo
+          {item.source === "learned" ? "Learned from a session" : "Found by Qloo"}
         </span>
       )}
       <div className="min-w-0">
@@ -448,9 +450,11 @@ function EvidenceDrawer({ item }: { item: TasteItem }) {
   const chip =
     item.source === "favourite"
       ? "Qloo · confirmed"
-      : item.entityType?.startsWith("urn:tag:")
-        ? "Qloo · food tag"
-        : "Qloo · recommended";
+      : item.source === "learned"
+        ? "Qloo · learned"
+        : item.entityType?.startsWith("urn:tag:")
+          ? "Qloo · food tag"
+          : "Qloo · recommended";
 
   // Only what loaded is kept, so reopening (or "Try again") fetches just what's missing.
   function load() {
