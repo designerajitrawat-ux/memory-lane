@@ -9,7 +9,12 @@ import {
   UNIT_NUMBER,
   URL_LIKE,
 } from "@memory-lane/shared";
-import { FREE_TEXT_FIELDS, LOCATION_FIELDS } from "./tools";
+import { FREE_TEXT_FIELDS, ID_FIELDS, LOCATION_FIELDS } from "./tools";
+
+// A Qloo entity UUID or tag URN, exactly: identifiers Qloo issued, so no personal data (their digits
+// would otherwise look like a phone number). Stage 2 sends confirmed seeds this way (docs/05).
+const QLOO_ID =
+  /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|urn:tag:[a-z0-9_]+(?::[a-z0-9_]+)+)$/i;
 
 // Re-exported for existing imports; the rules live in packages/shared/src/pii.ts.
 export { normalizeText };
@@ -35,6 +40,7 @@ export function checkArgs(args: unknown, ctx: RedactContext): RedactResult {
   for (const [field, raw] of strings(args)) {
     const value = normalizeText(raw);
     const key = leaf(field);
+    if (ID_FIELDS.has(key) && QLOO_ID.test(value)) continue;
     if (nicknameRes.some((re) => re.test(value))) return reject("nickname", field);
     if (EMAIL.test(value)) return reject("email", field);
     if (URL_LIKE.test(value)) return reject("url", field);

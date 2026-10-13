@@ -11,6 +11,7 @@ import { createQlooGateway } from "./qloo/gateway";
 import { createQlooMcpClient } from "./qloo/mcpClient";
 import { createFixtureMcpClient } from "./qloo/fixtureMcp";
 import { createResolutionStore } from "./stage1/store";
+import { createTasteStore } from "./stage2/store";
 import { createProfileStore } from "./profiles/store";
 import { purgeStaleData } from "./db/maintenance";
 
@@ -65,17 +66,17 @@ async function main() {
     profiles,
     resolution:
       dataDb && profiles
-        ? {
-            profiles,
-            resolutions: createResolutionStore(dataDb.drizzle),
-            gateway,
-            limits: {
-              lookupsPerOwnerPerDay: env.STAGE1_LOOKUPS_PER_OWNER_DAY,
-              lookupsPerClientPerDay: env.STAGE1_LOOKUPS_PER_CLIENT_DAY,
-              budgetReserve: env.QLOO_BUDGET_RESERVE,
-            },
-          }
+        ? { profiles, resolutions: createResolutionStore(dataDb.drizzle), gateway }
         : null,
+    taste:
+      dataDb && profiles
+        ? { profiles, store: createTasteStore(dataDb.drizzle), gateway, db: dataDb.drizzle }
+        : null,
+    research: {
+      lookupsPerOwnerPerDay: env.STAGE1_LOOKUPS_PER_OWNER_DAY,
+      lookupsPerClientPerDay: env.STAGE1_LOOKUPS_PER_CLIENT_DAY,
+      budgetReserve: env.QLOO_BUDGET_RESERVE,
+    },
     version: commit ? `${pkg.version}+${commit}` : pkg.version,
     webOrigins: env.WEB_ORIGIN,
     trustProxyHops: env.TRUST_PROXY_HOPS,

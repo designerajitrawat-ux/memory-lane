@@ -68,7 +68,7 @@ memory-lane/
 | `seeds` | id, profile_id, raw_text, domain (music/film/tv/food/place/other), qloo_entity_id, qloo_entity_type, display_name, status (pending/needs_input/confirmed/rejected/unresolved, CHECK), note (not_found/no_clear_match/personal_info/invalid/lookup_failed: why it wasn't matched, shown as fixed text), source (caregiver/learned), evidence_id (FK → qloo_calls; CHECK: confirmed ⇒ evidence_id + qloo_entity_id) |
 | `seed_candidates` | seed_id (cascade), position, entity_id, name, entity_type (raw Qloo type URN), year, description (one line from Qloo), evidence_id (not null, FK → qloo_calls): the matches Stage 1 found; confirm only accepts one of these, then the seed's candidates are deleted |
 | `avoid_items` | id, profile_id, text, qloo_entity_id nullable, reason, source (caregiver/learned) |
-| `taste_profiles` | id, profile_id, version, items jsonb [{domain, entity_id, name, caption, evidence_ids[]}], created_at |
+| `taste_profiles` | id, profile_id (cascade), version (unique per profile; the newest is shown), era_from, era_to, partial, items jsonb (`TasteItemSchema`: domain, entityId, entityType URN, typeLabel, name, year, description, caption, source favourite/qloo, becauseOf[], evidenceIds[]), notes jsonb, created_at |
 | `sessions` | id, profile_id, number, status (planned/in_progress/done), plan jsonb, what_changed text, created_at |
 | `session_items` | id, session_id, order, kind (song/film/food/place/tv/other), qloo_entity_id, title, why text, prompts text[], link_url, evidence_ids[] |
 | `reactions` | id, session_item_id, value (engaged/sang/neutral/distressed), note, created_at |
@@ -101,13 +101,14 @@ profiles get an owner hash no token can produce. Limits: 20 profiles per owner, 
 | GET `/api/profiles/:id/seeds` | owner only: each favourite's status + stored candidates |
 | POST `/api/profiles/:id/seeds/resolve` | owner only, SSE, 6/min/IP, one run per profile (else 409 `already_checking`): looks up each pending favourite with `qloo_describe` → stored candidates (status `needs_input`) or `unresolved` + note; stops at the first failure, no key, quota or used-up allowance (`error` event; that seed stays pending). Allowance: `STAGE1_LOOKUPS_PER_OWNER_DAY` (50) per device token and `STAGE1_LOOKUPS_PER_CLIENT_DAY` (100) per client IP, in memory; Stage 1 leaves `QLOO_BUDGET_RESERVE` (100) of the daily budget for demo personas (gateway `reserve`). Keep-alive comment every 15 s |
 | POST `/api/profiles/:id/seeds/confirm` | owner only, 30/min/IP: `{decisions:[{seedId, candidateId \| null}]}`; a candidate must be one stored for that seed (else 409 `choice_out_of_date`); null = "None of these" → `rejected` |
-| POST `/api/profiles/:id/taste-profile` | SSE: agent builds Life Taste Profile |
+| GET `/api/profiles/:id/taste-profile` | owner only: the newest Life Taste Profile, or null |
+| POST `/api/profiles/:id/taste-profile` | owner only, SSE, 4/min/IP: Stage 2 builds a new version (`TasteEventSchema`); 409 `nothing_confirmed` before any favourite is confirmed; shares the research allowance and the per-profile run lock with Stage 1 |
 | POST `/api/profiles/:id/sessions` | SSE: agent composes next session (uses reactions history) |
 | GET `/api/sessions/:id` | session + items |
 | POST `/api/session-items/:id/reaction` | log reaction |
 | POST `/api/sessions/:id/complete` | SSE: adapt step → `what_changed` + learned seeds/avoids |
 | GET `/api/profiles/:id/compare` | baseline (LLM-only) vs grounded plan (cached) |
-| GET `/api/evidence/:id` | one evidence record (redacted) |
+| GET `/api/evidence/:id` | owner of the profile it was made for only: tool, args (as sent, after the PII guard), status, result count, cached, time — never the harness summary |
 
 SSE event shape: `{type:"step"|"tool"|"result"|"error"|"done", message, tool?, status?, evidenceId?, data?}`.
 Messages are fixed app text; harness `summary`/`recovery` text is never forwarded. Stage 1 events are

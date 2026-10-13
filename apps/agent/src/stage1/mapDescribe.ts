@@ -163,7 +163,7 @@ export const normalise = (s: string) =>
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, "");
 
-function short(s: string | undefined): string | null {
+export function short(s: string | undefined): string | null {
   if (!s) return null;
   if (s.length <= MAX_DESCRIPTION) return s;
   const cut = s.slice(0, MAX_DESCRIPTION);
@@ -181,7 +181,7 @@ function addressLine(v: unknown): string | null {
   return short(parts.slice(-2).join(", "));
 }
 
-function yearOf(v: unknown): number | null {
+export function yearOf(v: unknown): number | null {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v.slice(0, 4)) : Number.NaN;
   return Number.isInteger(n) && n >= 1000 && n <= 2100 ? n : null;
 }

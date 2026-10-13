@@ -145,6 +145,8 @@ export function createResolutionStore(db: AppDb): ResolutionStore {
               qlooEntityId: c.entityId,
               qlooEntityType: c.entityType,
               displayName: c.name,
+              year: c.year,
+              description: c.description,
               evidenceId: c.evidenceId,
             })
             .where(eq(seeds.id, seed.id));

@@ -1,10 +1,14 @@
 import { z } from "zod";
 import {
   ApiErrorSchema,
+  EvidenceViewSchema,
   ResolveEventSchema,
   SeedResolutionSchema,
+  TasteEventSchema,
+  TasteProfileResponseSchema,
   type ConfirmRequest,
   type ResolveEvent,
+  type TasteEvent,
   CreateProfileResponseSchema,
   ProfileListResponseSchema,
   ProfileResponseSchema,
@@ -120,38 +124,61 @@ export const api = {
       body: JSON.stringify({ decisions }),
     }),
 
-  /**
-   * Streams the agent's Stage 1 run; each event goes to onEvent as it arrives. Aborting `signal` (the
-   * page closed) ends the request, and the agent stops looking favourites up.
-   */
-  async resolveSeeds(
-    id: string,
-    onEvent: (e: ResolveEvent) => void,
-    signal?: AbortSignal,
-  ): Promise<ApiResult<null>> {
-    const token = getOwnerToken();
-    let res: Response;
-    try {
-      res = await fetch(`${AGENT_URL}/api/profiles/${encodeURIComponent(id)}/seeds/resolve`, {
-        method: "POST",
-        cache: "no-store",
-        headers: token ? { authorization: `Bearer ${token}` } : {},
-        signal,
-      });
-    } catch {
-      return failure(
-        typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "unreachable",
-      );
-    }
-    if (!res.ok || !res.body) return failure(res.ok ? "server" : kindForStatus(res.status));
-    try {
-      for await (const data of readSse(res.body)) {
-        const parsed = ResolveEventSchema.safeParse(JSON.parse(data));
-        if (parsed.success) onEvent(parsed.data);
-      }
-    } catch {
-      return failure("unreachable");
-    }
-    return { ok: true, data: null };
-  },
+  /** Streams the agent's Stage 1 run (aborting `signal` stops the agent's lookups too). */
+  resolveSeeds: (id: string, onEvent: (e: ResolveEvent) => void, signal?: AbortSignal) =>
+    stream(
+      `/api/profiles/${encodeURIComponent(id)}/seeds/resolve`,
+      ResolveEventSchema,
+      onEvent,
+      signal,
+    ),
+
+  getTasteProfile: (id: string) =>
+    request(`/api/profiles/${encodeURIComponent(id)}/taste-profile`, TasteProfileResponseSchema),
+  /** Streams the agent's Stage 2 run, which builds a new version of the Life Taste Profile. */
+  buildTasteProfile: (id: string, onEvent: (e: TasteEvent) => void, signal?: AbortSignal) =>
+    stream(
+      `/api/profiles/${encodeURIComponent(id)}/taste-profile`,
+      TasteEventSchema,
+      onEvent,
+      signal,
+    ),
+  getEvidence: (id: string) =>
+    request(`/api/evidence/${encodeURIComponent(id)}`, EvidenceViewSchema),
 };
+
+/**
+ * POSTs to a streaming agent route and hands each parsed event to onEvent as it arrives. Events that
+ * don't match the schema are skipped; a cut connection is a failure the page can show honestly.
+ */
+async function stream<S extends z.ZodType>(
+  path: string,
+  schema: S,
+  onEvent: (e: z.infer<S>) => void,
+  signal?: AbortSignal,
+): Promise<ApiResult<null>> {
+  const token = getOwnerToken();
+  let res: Response;
+  try {
+    res = await fetch(`${AGENT_URL}${path}`, {
+      method: "POST",
+      cache: "no-store",
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+      signal,
+    });
+  } catch {
+    return failure(
+      typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "unreachable",
+    );
+  }
+  if (!res.ok || !res.body) return failure(res.ok ? "server" : kindForStatus(res.status));
+  try {
+    for await (const data of readSse(res.body)) {
+      const parsed = schema.safeParse(JSON.parse(data));
+      if (parsed.success) onEvent(parsed.data);
+    }
+  } catch {
+    return failure("unreachable");
+  }
+  return { ok: true, data: null };
+}

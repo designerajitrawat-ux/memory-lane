@@ -9,6 +9,7 @@ import {
   jsonb,
   pgTable,
   text,
+  uniqueIndex,
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -88,6 +89,8 @@ export const seeds = pgTable(
     qlooEntityId: text("qloo_entity_id"),
     qlooEntityType: text("qloo_entity_type"),
     displayName: text("display_name"),
+    year: integer("year"), // from the chosen Qloo match (films, TV)
+    description: text("description"), // Qloo's one line about the chosen match
     status: text("status").notNull().default("pending"), // pending | needs_input | confirmed | rejected | unresolved
     note: text("note"), // SeedNote: why it wasn't matched / couldn't be checked; fixed text in the UI
     source: text("source").notNull().default("caregiver"), // caregiver | learned
@@ -146,4 +149,26 @@ export const seedCandidates = pgTable(
       .references(() => qlooCalls.id),
   },
   (t) => [index("seed_candidates_seed_idx").on(t.seedId)],
+);
+
+/**
+ * Stage 2 output (docs/05): one row per build; the newest version is shown. Items carry their Qloo
+ * evidence ids; the rows go with the profile.
+ */
+export const tasteProfiles = pgTable(
+  "taste_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    eraFrom: integer("era_from").notNull(),
+    eraTo: integer("era_to").notNull(),
+    partial: boolean("partial").notNull().default(false),
+    items: jsonb("items").notNull(),
+    notes: jsonb("notes").notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("taste_profiles_profile_version_idx").on(t.profileId, t.version)],
 );

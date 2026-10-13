@@ -41,7 +41,9 @@ Judges (and Qloo's kit) explicitly value responsible data handling. Treat this f
 - Avoid-list is absolute (validator).
 - Prompts are gentle and open, never memory tests.
 - Sensitive history (wars, partition, migration trauma) is avoided unless the caregiver explicitly
-  includes it; the wizard suggests adding such topics to the avoid-list.
+  includes it; the wizard suggests adding such topics to the avoid-list. Stage 2 also reads Qloo's full
+  descriptions: avoid-list words plus related words for well-known painful topics, and a gentle filter
+  (atrocities, suicide, abuse; sites of grief for places) on everything Qloo suggests.
 - External links only to search pages on mainstream platforms (YouTube, Spotify); we don't host media.
 
 ## 4. Prompt-injection hygiene

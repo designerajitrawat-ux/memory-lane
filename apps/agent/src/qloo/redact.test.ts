@@ -25,6 +25,23 @@ describe("checkArgs (PII guard before Qloo)", () => {
       expect(checkArgs(args, NONE), JSON.stringify(args)).toEqual({ ok: true });
   });
 
+  it("passes exact Qloo identifiers in ID fields, but nothing else that looks like a number", () => {
+    const uuid = "23e081cf-cefb-4e12-8337-867f25f5d1fc"; // its digits once matched the phone rule
+    expect(
+      checkArgs(
+        { target_type: "artist", signals: [uuid], signal_tags: ["urn:tag:cuisine:qloo:saag"] },
+        nick("Bauji"),
+      ),
+    ).toEqual({ ok: true });
+    // Only an exact identifier is exempt, and only in ID fields.
+    expect(
+      checkArgs({ target_type: "artist", signals: [`${uuid} call 9876543210`] }, NONE),
+    ).toMatchObject({
+      ok: false,
+    });
+    expect(checkArgs({ query: uuid }, NONE)).toMatchObject({ ok: false, reason: "phone" });
+  });
+
   it("refuses the nickname without echoing it", () => {
     const res = checkArgs({ signals: ["Songs for Bimla"] }, nick("bimla"));
     expect(res).toEqual({ ok: false, reason: "nickname", field: "signals[0]" });

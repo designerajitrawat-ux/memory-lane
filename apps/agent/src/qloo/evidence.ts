@@ -24,11 +24,11 @@ export interface EvidenceStore {
   record(entry: EvidenceRecord): Promise<string>;
 }
 
-const MAX_DIGEST = 10;
+const MAX_DIGEST = 20; // = the largest Qloo result limit, so every returned item can be checked
 const MAX_TEXT = 200;
 
 /**
- * A small, shape-agnostic digest of results ({id, name, type} for up to 10 items) so validators can
+ * A small, shape-agnostic digest of results ({id, name, type} for up to 20 items) so validators can
  * check that an item really came from this call. Kept in our private DB only (never in the repo).
  */
 export function resultsDigest(results: unknown): DigestItem[] {
@@ -44,7 +44,8 @@ export function resultsDigest(results: unknown): DigestItem[] {
     const item: DigestItem = {};
     const id = str(r.entity_id ?? r.id ?? r.tag_id);
     const name = str(r.name ?? r.title);
-    const type = str(r.type ?? r.subtype ?? r.entity_type);
+    // recommend/rank results say type "urn:entity" and put the real kind in subtype.
+    const type = str(r.subtype ?? r.type ?? r.entity_type);
     if (id) item.id = id;
     if (name) item.name = name;
     if (type) item.type = type;

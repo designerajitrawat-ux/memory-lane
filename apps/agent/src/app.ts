@@ -8,7 +8,10 @@ import type { Db } from "./db/client";
 import { clientIpResolver } from "./clientIp";
 import { profileRoutes } from "./profiles/routes";
 import { resolveRoutes, type ResolveRouteDeps } from "./stage1/routes";
+import { tasteRoutes, type TasteRouteDeps } from "./stage2/routes";
 import type { ProfileStore } from "./profiles/store";
+import { createResearchAllowance, type ResearchLimits } from "./limits";
+import { createRunLock } from "./sse";
 
 export interface AppDeps {
   gateway: Pick<QlooGateway, "capabilities">;
@@ -17,6 +20,10 @@ export interface AppDeps {
   profiles?: ProfileStore | null;
   /** Stage 1 seed resolution; null without a database (routes then answer 503). */
   resolution?: ResolveRouteDeps | null;
+  /** Stage 2 Life Taste Profile; null without a database (routes then answer 503). */
+  taste?: TasteRouteDeps | null;
+  /** Shared quota protection for every user-triggered research route. */
+  research?: ResearchLimits;
   version: string;
   webOrigins: string[];
   trustProxyHops?: number;
@@ -116,7 +123,14 @@ export async function buildApp(deps: AppDeps) {
   );
 
   await app.register(profileRoutes, { store: deps.profiles ?? null });
-  await app.register(resolveRoutes, { deps: deps.resolution ?? null, clientIp });
+  // One allowance and one run lock across research stages (security review W1).
+  const research = {
+    clientIp,
+    allowance: createResearchAllowance(deps.research ?? deps.resolution?.limits),
+    lock: createRunLock(),
+  };
+  await app.register(resolveRoutes, { deps: deps.resolution ?? null, ...research });
+  await app.register(tasteRoutes, { deps: deps.taste ?? null, ...research });
 
   const startedAt = Date.now();
   let cached: { at: number; checks: Promise<[QlooCheck, DbCheck]> } | null = null;

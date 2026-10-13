@@ -60,12 +60,28 @@ flowchart TD
 - Avoid-list validation must also read Qloo descriptions (some films touch war/trauma themes).
 - The gateway runs ≤3 live calls at once (bursts of 8 hit a 429).
 
-### Stage 2 — Life Taste Profile
-Agent loop (max ~12 tool calls, budget-guarded). Allowed tools: `qloo_recommend`, `qloo_rank`,
-`qloo_find_tags`, `qloo_describe`, `qloo_where_popular`, `qloo_entity_tags`,
-`qloo_audience_demographics`, plus app tool `propose_candidates` (returns LLM candidates as a list
-that must then be resolved & ranked).
-Target: 4 domains × 4–6 items, each with `evidence_ids`.
+### Stage 2 — Life Taste Profile (built: `apps/agent/src/stage2/`)
+A fixed, visible plan of 5 Qloo calls in parallel (≤3 at once), from the confirmed seeds' **entity IDs**:
+1. **Music** — `qloo_recommend` artist (signals = up to 5 seed IDs, artists first, `explain`). Singers whose
+   Qloo description centres inside the reminiscence bump come first, unknown dates keep Qloo's order,
+   mostly-later voices only fill in (`era.ts` `eraPlacement`).
+2. **Films and TV** — `qloo_recommend` movie + tv_show (limit 20): only `release_year` within birth +5 … +45,
+   closest to the bump (birth +10 … +30) first.
+3. **Places** — `qloo_recommend` place, `filter_location` = the earliest life-stage region, signals = the
+   confirmed places (else all seeds). Kept: lasting places (landmarks, markets, parks, the seaside: name +
+   opening words of Qloo's description), not hotels/bars/banquet halls, in the same country as most
+   results (Qloo's filter crossed to Wagah, Pakistan), not sites of grief.
+4. **Food** — favourites (cuisine tags) + `qloo_find_tags` "<town> food" (food tags only, near-duplicate
+   names merged).
+Every Qloo item is checked against the avoid-list (name + Qloo's full description, with related words
+for well-known painful topics: "Partition" also keeps out Wagah/1947/refugees) and a gentle filter
+(atrocities, suicide, abuse), then the validators (grounding, avoid, language) before saving.
+Captions use Qloo's own explanation: "People who enjoy X and Y often also enjoy Z." Up to 6 items per
+domain; favourites first. Live results (2026-10-13) for the three personas: era-correct music (Kishore
+Kumar, Mukesh / The Kinks, Roy Orbison / The Platters), films such as Guide (1965) and Deewaar (1975),
+places such as Gobindgarh Fort, Sadda Pind, Carillon Historical Park.
+**With the Claude key (next):** `propose_candidates` adds era-typical names per domain, which only
+survive through `qloo_rank` / `qloo_describe` with evidence (Phase 0: rank pushes modern names down).
 
 ### Stage 3 — Compose session
 - Mostly LLM (structured JSON output, zod-validated) using ONLY items from the taste profile (plus

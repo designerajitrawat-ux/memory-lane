@@ -161,6 +161,8 @@ export function ProfileDetail() {
   const toChoose = profile.seeds.filter((s) => s.status === "needs_input").length;
   const confirmed = profile.seeds.filter((s) => s.status === "confirmed").length;
   const nothingMatched = isOwner && toCheck === 0 && toChoose === 0 && confirmed === 0;
+  const readyForProfile = isOwner && toCheck === 0 && toChoose === 0 && confirmed > 0;
+  const hasNextStep = isOwner && (toCheck > 0 || toChoose > 0 || confirmed > 0);
 
   return (
     <div className="space-y-8">
@@ -216,6 +218,17 @@ export function ProfileDetail() {
             </Link>
           </div>
         )}
+        {readyForProfile && (
+          <div className="space-y-3">
+            <p className="text-base text-muted-foreground">
+              Every favourite is checked. Next, Memory Lane builds their Life Taste Profile with
+              Qloo: music, films and TV, food and places from their years.
+            </p>
+            <Link href={`/profiles/${profile.id}/taste`} className={primaryLink}>
+              Life Taste Profile
+            </Link>
+          </div>
+        )}
         {nothingMatched && profile.seeds.length > 0 && (
           <p className="text-base text-muted-foreground">
             None of the favourites were matched in Qloo, so there&apos;s nothing to plan from yet.
@@ -259,7 +272,7 @@ export function ProfileDetail() {
         <Link
           href="/profiles"
           className={
-            isOwner && (toCheck > 0 || toChoose > 0)
+            hasNextStep
               ? "inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4"
               : primaryLink
           }

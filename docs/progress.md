@@ -3,37 +3,33 @@
 Claude Code: update this file at the end of every phase/session. Newest entries on top.
 
 ## Current status
-- Phase: 1 — Scaffold & deploy skeleton: **deployed**; gate waits only on the Qloo key (Qloo ✗ → ✓).
-  Phase 2 — Qloo gateway: **code complete** (key-independent parts); live gate = run the recorder after
-  the key. Phase 3a — profiles, owner token, wizard: **code complete**. Phase 3b — confirm matches (Stage 1):
-  **skeleton complete** (real flow end to end; live it honestly says "Qloo isn't connected yet"; the
-  `qloo_describe` → candidate mapping is provisional until real recordings). Phase 0 still waiting on the
-  Qloo key.
+- **Phase 0 — done** (2026-10-13): key works, persona gate passes (docs/qloo-findings.md).
+- **Phase 1 — gate passed**: live health shows Agent ✓ · Qloo ✓ · DB ✓.
+- **Phase 2 — gate passed**: recorder made live calls into the gitignored folder; tests on synthetic
+  envelopes; no Qloo data committed.
+- **Phase 3 — done**: wizard → Stage 1 confirm with real Qloo (describe for singers/films/TV/places,
+  find_tags for food/other; needs_input choices; one option per place listing).
+- **Phase 4 — Qloo pipeline done, LLM step pending the Anthropic key**: Stage 2 builds a Life Taste Profile
+  from confirmed seed IDs (music, films/TV in era, places, food) with evidence on every item, avoid-list +
+  gentle filters, validators; screen 5 with evidence drawer. Checked live on all three personas.
+- Next: Phase 5 (session plan + player + reactions), then 6–9. **Blocking for the LLM steps (proposing
+  era candidates, session prompts, "what changed" text, compare view): an Anthropic API key** — the
+  developer creates it in the Anthropic Console (billing) and pastes it on Render (ANTHROPIC_API_KEY).
 - Live URLs: web: https://memory-lane-sable-rho.vercel.app · agent: https://memory-lane-agent.onrender.com
 - Repo: https://github.com/designerajitrawat-ux/memory-lane (public; secret scanning + push protection on)
 - Hosting: Vercel project `memory-lane` (root `apps/web`), Render Blueprint `memory-lane` → service
   `memory-lane-agent` (free, Virginia), Neon project `memory-lane` (aws-us-east-1, direct connection).
-
 - Monitoring: UptimeRobot "Memory Lane agent - keep-alive (live)" (5 min, `/api/health/live`) +
-  "Memory Lane agent - readiness (Qloo + DB)" (1 h, `/api/health`; shows Down until the Qloo key is set).
+  "Memory Lane agent - readiness (Qloo + DB)" (1 h, `/api/health`).
+- Local Qloo setup: key = Windows user env var `QLOO_API_KEY` (harness reports source "environment");
+  use `qloo.cmd` in PowerShell (the .ps1 shim is blocked by the execution policy).
 
 ## Next steps
-1. Wait for Qloo key email (requested 2026-10-12; usually within one business day, check spam). Make sure
-   `QLOO_BASE_URL` + `QLOO_TRUSTED_BASE_URL` = `https://hackathon.api.qloo.com` are set as persistent
-   user env vars, then run `qloo setup --qloo` yourself in a terminal (never paste the key in chat) →
-   `qloo setup --status` shows "Qloo data: ready" → reload Claude Code so the `qloo` MCP server
-   connects. Add QLOO_API_KEY on Render (Environment tab; you paste it) → the Phase-1 gate
-   ("Agent ✓ · Qloo ✓ · DB ✓" on the public URL) passes. Record a real "ready" capabilities fixture
-   (harness-local metadata, not Qloo response data, so it may be committed).
-2. Phase-2 live gate: `pnpm --filter @memory-lane/agent record` (3 live calls → gitignored
-   `test/fixtures/recorded/`; check `git status` stays clean).
-3. Phase 3b after the key: record a few `qloo_describe` answers (gitignored), fit
-   `stage1/mapDescribe.ts` (fields, type labels, year) and its tests to them, then click the confirm flow
-   live. Also try `qloo_find_tags` for genre/era favourites ("ghazals", "60s Bollywood"): the kit's own
-   first example ("jazz" → five Jazz tags of different types) shows these are tags, not entities.
-4. Run Phase-0 validation; fill `docs/qloo-findings.md`. Note: `qloo_recommend`/`qloo_rank` accept a
-   free-text `demographic` ("men 25-34") — test an older age band for era fit.
-5. While waiting: join Discord, get an Anthropic API key (Console billing) for Phase 4.
+1. Phase 5: Stage 3 compose (session template, prompts, link URLs built in code) + validators; plan
+   screen, player, reactions API. Works without the LLM using code-written prompt templates; Claude adds
+   warmer prompts once ANTHROPIC_API_KEY exists.
+2. Phase 6 adaptation, Phase 7 compare/how-it-works, Phase 8 demo personas + landing, Phase 9 submission.
+3. Developer: create an Anthropic API key (Console → billing) and add it on Render; join Discord.
 
 ## Decisions (ADR-lite)
 | Date | Decision | Why | Docs updated |
@@ -68,9 +64,22 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-12 | Seed `note` column (fixed reasons) + DB CHECKs (status, note, confirmed ⇒ evidence) + evidence FKs; Stage 1 writes guarded on `pending`; candidates deleted after a choice | ux-reviewer C2 (personal-info note was replaced by "not found"); security-reviewer W3 + S5/S11 | 04, 05 |
 | 2026-10-12 | Confirm screen: focus moves to the choices after a run; focused banners are not live regions; stale choices refresh on 409; Check is secondary while choices wait | ux-reviewer C1, W1–W9 | 06 |
 | 2026-10-12 | Dev-only `QLOO_FIXTURE_DIR` + `DATABASE_URL=pglite:memory` (`dev:fixtures`), both refused in production; PGlite kept external to the bundle | Click through the whole flow locally without secrets, Docker or Neon | 04, README |
+| 2026-10-13 | Qloo key as a Windows user env var (`QLOO_API_KEY`), not the harness's hidden prompt | The developer couldn't use `qloo setup --qloo` (PowerShell blocks qloo.ps1; the open terminal lacked the new URL vars, so the key was checked against api.qloo.com and rejected) | progress |
+| 2026-10-13 | Stage 1 food/other via `qloo_find_tags`; describe candidates = selected + same-name alternatives (all same-type alternatives for places and non-exact matches); needs_input choices from `resolution.issues`, one option per place listing | Real recordings and live checks (WALL·E noise, "Butter chicken" → restaurant, five listings of one shrine) | 05 |
+| 2026-10-13 | PII guard exempts exact Qloo IDs (UUIDs, tag URNs) in ID fields | Stage 2 sends confirmed seed IDs; a UUID's digits matched the phone rule | 03 |
+| 2026-10-13 | Stage 2 = fixed 5-call Qloo plan + code era/avoid/gentle filters + validators; LLM proposals added when the key exists | Phase 0: no era filter in Qloo; deterministic plan is demo-safe and explainable; works before the Anthropic key | 05 |
+| 2026-10-13 | Places kept by the opening words of Qloo's description (landmarks yes, hotels/bars no) + same-country rule | Live: hotels, banquet halls, a spa, Wagah (Pakistan) came back for Amritsar | 05 |
+| 2026-10-13 | Avoid-list reads Qloo's full description, with related words for well-known painful topics; gentle filter for atrocities/suicide/abuse | Live: Wagah Border passed a "Partition" avoid; "Sophie's Choice" came back | 05, 07 |
+| 2026-10-13 | Gateway runs ≤3 live calls at once | Phase 0: bursts of 8 hit a 429 | 03 |
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-13: **Phase 0 done, Phase 1/2 gates passed, Stage 1 on real Qloo, Phase 4 Qloo pipeline.** Key set up
+  locally (env var) and on Render; live health Agent ✓ · Qloo ✓ · DB ✓. qloo-data-scout validation
+  (persona gate passes). Stage 1 candidates pinned against recordings. Stage 2: `stage2/` (era, avoid,
+  language, validators, store, build, routes), migration 0005 (`taste_profiles`, seed year/description),
+  shared allowance + run lock across research routes, evidence endpoint; screen 5 with evidence drawer.
+  Tests: agent 125+, shared 14, web 14. Live-checked all three personas against real Qloo.
 - 2026-10-12: **Phase 3b skeleton complete.** Shared resolve schemas (`needs_input`, candidates, SSE events,
   confirm request), migration 0003 (`seed_candidates`, `qloo_calls.profile_id` cascade), Stage 1
   resolver over the gateway (`qloo_describe` only), owner-only routes (GET seeds, SSE resolve, confirm),

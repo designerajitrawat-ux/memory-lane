@@ -1,26 +1,58 @@
 {
-  "_note": "SYNTHETIC: hand-written for tests, shaped like the harness envelope. Not Qloo data.",
+  "_note": "SYNTHETIC: hand-written for tests, shaped like the real harness envelope (shape pinned 2026-10-13 from local recordings). Not Qloo data.",
   "isError": false,
   "structuredContent": {
     "schema_version": "1.0-preview.1",
     "operation": "recommend",
     "status": "ok",
     "summary": "Found 3 movies.",
+    "interpretation": {
+      "target_type": "urn:entity:movie",
+      "signals": [
+        {
+          "input": "00000000-0000-4000-8000-00000000000a",
+          "entityId": "00000000-0000-4000-8000-00000000000a",
+          "name": "Example Artist A",
+          "type": "urn:entity:artist",
+          "match": "identifier"
+        }
+      ]
+    },
     "results": [
       {
         "entity_id": "00000000-0000-4000-8000-000000000101",
         "name": "Example Film One",
-        "type": "urn:entity:movie"
+        "type": "urn:entity:movie",
+        "subtype": "urn:entity:movie",
+        "explainability": {
+          "signal.interests.entities": [
+            { "entity_id": "00000000-0000-4000-8000-00000000000a", "score": 1 }
+          ]
+        },
+        "properties": {
+          "release_year": 1962,
+          "description": "Example Film One (1962) is an example drama."
+        }
       },
       {
         "entity_id": "00000000-0000-4000-8000-000000000102",
         "name": "Example Film Two",
-        "type": "urn:entity:movie"
+        "type": "urn:entity:movie",
+        "subtype": "urn:entity:movie",
+        "properties": {
+          "release_year": 1971,
+          "description": "Example Film Two (1971) is an example musical."
+        }
       },
       {
         "entity_id": "00000000-0000-4000-8000-000000000103",
         "name": "Example Film Three",
-        "type": "urn:entity:movie"
+        "type": "urn:entity:movie",
+        "subtype": "urn:entity:movie",
+        "properties": {
+          "release_year": 2015,
+          "description": "Example Film Three (2015) is a modern example."
+        }
       }
     ],
     "result_count": 3,
