@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   BrainCircuit,
   CheckCircle2,
+  ExternalLink,
   HeartPulse,
   ListChecks,
   RefreshCcw,
@@ -17,7 +18,7 @@ export const metadata: Metadata = { title: "How it works · Memory Lane" };
 const FLOW: { icon: LucideIcon; title: string; who: string; text: string }[] = [
   {
     icon: ListChecks,
-    title: "Favourites",
+    title: "Before · Favourites",
     who: "The caregiver",
     text: "A few public favourites: a singer, a film, a dish, a place. Plus where they grew up (town level) and anything to avoid.",
   },
@@ -31,7 +32,7 @@ const FLOW: { icon: LucideIcon; title: string; who: string; text: string }[] = [
     icon: Sparkles,
     title: "2 · Build the Life Taste Profile",
     who: "Qloo recommends, code checks",
-    text: "qloo_recommend from the confirmed favourites' Qloo IDs: singers, films and TV, places near where they grew up, dishes from Qloo's food tags. Code keeps films and TV to their years, leaves out the avoid-list (with related words) and painful subjects, and drops anything without Qloo evidence.",
+    text: "qloo_recommend from the confirmed favourites' Qloo IDs, each domain from its own favourites: singers from the singers they love, films and TV from their films and shows, places in and around where they grew up from their tastes and from a place they love; dishes from Qloo's food tags for the town and its region. Code keeps films and TV to their years, keeps lasting landmarks (not hotels or bars), leaves out the avoid-list (with related words) and painful subjects, and drops anything without Qloo evidence. Every step is kept as the build's log.",
   },
   {
     icon: HeartPulse,
@@ -43,7 +44,7 @@ const FLOW: { icon: LucideIcon; title: string; who: string; text: string }[] = [
     icon: RefreshCcw,
     title: "4 · Learn from how it landed",
     who: "Qloo again, from the reactions",
-    text: "What they sang along to goes first next time, and Qloo is asked for more like it. Anything that upset them never returns and joins the avoid-list. The next plan says what changed.",
+    text: "qloo_recommend finds more like what they sang along to, and qloo_rank orders everything still to play against it, so Qloo decides what comes first next time. Anything that upset them never returns and joins the avoid-list. The next plan says what changed, and each item shows the calls behind it.",
   },
 ];
 
@@ -56,7 +57,7 @@ const RULES = [
 const PRIVACY = [
   "Nothing personal reaches Qloo: a guard in front of every call refuses nicknames, contact details, addresses and health terms.",
   "Places stay at town level. Favourites are public cultural names. The nickname stays in Memory Lane.",
-  'No login: profiles live on the device that made them. "Delete this profile" removes everything, Qloo records included. Idle profiles go after 90 days.',
+  'No login: profiles live on the device that made them. "Delete this profile" removes the profile, its sessions and its Qloo call records; Qloo answers shared by everyone stay cached for up to 8 days. Idle profiles go after 90 days.',
 ];
 
 const LIMITS = [
@@ -120,7 +121,7 @@ export default function HowItWorksPage() {
         </div>
 
         <Section id="flow-heading" title="From favourites to a session">
-          <ol className="relative space-y-4 border-l-2 border-primary/40 pl-6">
+          <ol role="list" className="relative space-y-4 border-l-2 border-primary/40 pl-6">
             {FLOW.map(({ icon: Icon, title, who, text }) => (
               <li key={title} className="relative">
                 <span
@@ -130,7 +131,7 @@ export default function HowItWorksPage() {
                   <Icon className="size-4" />
                 </span>
                 <div className="space-y-1 rounded-2xl border bg-card p-4">
-                  <p className="font-heading text-xl leading-snug">{title}</p>
+                  <h3 className="font-heading text-xl leading-snug">{title}</h3>
                   <p className="text-base font-bold text-evidence">{who}</p>
                   <p className="text-base">{text}</p>
                 </div>
@@ -189,6 +190,10 @@ export default function HowItWorksPage() {
                   className="underline underline-offset-4"
                 >
                   {r.text}
+                  <ExternalLink
+                    aria-hidden="true"
+                    className="ml-1 inline size-4 align-baseline text-muted-foreground"
+                  />
                   <span className="sr-only"> (opens in a new tab)</span>
                 </a>
               </li>

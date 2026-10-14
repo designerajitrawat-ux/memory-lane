@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { CircleCheck, CircleDashed, CircleHelp, CircleSlash } from "lucide-react";
 import type { ProfileView } from "@memory-lane/shared";
+import { DemoBanner } from "@/components/demo-banner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -189,6 +190,7 @@ export function ProfileDetail() {
           {profile.isDemo && " · Fictional demo profile"}
         </p>
       </div>
+      {profile.isDemo && !isOwner && <DemoBanner />}
 
       <section aria-labelledby="favourites-heading" className="space-y-3">
         <h2 id="favourites-heading" className="text-xl font-bold">
@@ -277,16 +279,25 @@ export function ProfileDetail() {
       </section>
 
       <div>
-        <Link
-          href="/profiles"
-          className={
-            hasNextStep
-              ? "inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4"
-              : primaryLink
-          }
-        >
-          Back to your profiles
-        </Link>
+        {profile.isDemo && !isOwner ? (
+          <Link
+            href="/demo"
+            className="inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4"
+          >
+            Back to the demo profiles
+          </Link>
+        ) : (
+          <Link
+            href="/profiles"
+            className={
+              hasNextStep
+                ? "inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4"
+                : primaryLink
+            }
+          >
+            Back to your profiles
+          </Link>
+        )}
       </div>
 
       {isOwner && (

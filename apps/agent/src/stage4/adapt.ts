@@ -5,6 +5,7 @@ import { normalise } from "../stage1/mapDescribe";
 import { avoidMatcher } from "../stage2/avoid";
 import {
   HEAVY,
+  HEAVY_SCREEN,
   PLACEMENT_ORDER,
   found,
   join,
@@ -19,9 +20,14 @@ import type { ReactedItem } from "../stage3/store";
 
 /** How much one reaction moves an item (Stage 4, docs/05): ≤ -1 means it never comes back. */
 const WEIGHT: Record<Reaction, number> = { sang: 2, engaged: 1, neutral: -0.5, distressed: -100 };
-/** Learned items start ahead of the rest of their domain, so session 2 visibly shifts. */
-export const LEARNED_BOOST = 1.5;
+/** Learned items start a little ahead of the rest of their domain… */
+export const LEARNED_BOOST = 1;
+/** …and Qloo's ranking against what landed decides the order: top gets this much, the last none. */
+export const RANK_BOOST = 1.5;
 const PER_DOMAIN = 2;
+/** qloo_rank takes at most 10 options. */
+const RANK_OPTIONS = 10;
+const TOOLS = ["qloo_recommend", "qloo_rank"] as const;
 
 const DOMAIN_WORDS: Record<TasteDomain, string> = {
   music: "music",
@@ -39,6 +45,8 @@ export interface AdaptInput {
   reactions: ReactedItem[];
   /** The session just before the one being planned (0 when there is none). */
   lastSessionNumber: number;
+  /** Entities of that session, played or not: Qloo ranks only what is still to play. */
+  recent?: ReadonlySet<string>;
 }
 
 export interface AdaptDeps {
@@ -55,17 +63,20 @@ export interface Adaptation {
   favouriteDomain: TasteDomain | null;
   /** New items Qloo found from what landed well, already validated (evidence, avoid, wording). */
   learnedItems: TasteItem[];
+  /** The qloo_rank record behind each item Qloo re-ordered (its evidence joins the item's own). */
+  rankEvidence: Map<string, string>;
   /** Items that seemed to upset them: they join the avoid-list (the reason is owner-only). */
   learnedAvoid: { text: string; reason: string }[];
-  /** 2–4 plain sentences for the caregiver ("What changed since last time"). */
+  /** 2–5 plain sentences for the caregiver ("What changed since last time"). */
   whatChanged: string[];
 }
 
 /**
  * Stage 4 (docs/05 §2): learn from the last session's reactions before the next one is planned.
- * Sang/engaged → more weight, and Qloo is asked for neighbours of those exact entities (≤2 calls, same
- * guard, evidence and filters as Stage 2); neutral → less weight; distressed → never again, and onto
- * the avoid-list. The result says, in plain words, what changed.
+ * Sang/engaged → more weight, Qloo is asked for neighbours of those exact entities, and Qloo ranks
+ * what is still to play (plus what it just found) against them, so Qloo decides what comes next (≤4
+ * calls, same guard, evidence and filters as Stage 2); neutral → less weight; distressed → never
+ * again, and onto the avoid-list. The result says, in plain words, what changed.
  */
 export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptation> {
   const weights = new Map<string, number>();
@@ -78,6 +89,7 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
       weights,
       favouriteDomain: null,
       learnedItems: [],
+      rankEvidence: new Map(),
       learnedAvoid: [],
       whatChanged:
         input.lastSessionNumber > 0
@@ -112,13 +124,21 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
   const lovedEntities = loved.filter((r) => r.entityType?.startsWith("urn:entity:"));
   const music = lovedEntities.filter((r) => r.domain === "music").slice(0, 3);
   const screen = lovedEntities.filter((r) => r.domain === "film_tv").slice(0, 3);
-  const trustedIds = new Set(lovedEntities.map((r) => r.entityId.toLowerCase()));
-  const call = async (args: Record<string, unknown>): Promise<GatewayResult | "refused"> => {
+  // Ids the server read from its own records: the reacted items and this profile's items.
+  const trustedIds = new Set(
+    [...lovedEntities.map((r) => r.entityId), ...input.profile.items.map((i) => i.entityId)].map(
+      (id) => id.toLowerCase(),
+    ),
+  );
+  const call = async (
+    tool: (typeof TOOLS)[number],
+    args: Record<string, unknown>,
+  ): Promise<GatewayResult | "refused"> => {
     if (deps.allowCall && !deps.allowCall()) return "refused";
-    return deps.gateway.call("qloo_recommend", args, {
+    return deps.gateway.call(tool, args, {
       nickname: input.nickname,
       profileId: input.profileId,
-      allowedTools: ["qloo_recommend"],
+      allowedTools: TOOLS,
       reserve: deps.budgetReserve ?? 0,
       trustedIds,
       persistent: deps.persistent ?? false,
@@ -127,7 +147,7 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
   const screenTarget = screen[0]?.entityType?.endsWith(":movie") ? "movie" : "tv_show";
   const [musicRes, screenRes] = await Promise.all([
     music.length
-      ? call({
+      ? call("qloo_recommend", {
           target_type: "artist",
           signals: music.map((r) => r.entityId),
           limit: 15,
@@ -135,7 +155,7 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
         })
       : Promise.resolve(null),
     screen.length
-      ? call({
+      ? call("qloo_recommend", {
           target_type: screenTarget,
           signals: screen.map((r) => r.entityId),
           limit: 20,
@@ -169,6 +189,7 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
   const screenNew = found(screenOutcome)
     .filter(ok)
     .filter((f) => yearFits(f.year, era))
+    .filter((f) => !HEAVY_SCREEN.test(`${f.name} ${f.text}`))
     .sort((a, b) => bumpDistance(a.year ?? 0, era) - bumpDistance(b.year ?? 0, era))
     .slice(0, PER_DOMAIN)
     .map((f) =>
@@ -186,7 +207,54 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
   const { kept: learnedItems } = validateTasteItems(candidates, evidence, isAvoided);
   for (const item of learnedItems) {
     weights.set(item.entityId, (weights.get(item.entityId) ?? 0) + LEARNED_BOOST);
+    // Ids Qloo just returned to the server (validated against the evidence): rankable like the rest.
+    trustedIds.add(item.entityId.toLowerCase());
   }
+
+  // Qloo ranks what is still to play in a domain (plus what it just found) against what landed, and
+  // that order leads the next session. Played, upset and tag items aren't ranked.
+  const played = new Set([...(input.recent ?? []), ...last.map((r) => r.entityId)]);
+  const pool = (domain: TasteDomain, type: string) =>
+    [...learnedItems, ...input.profile.items]
+      .filter((i) => i.domain === domain && i.entityType === type)
+      .filter((i) => !played.has(i.entityId) && (weights.get(i.entityId) ?? 0) > -1)
+      .filter((i, n, all) => all.findIndex((x) => x.entityId === i.entityId) === n)
+      .slice(0, RANK_OPTIONS);
+  const lovedFirst = (domain: string) =>
+    [
+      ...lovedEntities.filter((r) => r.domain === domain),
+      ...lovedEntities.filter((r) => r.domain !== domain),
+    ]
+      .slice(0, 5)
+      .map((r) => r.entityId);
+  const musicPool = pool("music", "urn:entity:artist");
+  const screenType = `urn:entity:${screenTarget}`;
+  const screenPool = pool("film_tv", screenType);
+  const rank = (options: TasteItem[], optionType: string, signals: string[]) =>
+    options.length >= 2 && signals.length
+      ? call("qloo_rank", {
+          options: options.map((i) => i.entityId),
+          option_type: optionType,
+          signals,
+        })
+      : Promise.resolve(null);
+  const [musicRank, screenRank] = await Promise.all([
+    rank(musicPool, "artist", lovedFirst("music")),
+    rank(screenPool, screenTarget, lovedFirst("film_tv")),
+  ]);
+  const rankEvidence = new Map<string, string>();
+  const ranked = (res: GatewayResult | "refused" | null, options: TasteItem[]): TasteItem[] => {
+    const order = rankOrder(res, options);
+    if (!order) return [];
+    order.items.forEach((item, i) => {
+      const share = order.items.length === 1 ? 1 : 1 - i / (order.items.length - 1);
+      weights.set(item.entityId, (weights.get(item.entityId) ?? 0) + RANK_BOOST * share);
+      rankEvidence.set(item.entityId, order.evidenceId);
+    });
+    return order.items;
+  };
+  const musicRanked = ranked(musicRank, musicPool);
+  const screenRanked = ranked(screenRank, screenPool);
 
   // What changed, in plain words (it reports what the caregiver logged; it claims nothing).
   const whatChanged: string[] = [];
@@ -201,6 +269,16 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
   if (learnedScreen.length) {
     whatChanged.push(
       `${names(screen)} landed well, so Qloo was asked for more like that: ${names(learnedScreen)}.`,
+    );
+  }
+  if (musicRanked.length) {
+    whatChanged.push(
+      `Qloo ranked the music still to play against what landed well; ${names(musicRanked.slice(0, 2))} ${musicRanked.length === 1 ? "leads" : "lead"}.`,
+    );
+  }
+  if (screenRanked.length) {
+    whatChanged.push(
+      `Qloo ranked the ${screenTarget === "movie" ? "films" : "TV shows"} still to play the same way; ${names(screenRanked.slice(0, 2))} ${screenRanked.length === 1 ? "leads" : "lead"}.`,
     );
   }
   const lovedNotExtended = loved.filter(
@@ -238,9 +316,28 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
     weights,
     favouriteDomain,
     learnedItems,
+    rankEvidence,
     learnedAvoid,
-    whatChanged: whatChanged.slice(0, 5),
+    whatChanged: whatChanged.slice(0, 6),
   };
+}
+
+/** Qloo's order for the options it ranked (best first), with the call's evidence; null if unusable. */
+function rankOrder(
+  res: GatewayResult | "refused" | null,
+  options: readonly TasteItem[],
+): { items: TasteItem[]; evidenceId: string } | null {
+  if (!res || res === "refused" || res.kind !== "usable") return null;
+  const byId = new Map(options.map((o) => [o.entityId.toLowerCase(), o]));
+  const results = (res.envelope as { results?: unknown }).results;
+  const items = (Array.isArray(results) ? results : [])
+    .map((r) => {
+      const id = (r as { entity_id?: unknown }).entity_id;
+      return typeof id === "string" ? byId.get(id.toLowerCase()) : undefined;
+    })
+    .filter((i): i is TasteItem => !!i)
+    .filter((i, n, all) => all.indexOf(i) === n);
+  return items.length ? { items, evidenceId: res.evidenceId } : null;
 }
 
 function learnedItem(f: Found, domain: TasteDomain, from: string[]): TasteItem {

@@ -182,6 +182,8 @@ export const DemoProfileSchema = z.object({
   regions: z.array(z.string()),
   /** A few confirmed favourites, as hints on the demo picker. */
   favourites: z.array(z.string()),
+  /** The newest session (the one Stage 4 learned), for a direct link. */
+  latestSessionId: z.string().nullable().default(null),
 });
 export const DemoProfilesResponseSchema = z.object({ profiles: z.array(DemoProfileSchema) });
 

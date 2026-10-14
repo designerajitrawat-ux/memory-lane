@@ -100,15 +100,16 @@ profiles get an owner hash no token can produce. Limits: 20 profiles per owner, 
 | GET `/api/profiles/:id/seeds` | owner only: each favourite's status + stored candidates |
 | POST `/api/profiles/:id/seeds/resolve` | owner only, SSE, 6/min/IP, one run per profile (else 409 `already_checking`): looks up each pending favourite with `qloo_describe` → stored candidates (status `needs_input`) or `unresolved` + note; stops at the first failure, no key, quota or used-up allowance (`error` event; that seed stays pending). Allowance: `STAGE1_LOOKUPS_PER_OWNER_DAY` (50) per device token and `STAGE1_LOOKUPS_PER_CLIENT_DAY` (100) per client IP, in memory; Stage 1 leaves `QLOO_BUDGET_RESERVE` (100) of the daily budget for demo personas (gateway `reserve`). Keep-alive comment every 15 s |
 | POST `/api/profiles/:id/seeds/confirm` | owner only, 30/min/IP: `{decisions:[{seedId, candidateId \| null}]}`; a candidate must be one stored for that seed (else 409 `choice_out_of_date`); null = "None of these" → `rejected` |
-| GET `/api/profiles/:id/taste-profile` | owner only: the newest Life Taste Profile, or null |
+| GET `/api/profiles/:id/taste-profile` | owner, or anyone for a demo (read-only): the newest Life Taste Profile (with its build `steps`), or null |
 | POST `/api/profiles/:id/taste-profile` | owner only, SSE, 4/min/IP: Stage 2 builds a new version (`TasteEventSchema`); 409 `nothing_confirmed` before any favourite is confirmed; shares the research allowance and the per-profile run lock with Stage 1 |
-| POST `/api/profiles/:id/sessions` | owner only, 10/min: Stage 4 learns from the last session (≤2 Qloo calls, shared allowance + run lock; may save a taste profile version with learned items and add learned avoid items), then Stage 3 plans → 201 `{session}` with `whatChanged`; 409 `no_taste_profile` / `already_checking` |
-| GET `/api/profiles/:id/sessions` | owner only: session summaries (number, status, item and reaction counts) |
-| GET `/api/sessions/:id` | owner of its profile only: session + items |
-| POST `/api/session-items/:id/reaction` | owner only, 60/min: `{value: sang|engaged|neutral|distressed|null, note?}` (≤300 chars) |
-| POST `/api/sessions/:id/complete` | owner only: marks it done (Stage 4 adapts when the next one is planned) |
+| POST `/api/profiles/:id/sessions` | owner only, 10/min: if the newest session is still untouched and made from the newest taste profile → 200 with it (no Qloo calls); else Stage 4 learns from the last session (≤2 `qloo_recommend` + ≤2 `qloo_rank`, shared allowance + run lock; may save a taste profile version with learned items and rank evidence, and add learned avoid items), then Stage 3 plans → 201 `{session}` with `whatChanged`; at most 50 sessions per profile (oldest dropped); 409 `no_taste_profile` / `already_checking` |
+| GET `/api/profiles/:id/sessions` | owner, or anyone for a demo: session summaries (number, status, item and reaction counts) |
+| GET `/api/sessions/:id` | owner of its profile, or anyone for a demo (`readOnly: true`, notes blanked): session + items |
+| POST `/api/session-items/:id/reaction` | owner only (never a demo), 60/min: `{value: sang|engaged|neutral|distressed|null, note?}`; the note (≤300 chars) is refused with 400 `invalid_note` and a gentle message when it carries health, contact or address details |
+| POST `/api/sessions/:id/complete` | owner only (never a demo): marks it done (Stage 4 adapts when the next one is planned) |
+| POST `/api/demo-profiles/:id/try` | "Try it yourself", 10/hour/IP: a private copy of a demo persona for this device (mints an owner token if needed; profile limits apply): confirmed favourites, caregiver avoid-list and the first taste profile, with copies of the Qloo call records behind them; session 1 planned → 201 `{session, ownerToken?}` |
 | GET `/api/profiles/:id/compare` | baseline (LLM-only) vs grounded plan (cached) |
-| GET `/api/evidence/:id` | owner of the profile it was made for only: tool, args (as sent, after the PII guard), status, result count, cached, time — never the harness summary |
+| GET `/api/evidence/:id` | owner of the profile it was made for, or anyone for a demo: tool, args (as sent, after the PII guard), status, result count, cached, time, `names` (this profile's own names for the ids sent) and `results` (Qloo's result names, ≤20) — never the harness summary |
 
 SSE event shape: `{type:"step"|"tool"|"result"|"error"|"done", message, tool?, status?, evidenceId?, data?}`.
 Messages are fixed app text; harness `summary`/`recovery` text is never forwarded. Stage 1 events are

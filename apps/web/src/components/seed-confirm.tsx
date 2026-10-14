@@ -281,7 +281,13 @@ export function SeedConfirm() {
           </p>
         )}
         {(running || log.length > 0) && <AgentLog lines={log} />}
-        {problem && <ProblemBanner ref={problemRef} message={problem.message} />}
+        {problem && (
+          <ProblemBanner
+            ref={problemRef}
+            message={problem.message}
+            offerDemo={problem.kind === "quota" || problem.kind === "qloo_not_connected"}
+          />
+        )}
       </section>
 
       {notes.length > 0 && (

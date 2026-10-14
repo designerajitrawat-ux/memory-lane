@@ -38,7 +38,7 @@ export interface TasteStore {
   latest(profileId: string): Promise<TasteProfile | null>;
   save(
     profileId: string,
-    profile: Pick<TasteProfile, "era" | "partial" | "items" | "notes">,
+    profile: Pick<TasteProfile, "era" | "partial" | "items" | "notes"> & { steps?: string[] },
   ): Promise<TasteProfile>;
 }
 
@@ -52,6 +52,7 @@ export function createTasteStore(db: AppDb): TasteStore {
     partial: row.partial,
     items: row.items as TasteItem[],
     notes: row.notes as string[],
+    steps: (row.steps as string[] | null) ?? [],
   });
 
   return {
@@ -138,6 +139,7 @@ export function createTasteStore(db: AppDb): TasteStore {
             partial: profile.partial,
             items: profile.items,
             notes: profile.notes,
+            steps: profile.steps ?? [],
           })
           .returning();
         if (!row) throw new Error("taste profile insert returned no row");

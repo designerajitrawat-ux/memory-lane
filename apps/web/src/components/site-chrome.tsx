@@ -24,7 +24,20 @@ export function SiteHeader() {
   );
 }
 
-export function SiteFooter() {
+const SOURCE_URL = "https://github.com/designerajitrawat-ux/memory-lane";
+
+/** `minimal` (the session player): just the disclaimer, nothing to mis-tap under Back/Next. */
+export function SiteFooter({ minimal = false }: { minimal?: boolean } = {}) {
+  if (minimal) {
+    return (
+      <footer className="border-t px-4 py-6 text-center text-base text-muted-foreground">
+        <p>
+          Memory Lane supports reminiscence activities. It is not a medical device and does not
+          diagnose or treat any condition.
+        </p>
+      </footer>
+    );
+  }
   return (
     <footer className="space-y-3 border-t px-4 py-6 text-center text-base text-muted-foreground">
       <nav aria-label="More" className="flex flex-wrap justify-center gap-x-6">
@@ -40,6 +53,14 @@ export function SiteFooter() {
         >
           How it works
         </Link>
+        <a
+          href={SOURCE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex min-h-12 items-center underline underline-offset-4"
+        >
+          Source on GitHub<span className="sr-only"> (opens in a new tab)</span>
+        </a>
       </nav>
       <p>
         Memory Lane supports reminiscence activities. It is not a medical device and does not

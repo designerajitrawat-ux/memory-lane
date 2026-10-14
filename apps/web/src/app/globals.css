@@ -114,3 +114,37 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* The player's Back/Next bar stays within reach on tall phones (ux review W11); short or landscape
+   screens keep their space. Focused elements never hide under it (WCAG 2.4.11). */
+@media (max-width: 639px) and (min-height: 576px) {
+  .player-nav {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    margin-inline: -1rem;
+    padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom));
+    background: color-mix(in oklab, var(--background) 96%, transparent);
+    border-top: 1px solid var(--border);
+  }
+  html:has(.player-nav) {
+    scroll-padding-bottom: 7rem;
+  }
+}
+
+/* A session plan printed for a care home folder: the plan only, no site chrome or buttons. */
+@media print {
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .print-plain {
+    border-color: #999 !important;
+    break-inside: avoid;
+  }
+}

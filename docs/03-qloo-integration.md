@@ -57,6 +57,12 @@ Not allowed in hackathon: `integrate`, `plan`, `build` modes. Use `qloo mcp`, NO
 Recommended chain (from kit): **resolve → confirm with user → ask taste question**
 `qloo_find_tags`/`qloo_describe` → confirm → `qloo_recommend` / `qloo_rank` / `qloo_where_popular`.
 
+What Memory Lane uses, and where: `qloo_describe` + `qloo_find_tags` (Stage 1 matches; Stage 2 town and
+region food tags), `qloo_recommend` with `explain` (Stage 2 per domain, places with `filter_location`;
+Stage 4 neighbours of what landed), `qloo_rank` (Stage 4: what is still to play, ≤10 options, ranked
+against what landed; the order decides the next session and the call joins each item's evidence). Ids in
+`signals`/`options` pass the PII guard only when the server read them from its own records.
+
 ## 4. Result envelope (every tool)
 ```json
 { "status": "ok|empty|needs_input|partial|degraded|error",

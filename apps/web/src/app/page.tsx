@@ -28,7 +28,7 @@ export default function Home() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-12 px-4 py-14">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-12 px-4 py-8 sm:py-14">
         <section aria-labelledby="hero-heading" className="space-y-6">
           <p className="inline-flex items-center gap-2 text-base font-bold text-primary">
             <HeartHandshake aria-hidden="true" className="size-5" />
@@ -51,6 +51,7 @@ export default function Home() {
               className={`inline-flex min-h-12 items-center justify-center rounded-lg bg-primary px-6 py-3 text-center text-base font-bold text-primary-foreground ${linkFocus}`}
             >
               Try a demo profile
+              <span className="ml-2 font-normal opacity-90">· no sign-up</span>
             </Link>
             <Link
               href="/profiles/new"
@@ -71,7 +72,7 @@ export default function Home() {
           <h2 id="steps-heading" className="text-xl font-bold">
             Three steps
           </h2>
-          <ol className="space-y-3">
+          <ol role="list" className="space-y-3">
             {STEPS.map(({ icon: Icon, title, text }, i) => (
               <li key={title} className="flex gap-4 rounded-2xl border bg-card p-4">
                 <span

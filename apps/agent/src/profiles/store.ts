@@ -1,12 +1,23 @@
-import { and, asc, count, desc, eq, lt, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import type {
   DemoProfile,
   ProfileInputParsed,
   ProfileSummary,
   ProfileView,
+  TasteItem,
 } from "@memory-lane/shared";
-import { avoidItems, budget, profiles, seeds } from "../db/schema";
+import {
+  avoidItems,
+  budget,
+  profiles,
+  qlooCalls,
+  seeds,
+  sessions,
+  tasteProfiles,
+} from "../db/schema";
 import type { AppDb } from "../db/types";
+
+type Tx = Parameters<Parameters<AppDb["transaction"]>[0]>[0];
 
 export interface StoredProfile {
   view: ProfileView;
@@ -34,6 +45,13 @@ export interface ProfileStore {
   ownerHasProfiles(ownerTokenHash: string): Promise<boolean>;
   /** Deletes the profile (seeds and avoid items cascade) only if this owner holds it. */
   delete(id: string, ownerTokenHash: string): Promise<boolean>;
+  /**
+   * A private copy of a demo persona for this owner, as it was before any session: its confirmed
+   * favourites, the caregiver's avoid-list and the first Life Taste Profile, with copies of the Qloo
+   * call records behind them (so the copy stands alone if the demo is rebuilt). Counts toward the
+   * same limits as a new profile. Null when it isn't a ready demo.
+   */
+  copyDemo(demoId: string, ownerTokenHash: string): Promise<{ profileId: string } | null>;
 }
 
 export interface ProfileLimits {
@@ -86,28 +104,31 @@ export function createProfileStore(
     };
   }
 
+  /** The per-owner and global daily limits for a new (non-demo) profile; throws inside `tx`. */
+  async function takeProfileSlot(tx: Tx, ownerTokenHash: string) {
+    const [owned] = await tx
+      .select({ n: count() })
+      .from(profiles)
+      .where(and(eq(profiles.ownerTokenHash, ownerTokenHash), eq(profiles.isDemo, false)));
+    if ((owned?.n ?? 0) >= limits.perOwner) throw new ProfileLimitError("owner");
+    // Atomic check-and-increment of today's global counter; no row back = cap reached.
+    const counted = await tx
+      .insert(budget)
+      .values({ day: utcDay(now()), profilesCreated: 1 })
+      .onConflictDoUpdate({
+        target: budget.day,
+        set: { profilesCreated: sql`${budget.profilesCreated} + 1` },
+        setWhere: lt(budget.profilesCreated, limits.perDay),
+      })
+      .returning({ n: budget.profilesCreated });
+    if (counted.length === 0) throw new ProfileLimitError("daily");
+  }
+
   return {
     async create(input, ownerTokenHash, opts = {}) {
       const isDemo = opts.isDemo ?? false;
       const id = await db.transaction(async (tx) => {
-        if (!isDemo) {
-          const [owned] = await tx
-            .select({ n: count() })
-            .from(profiles)
-            .where(and(eq(profiles.ownerTokenHash, ownerTokenHash), eq(profiles.isDemo, false)));
-          if ((owned?.n ?? 0) >= limits.perOwner) throw new ProfileLimitError("owner");
-          // Atomic check-and-increment of today's global counter; no row back = cap reached.
-          const counted = await tx
-            .insert(budget)
-            .values({ day: utcDay(now()), profilesCreated: 1 })
-            .onConflictDoUpdate({
-              target: budget.day,
-              set: { profilesCreated: sql`${budget.profilesCreated} + 1` },
-              setWhere: lt(budget.profilesCreated, limits.perDay),
-            })
-            .returning({ n: budget.profilesCreated });
-          if (counted.length === 0) throw new ProfileLimitError("daily");
-        }
+        if (!isDemo) await takeProfileSlot(tx, ownerTokenHash);
         const [p] = await tx
           .insert(profiles)
           .values({
@@ -192,14 +213,33 @@ export function createProfileStore(
     },
 
     async listDemos() {
+      // Only personas the seeder finished (a taste profile and both sessions; review W15/W2), and while
+      // a new version is being built, just the newest complete one of each.
       const rows = await db
         .select()
         .from(profiles)
-        .where(eq(profiles.isDemo, true))
-        .orderBy(profiles.createdAt);
-      const out: DemoProfile[] = [];
+        .where(
+          and(
+            eq(profiles.isDemo, true),
+            sql`exists (select 1 from ${tasteProfiles} where ${tasteProfiles.profileId} = ${profiles.id})`,
+            sql`(select count(*) from ${sessions} where ${sessions.profileId} = ${profiles.id}) >= 2`,
+          ),
+        )
+        .orderBy(desc(profiles.createdAt));
+      const newest = new Map<string, (typeof rows)[number]>();
       for (const p of rows) {
+        const key = p.nickname ?? p.id;
+        if (!newest.has(key)) newest.set(key, p);
+      }
+      const out: DemoProfile[] = [];
+      for (const p of [...newest.values()].reverse()) {
         const [seedRows] = await children(p.id);
+        const [latest] = await db
+          .select({ id: sessions.id })
+          .from(sessions)
+          .where(eq(sessions.profileId, p.id))
+          .orderBy(desc(sessions.number))
+          .limit(1);
         out.push({
           id: p.id,
           nickname: p.nickname,
@@ -209,6 +249,7 @@ export function createProfileStore(
             .filter((s) => s.status === "confirmed")
             .slice(0, 4)
             .map((s) => s.displayName ?? s.rawText),
+          latestSessionId: latest?.id ?? null,
         });
       }
       return out;
@@ -221,6 +262,129 @@ export function createProfileStore(
         .where(and(eq(profiles.ownerTokenHash, ownerTokenHash), eq(profiles.isDemo, false)))
         .limit(1);
       return rows.length > 0;
+    },
+
+    async copyDemo(demoId, ownerTokenHash) {
+      const [demo] = await db
+        .select()
+        .from(profiles)
+        .where(and(eq(profiles.id, demoId), eq(profiles.isDemo, true)))
+        .limit(1);
+      if (!demo) return null;
+      const [first] = await db
+        .select()
+        .from(tasteProfiles)
+        .where(eq(tasteProfiles.profileId, demoId))
+        .orderBy(asc(tasteProfiles.version))
+        .limit(1);
+      if (!first) return null;
+      const seedRows = await db
+        .select()
+        .from(seeds)
+        .where(and(eq(seeds.profileId, demoId), eq(seeds.status, "confirmed")))
+        .orderBy(asc(seeds.position));
+      const avoidRows = await db
+        .select()
+        .from(avoidItems)
+        .where(and(eq(avoidItems.profileId, demoId), eq(avoidItems.source, "caregiver")))
+        .orderBy(asc(avoidItems.position));
+      const items = first.items as TasteItem[];
+      const evidenceIds = [
+        ...new Set([
+          ...seedRows.flatMap((s) => (s.evidenceId ? [s.evidenceId] : [])),
+          ...items.flatMap((i) => i.evidenceIds),
+        ]),
+      ];
+      const calls = evidenceIds.length
+        ? await db
+            .select()
+            .from(qlooCalls)
+            .where(and(eq(qlooCalls.profileId, demoId), inArray(qlooCalls.id, evidenceIds)))
+        : [];
+
+      return db.transaction(async (tx) => {
+        await takeProfileSlot(tx, ownerTokenHash);
+        const [copy] = await tx
+          .insert(profiles)
+          .values({
+            ownerTokenHash,
+            nickname: demo.nickname,
+            birthYear: demo.birthYear,
+            languages: demo.languages,
+            lifeStages: demo.lifeStages,
+          })
+          .returning({ id: profiles.id });
+        if (!copy) throw new Error("profile insert returned no row");
+        // Each Qloo record is copied as it was (same answer, same time), under the new profile.
+        const newId = new Map<string, string>();
+        for (const call of calls) {
+          const [row] = await tx
+            .insert(qlooCalls)
+            .values({
+              profileId: copy.id,
+              tool: call.tool,
+              argsChecked: call.argsChecked,
+              status: call.status,
+              summary: call.summary,
+              resultCount: call.resultCount,
+              resultsDigest: call.resultsDigest,
+              cached: call.cached,
+              latencyMs: call.latencyMs,
+              createdAt: call.createdAt,
+            })
+            .returning({ id: qlooCalls.id });
+          if (row) newId.set(call.id, row.id);
+        }
+        const seedCopies = seedRows.flatMap((seed) => {
+          const evidenceId = seed.evidenceId ? newId.get(seed.evidenceId) : undefined;
+          return evidenceId
+            ? [
+                {
+                  profileId: copy.id,
+                  position: seed.position,
+                  rawText: seed.rawText,
+                  domain: seed.domain,
+                  qlooEntityId: seed.qlooEntityId,
+                  qlooEntityType: seed.qlooEntityType,
+                  displayName: seed.displayName,
+                  year: seed.year,
+                  description: seed.description,
+                  status: seed.status,
+                  source: seed.source,
+                  evidenceId,
+                },
+              ]
+            : [];
+        });
+        if (seedCopies.length) await tx.insert(seeds).values(seedCopies);
+        if (avoidRows.length) {
+          await tx.insert(avoidItems).values(
+            avoidRows.map((a) => ({
+              profileId: copy.id,
+              position: a.position,
+              text: a.text,
+              qlooEntityId: a.qlooEntityId,
+              reason: a.reason,
+              source: a.source,
+            })),
+          );
+        }
+        const copiedItems = items.flatMap((item) => {
+          const ids = item.evidenceIds.flatMap((e) => newId.get(e) ?? []);
+          return ids.length ? [{ ...item, evidenceIds: ids }] : [];
+        });
+        await tx.insert(tasteProfiles).values({
+          profileId: copy.id,
+          version: 1,
+          eraFrom: first.eraFrom,
+          eraTo: first.eraTo,
+          partial: first.partial,
+          items: copiedItems,
+          notes: first.notes,
+          steps: first.steps,
+        });
+        return { profileId: copy.id };
+      });
     },
 
     async delete(id, ownerTokenHash) {

@@ -4,17 +4,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
+  ArrowRight,
   Clapperboard,
   Heart,
+  ListChecks,
   MapPin,
   Music,
-  ShieldCheck,
   Sparkles,
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
 import type {
-  EvidenceView,
   ResolveProblem,
   SessionSummary,
   TasteDomain,
@@ -23,15 +23,10 @@ import type {
 } from "@memory-lane/shared";
 import { AgentLog, ProblemBanner } from "@/components/agent-run";
 import { DemoBanner } from "@/components/demo-banner";
+import { EvidenceDrawer } from "@/components/evidence-drawer";
+import { Loading } from "@/components/loading";
+import { TryDemo } from "@/components/try-demo";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { api, type ApiFailureKind } from "@/lib/api";
 
 const DOMAINS: { key: TasteDomain; title: string; icon: LucideIcon }[] = [
@@ -61,8 +56,10 @@ export function TasteProfileView() {
   const { id } = useParams<{ id: string }>();
   const [profile, setProfile] = useState<TasteProfile | null | undefined>(undefined);
   const [seeds, setSeeds] = useState<SeedState | null>(null);
-  // A public demo persona (not this device's profile): look, don't change.
-  const [readOnly, setReadOnly] = useState(false);
+  // A public demo persona (not this device's profile): look, don't change. Read-only until the
+  // agent confirms this device owns it, so a demo never flashes owner buttons (ux review S17).
+  const [readOnly, setReadOnly] = useState(true);
+  const [nickname, setNickname] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<{ kind: ApiFailureKind; message: string } | null>(
     null,
   );
@@ -86,6 +83,7 @@ export function TasteProfileView() {
       setProfile(t.data.tasteProfile);
       if (p.ok) {
         setReadOnly(!p.data.isOwner);
+        setNickname(p.data.profile.nickname);
         const s = p.data.profile.seeds;
         setSeeds({
           confirmed: s.filter((x) => x.status === "confirmed").length,
@@ -173,36 +171,39 @@ export function TasteProfileView() {
     else setFinishedRuns((n) => n + 1);
   }
 
+  const title = (
+    <h1 className="font-heading text-4xl leading-tight break-words">
+      {nickname ? `${nickname}’s Life Taste Profile` : "Life Taste Profile"}
+    </h1>
+  );
+
   if (loadError) {
     return (
-      <div className="space-y-4 rounded-2xl border bg-card p-5">
-        <p role="alert" className="text-lg">
-          {loadError.message}
-        </p>
-        {loadError.kind === "not_found" && (
-          <p className="text-base text-muted-foreground">
-            Profiles are remembered on the device that created them. If you made it on another phone
-            or browser, open it there.
+      <div className="space-y-6">
+        {title}
+        <div className="space-y-4 rounded-2xl border bg-card p-5">
+          <p role="alert" className="text-lg">
+            {loadError.message}
           </p>
-        )}
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          {loadError.kind !== "not_found" && (
-            <Button className="h-12 px-5 text-base" onClick={retryLoad}>
-              Try again
-            </Button>
+          {loadError.kind === "not_found" && (
+            <p className="text-base text-muted-foreground">
+              Profiles are remembered on the device that created them. If you made it on another
+              phone or browser, open it there.
+            </p>
           )}
-          <BackLink id={id} />
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            {loadError.kind !== "not_found" && (
+              <Button className="h-12 px-5 text-base" onClick={retryLoad}>
+                Try again
+              </Button>
+            )}
+            <BackLink id={id} />
+          </div>
         </div>
       </div>
     );
   }
-  if (profile === undefined) {
-    return (
-      <p role="status" className="text-lg text-muted-foreground">
-        Loading the profile…
-      </p>
-    );
-  }
+  if (profile === undefined) return <Loading>Loading the profile…</Loading>;
 
   // Building can't help while Qloo can't answer: the button steps back (as on screen 4).
   const buildIsSecondary = problem?.kind === "qloo_not_connected" || problem?.kind === "quota";
@@ -214,13 +215,20 @@ export function TasteProfileView() {
           label={running ? "What Memory Lane is doing" : "How this version was built"}
         />
       )}
-      {problem && <ProblemBanner ref={problemRef} message={problem.message} />}
+      {problem && (
+        <ProblemBanner
+          ref={problemRef}
+          message={problem.message}
+          offerDemo={problem.kind === "quota" || problem.kind === "qloo_not_connected"}
+        />
+      )}
     </>
   );
 
   if (!profile && readOnly) {
     return (
       <div className="space-y-4">
+        {title}
         <p className="rounded-2xl border bg-card p-5 text-lg">
           This demo profile is still being prepared with Qloo. Please come back in a few minutes.
         </p>
@@ -233,6 +241,7 @@ export function TasteProfileView() {
     const nothingConfirmed = seeds !== null && seeds.confirmed === 0;
     return (
       <div className="space-y-8">
+        {title}
         <section aria-labelledby="build-heading" className="space-y-4">
           <h2 id="build-heading" className="text-xl font-bold">
             {nothingConfirmed
@@ -285,14 +294,22 @@ export function TasteProfileView() {
   const built = new Date(profile.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" });
   return (
     <div className="space-y-10">
-      {readOnly && <DemoBanner />}
+      <div className="space-y-4">
+        {title}
+        {readOnly && <DemoBanner />}
+      </div>
+      {/* On a demo the sessions are the point, so they come first (ux review W13). */}
+      {readOnly && <SessionsPanel profileId={id} readOnly />}
+      {readOnly && <TryDemo profileId={id} name={nickname} />}
       <div className="space-y-3">
         <h2
           ref={readyRef}
           tabIndex={-1}
           className="font-heading text-2xl leading-snug outline-none"
         >
-          {plural(favourites, "favourite")} you confirmed, {found} more found by Qloo
+          {readOnly
+            ? `${plural(favourites, "confirmed favourite")}, ${found} more found by Qloo`
+            : `${plural(favourites, "favourite")} you confirmed, ${found} more found by Qloo`}
           {learned > 0 && `, ${learned} learned from sessions`}
         </h2>
         <p className="text-base text-muted-foreground">
@@ -328,7 +345,7 @@ export function TasteProfileView() {
         </nav>
       </div>
 
-      <SessionsPanel profileId={id} readOnly={readOnly} />
+      {!readOnly && <SessionsPanel profileId={id} readOnly={false} />}
 
       {DOMAINS.map(({ key, title, icon: Icon }) => {
         const items = profile.items.filter((i) => i.domain === key);
@@ -357,6 +374,28 @@ export function TasteProfileView() {
           </section>
         );
       })}
+
+      {profile.steps.length > 0 && (
+        <section aria-labelledby="built-heading" className="space-y-3">
+          <h2 id="built-heading" className="flex items-center gap-2 text-xl font-bold">
+            <ListChecks aria-hidden="true" className="size-6 text-primary" />
+            How Memory Lane built this
+          </h2>
+          <details className="rounded-xl border bg-card p-4">
+            <summary className="flex min-h-12 cursor-pointer items-center text-base font-bold">
+              The agent&apos;s {profile.steps.length} steps, as it worked
+            </summary>
+            <ol className="mt-3 list-decimal space-y-2 pl-6 text-base">
+              {profile.steps.map((step, i) => (
+                <li key={i}>{step}</li>
+              ))}
+            </ol>
+            <p className="mt-3 text-base text-muted-foreground">
+              Each &ldquo;Qloo&rdquo; chip above opens the exact call behind that item.
+            </p>
+          </details>
+        </section>
+      )}
 
       {profile.notes.length > 0 && (
         <section aria-labelledby="notes-heading" className="space-y-3">
@@ -440,141 +479,19 @@ function ItemCard({ item }: { item: TasteItem }) {
       <p className="flex-1 text-base break-words">
         {favourite ? (item.description ?? item.caption) : item.caption}
       </p>
-      <EvidenceDrawer item={item} />
+      <EvidenceDrawer
+        subject={{
+          name: item.name,
+          caption: item.caption,
+          description: item.description,
+          entityId: item.entityId,
+          entityType: item.entityType,
+          evidenceIds: item.evidenceIds,
+          source: item.source,
+        }}
+      />
     </li>
   );
-}
-
-const TOOL_LABELS: Record<string, string> = {
-  qloo_describe: "Looked up in Qloo, then chosen as a favourite",
-  qloo_find_tags: "Matched to Qloo's tags",
-  qloo_recommend: "Recommended by Qloo from the favourites",
-  qloo_rank: "Ranked by Qloo against the favourites",
-};
-
-const STATUS_WORDS: Record<string, string> = {
-  ok: "Answered",
-  needs_input: "Several matches; one was chosen",
-  partial: "Partly answered",
-  degraded: "Partly answered",
-  empty: "No results",
-};
-
-/** The evidence drawer (docs/06): the Qloo call behind an item, as recorded. */
-function EvidenceDrawer({ item }: { item: TasteItem }) {
-  const [records, setRecords] = useState<Record<string, EvidenceView>>({});
-  const [failed, setFailed] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const chip =
-    item.source === "favourite"
-      ? "Qloo · confirmed"
-      : item.source === "learned"
-        ? "Qloo · learned"
-        : item.entityType?.startsWith("urn:tag:")
-          ? "Qloo · food tag"
-          : "Qloo · recommended";
-
-  // Only what loaded is kept, so reopening (or "Try again") fetches just what's missing.
-  function load() {
-    const missing = item.evidenceIds.filter((e) => !records[e]);
-    if (missing.length === 0 || loading) return;
-    setLoading(true);
-    setFailed(false);
-    Promise.all(missing.map((e) => api.getEvidence(e))).then((rs) => {
-      const next: Record<string, EvidenceView> = {};
-      for (const r of rs) if (r.ok) next[r.data.id] = r.data;
-      setRecords((prev) => ({ ...prev, ...next }));
-      setFailed(rs.some((r) => !r.ok));
-      setLoading(false);
-    });
-  }
-
-  const shown = item.evidenceIds.map((e) => records[e]).filter((r): r is EvidenceView => !!r);
-  return (
-    <Dialog onOpenChange={(open) => open && load()}>
-      <DialogTrigger
-        render={
-          <Button
-            variant="ghost"
-            className="-ml-3 h-auto min-h-12 gap-2 self-start px-3 text-left text-base font-bold whitespace-normal text-evidence"
-          />
-        }
-      >
-        <ShieldCheck aria-hidden="true" className="size-5 shrink-0" />
-        {chip}
-        <span className="sr-only">: show the evidence for {item.name}</span>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="break-words">{item.name}</DialogTitle>
-          <DialogDescription>{item.caption}</DialogDescription>
-        </DialogHeader>
-        {item.description && (
-          <p className="text-base break-words">
-            <span className="font-bold">Qloo says: </span>
-            {item.description}
-          </p>
-        )}
-        <div className="space-y-3">
-          <h3 className="text-base font-bold">The Qloo record behind it</h3>
-          <p role="status" className="text-base text-muted-foreground empty:hidden">
-            {loading ? "Loading the record…" : ""}
-          </p>
-          {shown.map((r) => (
-            <dl
-              key={r.id}
-              className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 rounded-xl border bg-card p-3 text-base"
-            >
-              <dt className="text-muted-foreground">What</dt>
-              <dd>{TOOL_LABELS[r.tool] ?? r.tool}</dd>
-              <dt className="text-muted-foreground">Asked</dt>
-              <dd className="break-words">{describeArgs(r)}</dd>
-              <dt className="text-muted-foreground">Answer</dt>
-              <dd>
-                {STATUS_WORDS[r.status] ?? r.status}, {plural(r.resultCount, "result")}
-                {r.cached && " (saved answer)"}
-              </dd>
-              <dt className="text-muted-foreground">When</dt>
-              <dd>
-                {new Date(r.createdAt).toLocaleString(undefined, {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
-              </dd>
-            </dl>
-          ))}
-          {failed && !loading && (
-            <div className="space-y-2">
-              <p className="text-base text-muted-foreground">
-                {typeof navigator !== "undefined" && navigator.onLine === false
-                  ? "You seem to be offline, so the record couldn't be loaded."
-                  : "The record couldn't be loaded just now."}
-              </p>
-              <Button variant="outline" className="h-12 px-5 text-base" onClick={load}>
-                Try again
-              </Button>
-            </div>
-          )}
-          <p className="text-base text-muted-foreground">
-            Qloo describes what groups of people tend to enjoy, not what one person will like.
-          </p>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** What was sent, in plain words (the args already passed the personal-data guard). */
-function describeArgs(r: EvidenceView): string {
-  const a = (r.args && typeof r.args === "object" ? r.args : {}) as Record<string, unknown>;
-  const n = Array.isArray(a.signals) ? a.signals.length : 0;
-  const parts: string[] = [];
-  if (typeof a.entity === "string") parts.push(`“${a.entity}”`);
-  if (typeof a.query === "string") parts.push(`“${a.query}”`);
-  if (typeof a.target_type === "string") parts.push(`${a.target_type.replace(/_/g, " ")}s`);
-  if (n) parts.push(`based on ${plural(n, "confirmed favourite")}`);
-  if (typeof a.filter_location === "string") parts.push(`near ${a.filter_location}`);
-  return parts.join(", ") || "—";
 }
 
 function BackLink({ id }: { id: string }) {
@@ -594,22 +511,32 @@ const SESSION_STATUS: Record<SessionSummary["status"], string> = {
   done: "Done",
 };
 
-/** The way on from the profile: plan a session (the screen's one primary action), see past ones. */
+const primaryLink =
+  "group inline-flex min-h-14 w-full items-center justify-between gap-3 rounded-xl bg-primary px-5 py-3 text-left text-lg font-bold text-primary-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+
+/**
+ * The way on from the profile: plan a session (the screen's one primary action), see past ones. On a
+ * demo: the session Stage 4 learned is the thing to open.
+ */
 function SessionsPanel({ profileId, readOnly }: { profileId: string; readOnly: boolean }) {
   const router = useRouter();
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [planning, setPlanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     api.listSessions(profileId).then((r) => {
-      if (active) setSessions(r.ok ? r.data.sessions : []);
+      if (!active) return;
+      if (r.ok) setSessions(r.data.sessions);
+      else setListError(r.message);
     });
     return () => {
       active = false;
     };
-  }, [profileId]);
+  }, [profileId, attempt]);
 
   async function plan() {
     setPlanning(true);
@@ -624,6 +551,8 @@ function SessionsPanel({ profileId, readOnly }: { profileId: string; readOnly: b
   }
 
   const any = (sessions?.length ?? 0) > 0;
+  const newest = sessions?.[0];
+  const learnedSession = readOnly && newest && newest.number > 1 ? newest : null;
   return (
     <section
       aria-labelledby="sessions-heading"
@@ -634,7 +563,7 @@ function SessionsPanel({ profileId, readOnly }: { profileId: string; readOnly: b
       </h2>
       <p className="text-base text-muted-foreground">
         {readOnly
-          ? "Session 1 has reactions logged. Session 2 shows what Memory Lane learned from them: open it and look for “What changed since last time”."
+          ? "Session 1 has sample reactions logged. Session 2 was planned from them: it shows what Memory Lane learned."
           : "About 25 minutes together: six things from this profile, each with something to listen to or look at, and gentle things to talk about."}
       </p>
       {!readOnly && (
@@ -642,10 +571,43 @@ function SessionsPanel({ profileId, readOnly }: { profileId: string; readOnly: b
           {planning ? "Planning…" : any ? "Plan the next session" : "Plan the first session"}
         </Button>
       )}
+      {learnedSession && (
+        <Link href={`/sessions/${learnedSession.id}`} className={primaryLink}>
+          <span>
+            Open session {learnedSession.number}: what it learned from session{" "}
+            {learnedSession.number - 1}
+          </span>
+          <ArrowRight
+            aria-hidden="true"
+            className="size-6 shrink-0 transition-transform group-hover:translate-x-1"
+          />
+        </Link>
+      )}
       {error && (
         <p role="alert" className="text-base font-bold text-destructive">
           {error}
         </p>
+      )}
+      {sessions === null && !listError && <Loading>Loading the sessions…</Loading>}
+      {listError && (
+        <div className="space-y-2">
+          <p role="alert" className="text-base">
+            The sessions couldn&apos;t be loaded: {listError}
+          </p>
+          <Button
+            variant="outline"
+            className="h-12 px-5 text-base"
+            onClick={() => {
+              setListError(null);
+              setAttempt((n) => n + 1);
+            }}
+          >
+            Try again
+          </Button>
+        </div>
+      )}
+      {readOnly && sessions?.length === 0 && (
+        <p className="text-base">This demo&apos;s sessions are still being prepared.</p>
       )}
       {any && (
         <ul role="list" className="space-y-2">
@@ -657,7 +619,7 @@ function SessionsPanel({ profileId, readOnly }: { profileId: string; readOnly: b
               >
                 <span className="font-bold">Session {s.number}</span>
                 <span className="text-muted-foreground">
-                  {SESSION_STATUS[s.status]}
+                  {readOnly && s.status === "planned" ? "Ready to try" : SESSION_STATUS[s.status]}
                   {s.reacted > 0 && ` · ${s.reacted} of ${s.itemCount} reactions`}
                 </span>
               </Link>

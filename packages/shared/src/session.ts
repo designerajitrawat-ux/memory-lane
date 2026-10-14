@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { personalDetailProblem } from "./pii";
 import { TasteDomainSchema } from "./taste";
 
 /**
@@ -10,7 +11,11 @@ export const ReactionSchema = z.enum(["sang", "engaged", "neutral", "distressed"
 export const SessionItemKindSchema = z.enum(["song", "film", "tv", "food", "place"]);
 export const SessionStatusSchema = z.enum(["planned", "in_progress", "done"]);
 
-export const SessionLinkSchema = z.object({ url: z.string(), label: z.string() });
+/** Search pages built in code (YouTube, Spotify, Google Maps); only https links are shown. */
+export const SessionLinkSchema = z.object({
+  url: z.url({ protocol: /^https$/ }),
+  label: z.string(),
+});
 
 export const SessionItemSchema = z.object({
   id: z.string(),
@@ -62,10 +67,27 @@ export const SessionResponseSchema = z.object({
   readOnly: z.boolean().default(false),
 });
 export const SessionListResponseSchema = z.object({ sessions: z.array(SessionSummarySchema) });
+/**
+ * POST /api/demo-profiles/:id/try → session 1 of a private copy of a demo persona, on this device
+ * (a new owner token when the device had none).
+ */
+export const TryDemoResponseSchema = z.object({
+  session: SessionSchema,
+  ownerToken: z.string().optional(),
+});
 
 export const ReactionRequestSchema = z.object({
   value: ReactionSchema.nullable(),
-  note: z.string().trim().max(300).optional(),
+  /** Stays in Memory Lane; the same personal-detail rules as the profile apply (docs/07 §2.9). */
+  note: z
+    .string()
+    .trim()
+    .max(300, "Please keep the note under 300 characters.")
+    .superRefine((s, ctx) => {
+      const problem = personalDetailProblem(s);
+      if (problem) ctx.addIssue({ code: "custom", message: problem });
+    })
+    .optional(),
 });
 
 export type Reaction = z.infer<typeof ReactionSchema>;

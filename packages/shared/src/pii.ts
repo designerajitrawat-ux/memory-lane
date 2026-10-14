@@ -103,3 +103,19 @@ export const STREET_WORD =
 // can't slip through (\b treats "_" and digits as part of a word).
 export const HEALTH =
   /(?<!\p{L})(?:dement(?:ia|ias|ed)|alzheimer\p{L}*|parkinson\p{L}*|amnesi\p{L}*|diagnos\p{L}*|medications?|medicines?|meds|prescriptions?|therap(?:y|ies|ist|ists)|hospice|patients?|caregiv\p{L}*|carers?|lewy|mci|stroke|memory\s+(?:loss|care)|(?:nursing|care)\s+homes?|cognitive\s+(?:decline|impairment))(?!\p{L})/iu;
+
+/**
+ * The first kind of personal detail found in free text the caregiver writes for Memory Lane only (a
+ * session note), as a gentle message; null when there is none. Same patterns as the profile fields.
+ */
+export function personalDetailProblem(text: string): string | null {
+  const s = normalizeText(text);
+  if (HEALTH.test(s)) return "Please leave out health or medical details. They aren't needed.";
+  if (EMAIL.test(s)) return "Please leave out email addresses.";
+  if (URL_LIKE.test(s)) return "Please leave out web links.";
+  if (PHONE.test(s)) return "Please leave out phone numbers.";
+  if (UNIT_NUMBER.test(s) || POSTCODE.test(s) || STREET.test(s)) {
+    return "Please leave out street addresses, house numbers and postcodes.";
+  }
+  return null;
+}

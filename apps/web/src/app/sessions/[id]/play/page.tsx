@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { Loading } from "@/components/loading";
 import { SessionPlayer } from "@/components/session-player";
 import { SiteFooter } from "@/components/site-chrome";
 
@@ -10,11 +11,11 @@ export default function SessionPlayerPage() {
   return (
     <>
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">
-        <Suspense fallback={<p className="text-lg text-muted-foreground">Loading the session…</p>}>
+        <Suspense fallback={<Loading>Loading the session…</Loading>}>
           <SessionPlayer />
         </Suspense>
       </main>
-      <SiteFooter />
+      <SiteFooter minimal />
     </>
   );
 }

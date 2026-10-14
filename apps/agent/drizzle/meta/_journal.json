@@ -50,6 +50,13 @@
       "when": 1791916696059,
       "tag": "0006_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791938294208,
+      "tag": "0007_demo_unique_and_steps",
+      "breakpoints": true
     }
   ]
 }

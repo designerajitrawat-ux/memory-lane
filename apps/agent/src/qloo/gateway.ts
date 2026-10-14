@@ -39,7 +39,10 @@ export interface CallContext {
   allowedTools?: readonly QlooToolName[];
   /** Daily budget units this call must leave untouched (kept for demo personas). Server-side only. */
   reserve?: number;
-  /** Entity ids of confirmed seeds, read by the server: the only UUIDs the PII guard lets through. */
+  /**
+   * Entity ids the server read from its own database (confirmed seeds; taste-profile and session
+   * items for Stage 4): the only UUIDs the PII guard lets through, in `signals`/`options` only.
+   */
   trustedIds?: ReadonlySet<string>;
 }
 

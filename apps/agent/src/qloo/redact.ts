@@ -11,9 +11,11 @@ import {
 } from "@memory-lane/shared";
 import { FREE_TEXT_FIELDS, LOCATION_FIELDS } from "./tools";
 
-// A Qloo entity UUID (its digits would otherwise look like a phone number). Exempt only in `signals`,
-// only exactly as sent, and only when the server vouches for it: Stage 2 passes the entity ids of the
-// confirmed seeds it read from the database, never anything from a request (security review W1).
+// A Qloo entity UUID (its digits would otherwise look like a phone number). Exempt only in `signals`
+// and `options` (qloo_rank), only exactly as sent, and only when the server vouches for it: entity ids
+// the server read from its own database (confirmed seeds, taste-profile and session items), never
+// anything from a request (security review W1).
+const ID_FIELDS = new Set(["signals", "options"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Re-exported for existing imports; the rules live in packages/shared/src/pii.ts.
@@ -32,7 +34,7 @@ export type RedactResult = { ok: true } | { ok: false; reason: RedactReason; fie
 export interface RedactContext {
   /** The person's nickname from the profile (null when there is none); never sent to Qloo. */
   nickname: string | null;
-  /** Lower-cased Qloo entity ids the server read from confirmed seeds; exempt in `signals` only. */
+  /** Lower-cased Qloo entity ids the server read from its own database; exempt as ids only. */
   trustedIds?: ReadonlySet<string>;
 }
 
@@ -43,7 +45,7 @@ export function checkArgs(args: unknown, ctx: RedactContext): RedactResult {
     const value = normalizeText(raw);
     const key = leaf(field);
     if (
-      key === "signals" &&
+      ID_FIELDS.has(key) &&
       raw === value &&
       UUID.test(raw) &&
       ctx.trustedIds?.has(raw.toLowerCase())

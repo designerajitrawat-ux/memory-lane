@@ -1,4 +1,4 @@
-import type { Session } from "@memory-lane/shared";
+import type { Session, TasteItem } from "@memory-lane/shared";
 import type { QlooGateway } from "../qloo/gateway";
 import { avoidMatcher } from "../stage2/avoid";
 import type { TasteStore } from "../stage2/store";
@@ -19,7 +19,7 @@ export interface PlanDeps {
 }
 
 export type PlanResult =
-  | { kind: "planned"; session: Session }
+  | { kind: "planned"; session: Session; reused?: boolean }
   | { kind: "no_taste_profile" }
   | { kind: "nothing_to_plan" };
 
@@ -44,6 +44,9 @@ export async function planNextSession(
     deps.sessions.list(profileId),
   ]);
   if (!taste || taste.items.length === 0) return { kind: "no_taste_profile" };
+  // Nothing played since the last plan: that plan still stands (no Qloo calls, no pile of plans).
+  const waiting = await deps.sessions.unplayed(profileId, taste.id);
+  if (waiting) return { kind: "planned", session: waiting, reused: true };
   const sessionNumber = (existing[0]?.number ?? 0) + 1;
 
   let profile = taste;
@@ -57,6 +60,7 @@ export async function planNextSession(
         ctx,
         reactions: await deps.sessions.reactions(profileId),
         lastSessionNumber: existing[0]?.number ?? 0,
+        recent,
       },
       {
         gateway: deps.gateway ?? NO_GATEWAY,
@@ -67,15 +71,26 @@ export async function planNextSession(
       },
     );
     await deps.sessions.addLearnedAvoid(profileId, learned.learnedAvoid);
-    if (learned.learnedItems.length) {
+    if (learned.learnedItems.length || learned.rankEvidence.size) {
+      // Items Qloo re-ranked also carry that call as evidence, so the drawer shows why they lead.
+      const rankEvidence = learned.rankEvidence;
+      const withRank = (i: TasteItem): TasteItem => {
+        const id = rankEvidence.get(i.entityId);
+        return id && !i.evidenceIds.includes(id)
+          ? { ...i, evidenceIds: [...i.evidenceIds, id] }
+          : i;
+      };
       profile = await deps.taste.save(profileId, {
         era: taste.era,
         partial: taste.partial,
-        items: [...taste.items, ...learned.learnedItems],
-        notes: [
-          ...taste.notes,
-          `Learned from session ${sessionNumber - 1}: ${learned.learnedItems.map((i) => i.name).join(", ")}.`,
-        ],
+        items: [...taste.items, ...learned.learnedItems].map(withRank),
+        notes: learned.learnedItems.length
+          ? [
+              ...taste.notes,
+              `Learned from session ${sessionNumber - 1}: ${learned.learnedItems.map((i) => i.name).join(", ")}.`,
+            ]
+          : taste.notes,
+        steps: taste.steps,
       });
     }
   }

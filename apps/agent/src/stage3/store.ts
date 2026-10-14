@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNotNull, max, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, lte, max, sql } from "drizzle-orm";
 import type {
   Reaction,
   Session,
@@ -12,6 +12,9 @@ import type { AppDb } from "../db/types";
 import type { ComposedItem } from "./compose";
 
 type Link = z.infer<typeof SessionLinkSchema>;
+
+/** Sessions kept per profile; the oldest go first (security review W1: planning costs no Qloo call). */
+export const MAX_SESSIONS = 50;
 
 /** A reacted item from any earlier session, for Stage 4. */
 export interface ReactedItem {
@@ -32,6 +35,11 @@ export interface SessionStore {
   ): Promise<Session>;
   list(profileId: string): Promise<SessionSummary[]>;
   /**
+   * The newest session if it is still planned (nothing logged yet) and was made from this taste
+   * profile version: planning again returns it instead of piling up unused plans.
+   */
+  unplayed(profileId: string, tasteProfileId: string): Promise<Session | null>;
+  /**
    * The session if the owner token holds its profile, or if it belongs to a public demo persona
    * (`readOnly`); anyone else gets null (→ 404).
    */
@@ -42,13 +50,19 @@ export interface SessionStore {
   /** Entity ids of the newest session, to rotate them out of the next one. */
   lastSessionEntities(profileId: string): Promise<Set<string>>;
   reactions(profileId: string): Promise<ReactedItem[]>;
+  /** `seeding` lets the demo seeder (server code only) write a demo persona's sample reactions. */
   react(
     itemId: string,
     ownerHash: string,
     value: Reaction | null,
     note: string | null,
+    opts?: { seeding?: boolean },
   ): Promise<SessionItem | null>;
-  complete(sessionId: string, ownerHash: string): Promise<Session | null>;
+  complete(
+    sessionId: string,
+    ownerHash: string,
+    opts?: { seeding?: boolean },
+  ): Promise<Session | null>;
   /** Stage 4: things that seemed to upset them join the avoid-list (once; the reason is owner-only). */
   addLearnedAvoid(
     profileId: string,
@@ -94,13 +108,19 @@ export function createSessionStore(db: AppDb): SessionStore {
     };
   }
 
-  /** The session row, only if its profile belongs to this owner. */
-  async function owned(sessionId: string, ownerHash: string) {
+  /** The session row, only if its profile belongs to this owner (demo personas never change). */
+  async function owned(sessionId: string, ownerHash: string, seeding = false) {
     const [row] = await db
       .select({ session: sessions })
       .from(sessions)
       .innerJoin(profiles, eq(profiles.id, sessions.profileId))
-      .where(and(eq(sessions.id, sessionId), eq(profiles.ownerTokenHash, ownerHash)))
+      .where(
+        and(
+          eq(sessions.id, sessionId),
+          eq(profiles.ownerTokenHash, ownerHash),
+          eq(profiles.isDemo, seeding),
+        ),
+      )
       .limit(1);
     return row?.session ?? null;
   }
@@ -122,6 +142,14 @@ export function createSessionStore(db: AppDb): SessionStore {
           })
           .returning();
         if (!created) throw new Error("session insert returned no row");
+        await tx
+          .delete(sessions)
+          .where(
+            and(
+              eq(sessions.profileId, profileId),
+              lte(sessions.number, created.number - MAX_SESSIONS),
+            ),
+          );
         if (items.length) {
           await tx.insert(sessionItems).values(
             items.map((i) => ({
@@ -172,6 +200,18 @@ export function createSessionStore(db: AppDb): SessionStore {
       }));
     },
 
+    async unplayed(profileId, tasteProfileId) {
+      const [row] = await db
+        .select()
+        .from(sessions)
+        .where(eq(sessions.profileId, profileId))
+        .orderBy(desc(sessions.number))
+        .limit(1);
+      return row && row.status === "planned" && row.tasteProfileId === tasteProfileId
+        ? load(row)
+        : null;
+    },
+
     async get(sessionId, ownerHash) {
       const [row] = await db
         .select({ session: sessions, owner: profiles.ownerTokenHash, isDemo: profiles.isDemo })
@@ -182,7 +222,14 @@ export function createSessionStore(db: AppDb): SessionStore {
       if (!row) return null;
       const isOwner = ownerHash !== null && row.owner === ownerHash;
       if (!isOwner && !row.isDemo) return null;
-      return { session: await load(row.session), readOnly: !isOwner };
+      const session = await load(row.session);
+      // Notes are the owner's own words: never shown to anyone else (security review S1).
+      return {
+        session: isOwner
+          ? session
+          : { ...session, items: session.items.map((i) => ({ ...i, note: null })) },
+        readOnly: !isOwner,
+      };
     },
 
     async lastSessionEntities(profileId) {
@@ -229,13 +276,19 @@ export function createSessionStore(db: AppDb): SessionStore {
       }));
     },
 
-    async react(itemId, ownerHash, value, note) {
+    async react(itemId, ownerHash, value, note, opts = {}) {
       const [hit] = await db
         .select({ sessionId: sessionItems.sessionId, status: sessions.status })
         .from(sessionItems)
         .innerJoin(sessions, eq(sessions.id, sessionItems.sessionId))
         .innerJoin(profiles, eq(profiles.id, sessions.profileId))
-        .where(and(eq(sessionItems.id, itemId), eq(profiles.ownerTokenHash, ownerHash)))
+        .where(
+          and(
+            eq(sessionItems.id, itemId),
+            eq(profiles.ownerTokenHash, ownerHash),
+            eq(profiles.isDemo, opts.seeding ?? false),
+          ),
+        )
         .limit(1);
       if (!hit) return null;
       const [updated] = await db
@@ -273,8 +326,8 @@ export function createSessionStore(db: AppDb): SessionStore {
       return rows.length;
     },
 
-    async complete(sessionId, ownerHash) {
-      const row = await owned(sessionId, ownerHash);
+    async complete(sessionId, ownerHash, opts = {}) {
+      const row = await owned(sessionId, ownerHash, opts.seeding ?? false);
       if (!row) return null;
       const [done] = await db
         .update(sessions)

@@ -11,6 +11,7 @@ import {
   SeedResolutionSchema,
   TasteEventSchema,
   TasteProfileResponseSchema,
+  TryDemoResponseSchema,
   type ConfirmRequest,
   type ResolveEvent,
   type TasteEvent,
@@ -79,10 +80,18 @@ const kindForStatus = (status: number): ApiFailureKind =>
 async function failureFrom<T>(res: Response): Promise<ApiResult<T>> {
   const body = ApiErrorSchema.safeParse(await res.json().catch(() => null));
   const extra: Partial<ApiResult<T>> = body.success
-    ? { code: body.data.error, ...(body.data.fields ? { fields: body.data.fields } : {}) }
+    ? {
+        code: body.data.error,
+        ...(body.data.fields ? { fields: body.data.fields } : {}),
+        // A note the agent refused says why, gently (it names the kind of detail, never echoes it).
+        ...(body.data.error === "invalid_note" ? { message: body.data.message } : {}),
+      }
     : {};
   return failure<T>(kindForStatus(res.status), extra);
 }
+
+// The free host can take a while to wake; past this a request fails honestly with a retry (ux W17).
+const TIMEOUT_MS = 25_000;
 
 /** One request to the agent: bearer token attached, response validated, failures turned into kinds. */
 export async function request<S extends z.ZodType>(
@@ -91,10 +100,12 @@ export async function request<S extends z.ZodType>(
   init: RequestInit = {},
 ): Promise<ApiResult<z.infer<S>>> {
   const token = getOwnerToken();
+  const timeout = AbortSignal.timeout(TIMEOUT_MS);
   let res: Response;
   try {
     res = await fetch(`${AGENT_URL}${path}`, {
       ...init,
+      signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
       cache: "no-store",
       headers: {
         ...(init.body ? { "content-type": "application/json" } : {}),
@@ -173,6 +184,16 @@ export const api = {
       z.object({ item: SessionItemSchema }),
       { method: "POST", body: JSON.stringify(note === undefined ? { value } : { value, note }) },
     ),
+  /** A private copy of a demo persona on this device, with session 1 ready to play. */
+  async tryDemo(profileId: string) {
+    const result = await request(
+      `/api/demo-profiles/${encodeURIComponent(profileId)}/try`,
+      TryDemoResponseSchema,
+      { method: "POST" },
+    );
+    if (result.ok && result.data.ownerToken) setOwnerToken(result.data.ownerToken);
+    return result;
+  },
   completeSession: (id: string) =>
     request(`/api/sessions/${encodeURIComponent(id)}/complete`, SessionResponseSchema, {
       method: "POST",

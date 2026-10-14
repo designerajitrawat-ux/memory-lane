@@ -30,6 +30,8 @@ export const TasteItemSchema = z.object({
   /** Names of the favourites that led Qloo to it (Qloo's own explanation), if any. */
   becauseOf: z.array(z.string()),
   evidenceIds: z.array(z.string()).min(1),
+  /** Places Qloo found near a town: that town, so map searches find the right one. */
+  locality: z.string().nullable().optional(),
 });
 
 export const TasteProfileSchema = z.object({
@@ -44,6 +46,8 @@ export const TasteProfileSchema = z.object({
   items: z.array(TasteItemSchema),
   /** Fixed, human text: what was filtered or couldn't be found. Never harness output. */
   notes: z.array(z.string()),
+  /** The agent's own log of this build, step by step ("How Memory Lane built this"). */
+  steps: z.array(z.string()).default([]),
 });
 
 export const TasteEventSchema = z.discriminatedUnion("type", [
@@ -64,6 +68,10 @@ export const EvidenceViewSchema = z.object({
   resultCount: z.number().int(),
   cached: z.boolean(),
   createdAt: z.string(),
+  /** Names for the Qloo ids that were sent (favourites, session items), from this profile. */
+  names: z.record(z.string(), z.string()).default({}),
+  /** What Qloo returned, by name (up to 20, in Qloo's order). */
+  results: z.array(z.string()).default([]),
 });
 
 export type TasteDomain = z.infer<typeof TasteDomainSchema>;

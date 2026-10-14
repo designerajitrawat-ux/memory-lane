@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TasteItem } from "@memory-lane/shared";
 import { avoidMatcher } from "./avoid";
-import { similarNames } from "./build";
+import { onlyPlaceWords, similarNames } from "./build";
 import { bumpDistance, eraFor, eraPlacement, mentionedYears, yearFits } from "./era";
 import { captionAllowed, promptAllowed } from "./language";
 import { validateTasteItems } from "./validators";
@@ -138,9 +138,13 @@ describe("similarNames", () => {
     expect(
       similarNames("Amritsari Chur Chur Naan And Cholle", "Chur Chur Naan With Amritsari Chole"),
     ).toBe(true);
-    expect(similarNames("Amritsari Naan", "Amritsari Chur Chur Naan And Cholle")).toBe(false);
-    expect(similarNames("Amritsar Kulcha", "Amritsari Naan")).toBe(false);
+    // Kulcha and naan are one bread in Qloo's Amritsar tags; a dish "with" more is still that dish.
+    expect(similarNames("Amritsari Naan", "Amritsari Chur Chur Naan And Cholle")).toBe(true);
+    expect(similarNames("Amritsar Kulcha", "Amritsari Naan")).toBe(true);
     expect(similarNames("Amritsar Kulcha", "Amritsari Kulcha And Chole")).toBe(true);
+    expect(similarNames("Sarson Da Saag", "Saag")).toBe(true);
+    expect(similarNames("Fish And Chips", "Fish Pie")).toBe(false);
+    expect(similarNames("Punjabi Paneer", "Amritsari Naan")).toBe(false);
   });
 });
 
@@ -154,9 +158,27 @@ describe("similarNames across wordings", () => {
 });
 
 describe("similarNames when one name adds a word", () => {
-  it("merges a name with the same name plus one word, not more", () => {
+  it("merges a name with the same name plus one word", () => {
     expect(similarNames("Diner", "American Diner Food")).toBe(true);
-    expect(similarNames("Amritsari Naan", "Amritsari Chur Chur Naan And Cholle")).toBe(false);
+    expect(similarNames("Pizza", "Dayton Style Pizza With Extra Cheese")).toBe(false);
+  });
+});
+
+describe("onlyPlaceWords", () => {
+  const places = ["amritsar", "punjab", "india"];
+  it("spots food tags that only name the place or its people", () => {
+    expect(onlyPlaceWords("Punjabi", places)).toBe(true);
+    expect(onlyPlaceWords("Panjabi", places)).toBe(true);
+    expect(onlyPlaceWords("Authentic Punjabi Food", places)).toBe(true);
+    expect(onlyPlaceWords("British Food", ["liverpool", "england"])).toBe(true);
+    expect(onlyPlaceWords("Lancashire Cuisine", ["liverpool", "england"])).toBe(true);
+    expect(onlyPlaceWords("Ohio Comfort Food", ["dayton", "ohio"])).toBe(true);
+  });
+  it("keeps named dishes", () => {
+    expect(onlyPlaceWords("Amritsari Naan", places)).toBe(false);
+    expect(onlyPlaceWords("Punjabi Paneer", places)).toBe(false);
+    expect(onlyPlaceWords("Buckeye", ["dayton", "ohio"])).toBe(false);
+    expect(onlyPlaceWords("Dayton Style Pizza", ["dayton", "ohio"])).toBe(false);
   });
 });
 

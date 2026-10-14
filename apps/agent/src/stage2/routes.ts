@@ -1,10 +1,11 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { z } from "zod";
 import type { ApiError, EvidenceView, TasteEvent } from "@memory-lane/shared";
 import { hashOwnerToken, readOwnerToken } from "../auth/ownerToken";
-import { profiles, qlooCalls } from "../db/schema";
+import { profiles, qlooCalls, seeds } from "../db/schema";
 import type { AppDb } from "../db/types";
+import type { DigestItem } from "../qloo/evidence";
 import { createResearchAllowance } from "../limits";
 import type { QlooGateway } from "../qloo/gateway";
 import {
@@ -109,6 +110,22 @@ export async function tasteRoutes(
     },
   );
 
+  /** Names, from this profile's own records, for the Qloo ids a call sent (favourites, items). */
+  const namesFor = async (profileId: string, ids: string[]): Promise<Record<string, string>> => {
+    if (ids.length === 0) return {};
+    const names: Record<string, string> = {};
+    const latest = await deps.store.latest(profileId);
+    for (const item of latest?.items ?? []) {
+      if (ids.includes(item.entityId)) names[item.entityId] = item.name;
+    }
+    const seedRows = await deps.db
+      .select({ id: seeds.qlooEntityId, name: seeds.displayName, raw: seeds.rawText })
+      .from(seeds)
+      .where(and(eq(seeds.profileId, profileId), inArray(seeds.qlooEntityId, ids)));
+    for (const s of seedRows) if (s.id) names[s.id] = s.name ?? s.raw;
+    return names;
+  };
+
   // One Qloo call record, for the evidence drawer. Only the owner of the profile it was made for may
   // read it, or anyone for a public demo persona. The harness summary is not returned (it can carry
   // setup hints; security review S10).
@@ -122,18 +139,35 @@ export async function tasteRoutes(
     const [row] = await deps.db
       .select({
         id: qlooCalls.id,
+        profileId: qlooCalls.profileId,
         tool: qlooCalls.tool,
         args: qlooCalls.argsChecked,
         status: qlooCalls.status,
         resultCount: qlooCalls.resultCount,
         cached: qlooCalls.cached,
         createdAt: qlooCalls.createdAt,
+        digest: qlooCalls.resultsDigest,
       })
       .from(qlooCalls)
       .innerJoin(profiles, eq(profiles.id, qlooCalls.profileId))
       .where(and(eq(qlooCalls.id, params.data.id), allowed))
       .limit(1);
     if (!row) return notFound(reply);
-    return { ...row, createdAt: row.createdAt.toISOString() } satisfies EvidenceView;
+    const { profileId, digest, ...call } = row;
+    return {
+      ...call,
+      createdAt: row.createdAt.toISOString(),
+      names: profileId ? await namesFor(profileId, idsSent(row.args)) : {},
+      results: (digest as DigestItem[]).flatMap((d) => (d.name ? [d.name] : [])),
+    } satisfies EvidenceView;
   });
+}
+
+/** The entity ids a call sent as signals or ranked options. */
+function idsSent(args: unknown): string[] {
+  const a = (args ?? {}) as { signals?: unknown; options?: unknown };
+  return [a.signals, a.options]
+    .flatMap((v) => (Array.isArray(v) ? v : []))
+    .filter((v): v is string => typeof v === "string")
+    .slice(0, 20);
 }

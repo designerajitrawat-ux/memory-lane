@@ -1,4 +1,5 @@
 import type { SessionItemKind, TasteDomain, TasteItem, TasteProfile } from "@memory-lane/shared";
+import { eraOfRange, searchDecade } from "../stage2/era";
 import { linksFor, type Link } from "./links";
 import { promptsFor } from "./prompts";
 
@@ -33,7 +34,7 @@ export interface ComposeInput {
 }
 
 const MINUTES: Record<SessionItemKind, number> = { song: 4, film: 5, tv: 4, food: 5, place: 5 };
-const FAVOURITE_WHY = "You added this favourite; Qloo confirmed the match.";
+const FAVOURITE_WHY = "Added as a favourite; Qloo confirmed the match.";
 
 /**
  * Stage 3 (docs/05 §2): the session template (20–30 min) — an opening song, a film or TV memory,
@@ -82,9 +83,15 @@ export function composeSession(input: ComposeInput): ComposedItem[] {
     if (item) picked.push(item);
   }
 
+  const era = eraOfRange(profile.era);
   return picked.map((item, position) => {
     const kind = kindOf(item);
-    const { link, altLink } = linksFor(kind, item.name, item.year);
+    const { link, altLink } = linksFor(kind, item.name, {
+      year: item.year,
+      decade: kind === "song" ? searchDecade(item.description, era) : null,
+      locality: item.locality ?? null,
+      cuisine: kind === "food" && isCuisine(item),
+    });
     return {
       position,
       kind,
@@ -102,6 +109,14 @@ export function composeSession(input: ComposeInput): ComposedItem[] {
       evidenceIds: item.evidenceIds,
     };
   });
+}
+
+/** A cuisine label ("Diner Food", "Lancashire Cuisine") rather than one dish ("Pot Roast"). */
+function isCuisine(item: Pick<TasteItem, "name" | "entityType">): boolean {
+  return (
+    (item.entityType ?? "").includes(":cuisine:") &&
+    /\b(food|fare|cuisine|cooking|style)\b/i.test(item.name)
+  );
 }
 
 export function kindOf(item: Pick<TasteItem, "domain" | "entityType">): SessionItemKind {

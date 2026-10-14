@@ -239,3 +239,95 @@ describe("Stage 4: the learning loop (Phase 6 gate)", () => {
     expect(third.whatChanged[0]).toMatch(/No reactions were logged last time/);
   });
 });
+
+describe("Stage 4: Qloo ranks what comes next", () => {
+  it("orders the songs still to play by qloo_rank against what landed, with that call as evidence", async () => {
+    const calls: { name: string; args: Record<string, unknown> }[] = [];
+    const mcp: QlooMcpClient = {
+      async callTool(name, args) {
+        calls.push({ name, args });
+        if (name === "qloo_rank") {
+          // Qloo prefers the fifth singer over the fourth (SYNTHETIC ranking).
+          return {
+            structuredContent: {
+              schema_version: "1.0-preview.1",
+              operation: "rank",
+              status: "ok",
+              results: [
+                { entity_id: "a5", name: "Fifth Singer", subtype: "urn:entity:artist" },
+                { entity_id: "a4", name: "Fourth Singer", subtype: "urn:entity:artist" },
+              ],
+              result_count: 2,
+            },
+          };
+        }
+        return {
+          structuredContent: {
+            schema_version: "1.0-preview.1",
+            operation: "recommend",
+            status: "ok",
+            results: [],
+            result_count: 0,
+          },
+        };
+      },
+      async close() {},
+    };
+    const a = await start(mcp);
+    const created = CreateProfileResponseSchema.parse(
+      (
+        await a.inject({ method: "POST", url: "/api/profiles", payload: INPUT, headers: headers() })
+      ).json(),
+    );
+    const id = created.profile.id;
+    const token = created.ownerToken ?? "";
+    await createTasteStore(db).save(id, {
+      era: { from: 1955, to: 1995 },
+      partial: false,
+      items: [
+        ...ITEMS,
+        item({ entityId: "a4", name: "Fourth Singer", domain: "music" }),
+        item({ entityId: "a5", name: "Fifth Singer", domain: "music" }),
+      ],
+      notes: [],
+    });
+    const plan = async () =>
+      SessionResponseSchema.parse(
+        (
+          await a.inject({
+            method: "POST",
+            url: `/api/profiles/${id}/sessions`,
+            headers: headers(token),
+          })
+        ).json(),
+      ).session;
+
+    const first = await plan();
+    const song = first.items.find((i) => i.entityId === "a1");
+    if (!song) throw new Error("unexpected first session");
+    await a.inject({
+      method: "POST",
+      url: `/api/session-items/${song.id}/reaction`,
+      headers: headers(token),
+      payload: { value: "sang" },
+    });
+    await a.inject({
+      method: "POST",
+      url: `/api/sessions/${first.id}/complete`,
+      headers: headers(token),
+    });
+
+    const second = await plan();
+    const rankCall = calls.find((c) => c.name === "qloo_rank");
+    // Only what wasn't in the last session is ranked, against the song that landed.
+    expect(rankCall?.args).toMatchObject({ option_type: "artist", signals: ["a1"] });
+    const options = rankCall?.args.options as string[];
+    expect(options).toEqual(expect.arrayContaining(["a4", "a5"]));
+    expect(options.some((o) => first.items.some((i) => i.entityId === o))).toBe(false);
+    // Qloo's top pick opens the next session, and carries the ranking call as evidence.
+    const opening = second.items[0];
+    expect(opening?.entityId).toBe("a5");
+    expect(opening?.evidenceIds.length).toBe(2);
+    expect(second.whatChanged.join(" ")).toMatch(/Qloo ranked the music still to play/);
+  });
+});

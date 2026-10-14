@@ -38,6 +38,14 @@ describe("checkArgs (PII guard before Qloo)", () => {
       reason: "phone",
     });
     expect(checkArgs({ query: uuid }, trusted)).toMatchObject({ ok: false, reason: "phone" });
+    // qloo_rank options are ids too (Stage 4 ranks the profile's own items).
+    expect(checkArgs({ options: [uuid], option_type: "artist", signals: [uuid] }, trusted)).toEqual(
+      { ok: true },
+    );
+    expect(checkArgs({ options: [uuid], option_type: "artist" }, nick("Bauji"))).toMatchObject({
+      ok: false,
+      reason: "phone",
+    });
     expect(
       checkArgs({ target_type: "artist", signals: [`${uuid} call 9876543210`] }, trusted),
     ).toMatchObject({ ok: false });

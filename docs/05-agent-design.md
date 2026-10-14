@@ -61,25 +61,32 @@ flowchart TD
 - The gateway runs ≤3 live calls at once (bursts of 8 hit a 429).
 
 ### Stage 2 — Life Taste Profile (built: `apps/agent/src/stage2/`)
-A fixed, visible plan of 5 Qloo calls in parallel (≤3 at once), from the confirmed seeds' **entity IDs**:
-1. **Music** — `qloo_recommend` artist (signals = up to 5 seed IDs, artists first, `explain`). Singers whose
-   Qloo description centres inside the reminiscence bump come first, unknown dates keep Qloo's order,
-   mostly-later voices only fill in (`era.ts` `eraPlacement`).
-2. **Films and TV** — `qloo_recommend` movie + tv_show (limit 20): only `release_year` within birth +5 … +45,
-   closest to the bump (birth +10 … +30) first.
-3. **Places** — `qloo_recommend` place, `filter_location` = the earliest life-stage region, signals = the
-   confirmed places (else all seeds). Kept: lasting places (landmarks, markets, parks, the seaside: name +
-   opening words of Qloo's description), not hotels/bars/banquet halls, in the same country as most
-   results (Qloo's filter crossed to Wagah, Pakistan), not sites of grief.
-4. **Food** — favourites (cuisine tags) + `qloo_find_tags` "<town> food" (food tags only, near-duplicate
-   names merged).
-Every Qloo item is checked against the avoid-list (name + Qloo's full description, with related words
-for well-known painful topics: "Partition" also keeps out Wagah/1947/refugees) and a gentle filter
+A fixed, visible plan of up to 7 Qloo calls in parallel (≤3 at once), each domain asked with the
+favourites that carry its taste (live check: a UK soap plus a UK singer bring British TV, while all
+favourites together brought American dramas):
+1. **Music** — `qloo_recommend` artist, signals = the confirmed singers (≤3; all seeds if there are none),
+   `explain`. Singers whose Qloo description centres inside the reminiscence bump come first, unknown
+   dates keep Qloo's order, mostly-later voices only fill in (`era.ts` `eraPlacement`).
+2. **Films and TV** — `qloo_recommend` movie (film + TV favourites, plus the first singer) and tv_show
+   (TV + film favourites, plus the first singer), limit 20: only `release_year` within birth +5 … +45,
+   closest to the bump (birth +10 … +30) first; nothing set around illness or fear (medical/hospital
+   dramas, horror).
+3. **Places** — two `qloo_recommend` place calls with `filter_location` = the earliest life-stage region:
+   one from their tastes (singers, films, TV — live check: a Liverpool band's fans found its famous
+   venues and museum), one from the places they love; interleaved. Kept: lasting places
+   (landmarks, markets, parks, the seaside, statues, venues Qloo describes by their decade), not hotels,
+   bars, farm shops, festivals or "modern" venues, in the same country as most results, not sites of
+   grief (read from the opening words). The town from Qloo's geocode makes map links specific.
+4. **Food** — favourites (cuisine tags) + `qloo_find_tags` "<town> food" and "<region> food". Named
+   dishes first (specialty dish, popular item, then cuisine); restaurant styles (bar, pub, café,
+   diner, market food) and labels that only name the place or its people ("Punjabi", "British Food") are
+   left out; variants of one dish count once (kulcha = naan; "X with Y" = X); at most 3 found dishes.
+Every Qloo item is checked against the avoid-list first (name + Qloo's full description, with related
+words for well-known painful topics: "Partition" also keeps out Wagah/1947/refugees) and a gentle filter
 (atrocities, suicide, abuse), then the validators (grounding, avoid, language) before saving.
 Captions use Qloo's own explanation: "People who enjoy X and Y often also enjoy Z." Up to 6 items per
-domain; favourites first. Live results (2026-10-13) for the three personas: era-correct music (Kishore
-Kumar, Mukesh / The Kinks, Roy Orbison / The Platters), films such as Guide (1965) and Deewaar (1975),
-places such as Gobindgarh Fort, Sadda Pind, Carillon Historical Park.
+domain; favourites first. Every step message is also saved with the version (`steps`) and shown as
+"How Memory Lane built this".
 **With the Claude key (next):** `propose_candidates` adds era-typical names per domain, which only
 survive through `qloo_rank` / `qloo_describe` with evidence (Phase 0: rank pushes modern names down).
 
@@ -106,10 +113,16 @@ survive through `qloo_rank` / `qloo_describe` with evidence (Phase 0: rank pushe
 - For sang/engaged **entities** of the last session, ≤2 `qloo_recommend` calls (artists from songs, the
   same screen type from films/TV) with those exact ids as signals (server-vouched for the PII guard),
   then the Stage 2 filters (era, avoid incl. learned, gentle) and validators. Survivors join a new taste
-  profile version as `source: "learned"` and start ahead in their domain.
-- Distressed items join the avoid-list (`source: "learned"`, owner-only reason). `what_changed`: 2–5 plain
-  sentences ("Cilla Black landed well, so Qloo was asked for more like that: Gene Pitney and Sandie Shaw.").
-  Live (UK persona): Cilla Black → Gene Pitney, Sandie Shaw; Coronation Street → Emmerdale Farm, Brookside.
+  profile version as `source: "learned"` (+1).
+- **Qloo decides the order:** ≤2 `qloo_rank` calls rank what is still to play in music and in that screen
+  type (items not in the last session, plus the learned ones; ≤10 options) against what landed well.
+  Qloo's top pick gets +1.5, the last 0, so the next session opens with what Qloo ranks highest; each
+  ranked item also carries the rank call as evidence (the drawer shows both calls).
+- Distressed items join the avoid-list (`source: "learned"`, owner-only reason). `what_changed`: 2–6 plain
+  sentences ("X landed well, so Qloo was asked for more like that: …", "Qloo ranked the music still to
+  play against what landed well; … lead.").
+- Planning again while the newest session is still untouched returns that plan (no Qloo calls); a
+  profile keeps at most 50 sessions.
 
 Original plan:
 - Inputs: reactions of the last session(s).

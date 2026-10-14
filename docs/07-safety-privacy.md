@@ -27,17 +27,28 @@ Judges (and Qloo's kit) explicitly value responsible data handling. Treat this f
 8. Data deletion: "Delete this profile" button removes profile + sessions + reactions (cascade),
    including its seeds, Qloo candidates and the Qloo call records (`qloo_calls.profile_id`). The shared
    Qloo cache keeps the looked-up favourite text with Qloo's answer (no profile link) until it expires
-   (7 days, +1 day until the purge). All user-triggered Qloo research (Stage 1 lookups and Stage 2 builds)
-   shares one allowance per device token and per client IP per day (`STAGE1_LOOKUPS_PER_*` env names are
-   historical), and part of the daily Qloo budget is kept for demo personas. Taste profiles keep their
-   newest 3 versions; Qloo call records made for no profile are purged after 30 days.
+   (7 days, +1 day until the purge). All user-triggered Qloo research (Stage 1 lookups, Stage 2 builds and
+   Stage 4 learning when a session is planned) shares one allowance per device token and per client IP
+   per day (`STAGE1_LOOKUPS_PER_*` env names are historical) and one run lock per profile, and part of the
+   daily Qloo budget is kept for demo personas. Taste profiles keep their newest 3 versions; a profile
+   keeps at most 50 sessions (planning again while the newest is untouched returns it, without Qloo
+   calls); Qloo call records made for no profile are purged after 30 days.
    Retention: profiles nobody has opened for 90 days are deleted automatically (daily purge in the
    agent); expired Qloo cache rows too. "Forget profiles on this device" clears the owner token on shared
    devices. Limits: 20 profiles per device token, 200 new profiles per day overall, 10/hour per client
    (IPv6 counted per /64).
 9. Profile text is checked with the same personal-data patterns as the Qloo guard
    (packages/shared/src/pii.ts): no health/medical details, contact details or street addresses, even in
-   the private "why" of an avoid item. The "why" is only ever returned to the profile's owner.
+   the private "why" of an avoid item. The "why" is only ever returned to the profile's owner. Session
+   notes follow the same rules (refused with a gentle message; the label asks to leave out health
+   details) and are blanked for anyone but the owner.
+10. Demo personas never change through any request: every write checks ownership and `is_demo = false`;
+   only the server-side seeder writes their sample reactions. Seeding is robust to restarts and
+   overlapping deploys (complete-only listing, unique demo index, stale half-built personas rebuilt,
+   older versions removed only after the new one is complete). "Try it yourself" makes a private copy
+   (with copies of its Qloo call records) under the same profile limits.
+11. Links are built in code and checked against https search paths per host (YouTube `/results`,
+   Spotify `/search/`, Google Maps `/maps/search/`), so allowed hosts' redirect pages can't be used.
 
 ## 3. Content safety
 - Avoid-list is absolute (validator).

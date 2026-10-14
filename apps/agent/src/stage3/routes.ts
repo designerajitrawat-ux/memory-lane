@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { ReactionRequestSchema, type ApiError } from "@memory-lane/shared";
-import { hashOwnerToken, readOwnerToken } from "../auth/ownerToken";
+import { hashOwnerToken, mintOwnerToken, readOwnerToken } from "../auth/ownerToken";
 import { createResearchAllowance } from "../limits";
 import {
   needsDatabase,
@@ -10,7 +10,7 @@ import {
   privateResponse,
   readableProfile,
 } from "../profiles/owned";
-import type { ProfileStore } from "../profiles/store";
+import { ProfileLimitError, type ProfileStore } from "../profiles/store";
 import type { QlooGateway } from "../qloo/gateway";
 import { createRunLock } from "../sse";
 import { BUSY, type ResearchRouteOpts } from "../stage1/routes";
@@ -57,6 +57,7 @@ export async function sessionRoutes(
     app.get("/api/sessions/:id", needsDatabase);
     app.post("/api/session-items/:id/reaction", needsDatabase);
     app.post("/api/sessions/:id/complete", needsDatabase);
+    app.post("/api/demo-profiles/:id/try", needsDatabase);
     return;
   }
 
@@ -100,7 +101,52 @@ export async function sessionRoutes(
           message: "There's nothing in the profile that can go into a session yet.",
         } satisfies ApiError);
       }
-      return reply.code(201).send({ session: result.session });
+      return reply.code(result.reused ? 200 : 201).send({ session: result.session });
+    },
+  );
+
+  // "Try it yourself": a private copy of a demo persona on this device, with session 1 planned, so a
+  // visitor can log reactions and watch Stage 4 plan session 2 with Qloo. Same token rules and limits
+  // as creating a profile; the demo itself never changes.
+  app.post(
+    "/api/demo-profiles/:id/try",
+    { config: { rateLimit: { max: 10, timeWindow: "1 hour" } } },
+    async (req, reply) => {
+      const params = IdParams.safeParse(req.params);
+      if (!params.success) return notFound(reply);
+      const presented = readOwnerToken(req);
+      const reuse =
+        !!presented && (await deps.profiles.ownerHasProfiles(hashOwnerToken(presented)));
+      const token = reuse && presented ? presented : mintOwnerToken();
+      const ownerHash = hashOwnerToken(token);
+      let copied: { profileId: string } | null;
+      try {
+        copied = await deps.profiles.copyDemo(params.data.id, ownerHash);
+      } catch (err) {
+        if (!(err instanceof ProfileLimitError)) throw err;
+        return reply.code(409).send({
+          error: "profile_limit",
+          message:
+            err.scope === "owner"
+              ? "This device has reached the limit for profiles. Delete one to make a copy."
+              : "Memory Lane has reached today's limit for new profiles. Please try again tomorrow.",
+        } satisfies ApiError);
+      }
+      if (!copied) return notFound(reply);
+      const view = await deps.profiles.get(copied.profileId, ownerHash);
+      const result = await planNextSession(
+        { profileId: copied.profileId, nickname: view?.view.nickname ?? null },
+        { taste: deps.taste, sessions: deps.sessions },
+      );
+      if (result.kind !== "planned") {
+        return reply.code(409).send({
+          error: "nothing_to_plan",
+          message: "There's nothing in the profile that can go into a session yet.",
+        } satisfies ApiError);
+      }
+      return reply
+        .code(201)
+        .send(reuse ? { session: result.session } : { session: result.session, ownerToken: token });
     },
   );
 
@@ -126,9 +172,11 @@ export async function sessionRoutes(
       if (!params.success || !ownerHash) return sessionNotFound(reply);
       const body = ReactionRequestSchema.safeParse(req.body);
       if (!body.success) {
+        // A note with personal details gets its own gentle message; anything else is just unreadable.
+        const noteIssue = body.error.issues.find((i) => i.path[0] === "note");
         return reply.code(400).send({
-          error: "invalid_reaction",
-          message: "That reaction couldn't be read.",
+          error: noteIssue ? "invalid_note" : "invalid_reaction",
+          message: noteIssue?.message ?? "That reaction couldn't be read.",
         } satisfies ApiError);
       }
       const item = await deps.sessions.react(

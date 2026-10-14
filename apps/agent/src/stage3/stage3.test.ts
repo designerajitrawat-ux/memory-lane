@@ -13,7 +13,9 @@ import { createProfileStore, type ProfileStore } from "../profiles/store";
 import { avoidMatcher } from "../stage2/avoid";
 import { createTasteStore } from "../stage2/store";
 import { composeSession, type ComposedItem } from "./compose";
-import { createSessionStore } from "./store";
+import { linkAllowed, linksFor } from "./links";
+import { promptsFor } from "./prompts";
+import { MAX_SESSIONS, createSessionStore } from "./store";
 import { validateSessionItems } from "./validate";
 
 // SYNTHETIC taste profile items (not Qloo data).
@@ -66,6 +68,7 @@ const profileOf = (items: TasteItem[]): TasteProfile => ({
   partial: false,
   items,
   notes: [],
+  steps: [],
 });
 
 describe("composeSession", () => {
@@ -206,6 +209,7 @@ async function profileWithTaste(a: Awaited<ReturnType<typeof buildApp>>, withTas
       partial: false,
       items: ITEMS,
       notes: [],
+      steps: [],
     });
   }
   return { id: body.profile.id, token: body.ownerToken ?? "" };
@@ -314,5 +318,99 @@ describe("Stage 3 routes", () => {
       });
       expect(res.statusCode, url).toBe(404);
     }
+  });
+
+  it("returns the plan still waiting instead of piling up new ones", async () => {
+    const a = await start();
+    const { id, token } = await profileWithTaste(a);
+    const plan = () =>
+      a.inject({ method: "POST", url: `/api/profiles/${id}/sessions`, headers: headers(token) });
+    const first = await plan();
+    const again = await plan();
+    expect(first.statusCode).toBe(201);
+    expect(again.statusCode).toBe(200);
+    expect(again.json().session.id).toBe(first.json().session.id);
+    const list = await a.inject({
+      method: "GET",
+      url: `/api/profiles/${id}/sessions`,
+      headers: headers(token),
+    });
+    expect(list.json().sessions).toHaveLength(1);
+  });
+
+  it("refuses notes with personal or health details, with a gentle message", async () => {
+    const a = await start();
+    const { id, token } = await profileWithTaste(a);
+    const { session } = SessionResponseSchema.parse(
+      (
+        await a.inject({
+          method: "POST",
+          url: `/api/profiles/${id}/sessions`,
+          headers: headers(token),
+        })
+      ).json(),
+    );
+    const itemId = session.items[0]?.id;
+    for (const note of ["Her dementia seemed better today", "Call me on 98765 43210"]) {
+      const res = await a.inject({
+        method: "POST",
+        url: `/api/session-items/${itemId}/reaction`,
+        headers: headers(token),
+        payload: { value: "sang", note },
+      });
+      expect(res.statusCode, note).toBe(400);
+      expect(res.json()).toMatchObject({ error: "invalid_note" });
+      expect(res.json().message).toMatch(/Please leave out/);
+    }
+  });
+
+  it("keeps at most MAX_SESSIONS per profile, dropping the oldest", async () => {
+    const a = await start();
+    const { id } = await profileWithTaste(a);
+    const store = createSessionStore(db);
+    const latest = await createTasteStore(db).latest(id);
+    const composed = composeSession({ profile: profileOf(ITEMS), sessionNumber: 1 });
+    for (let n = 0; n < MAX_SESSIONS + 2; n++) {
+      await store.create(id, latest?.id ?? "", composed.slice(0, 1), []);
+    }
+    const list = await store.list(id);
+    expect(list).toHaveLength(MAX_SESSIONS);
+    expect(list.at(-1)?.number).toBe(3);
+  });
+});
+
+describe("links and prompts", () => {
+  it("search the right decade and town, and say where they go", () => {
+    expect(linksFor("song", "Example Singer", { year: null, decade: "1960s" }).link.url).toContain(
+      "Example%20Singer%201960s%20songs",
+    );
+    const place = linksFor("place", "Example Fort", { year: null, locality: "Example Town" }).link;
+    expect(place.url).toContain("Example%20Fort%2C%20Example%20Town");
+    expect(place.label).toBe("See it on Google Maps");
+    expect(linksFor("food", "Diner Food", { year: null, cuisine: true }).link.url).toContain(
+      "Diner%20Food%20recipes",
+    );
+  });
+
+  it("only allow https search pages, not redirects on the same hosts", () => {
+    const ok = (url: string) => linkAllowed({ url, label: "x" });
+    expect(ok("https://www.youtube.com/results?search_query=x")).toBe(true);
+    expect(ok("https://open.spotify.com/search/x")).toBe(true);
+    expect(ok("https://www.google.com/maps/search/?api=1&query=x")).toBe(true);
+    expect(ok("https://www.google.com/url?q=https://evil.example")).toBe(false);
+    expect(ok("https://www.youtube.com/redirect?q=https://evil.example")).toBe(false);
+    expect(ok("http://www.youtube.com/results?search_query=x")).toBe(false);
+  });
+
+  it("use the right possessive, and keep name-free prompts when a name trips the checks", () => {
+    expect(promptsFor("song", "The Hollies", 1)[0]).toBe(
+      "What does the sound of The Hollies bring to mind?",
+    );
+    expect(promptsFor("song", "Tom Jones", 1)[0]).toBe("What does Tom Jones' voice bring to mind?");
+    expect(promptsFor("song", "Example Singer", 1)[0]).toBe(
+      "What does Example Singer's voice bring to mind?",
+    );
+    expect(promptsFor("song", "Do You Remember", 1).length).toBeGreaterThan(0);
+    for (const p of promptsFor("song", "Do You Remember", 1)) expect(p).not.toMatch(/remember/i);
   });
 });

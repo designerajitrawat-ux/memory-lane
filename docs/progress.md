@@ -15,11 +15,11 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 - **Phase 5 — done (code templates; LLM prompts pending the key)**: Stage 3 composer + validators, sessions
   and reactions API, plan / player / summary screens. Checked locally end to end with real Qloo data.
 - **Phase 6 — done**: Stage 4 learning loop (weights, learned neighbours from Qloo, learned avoid-list,
-  "what changed"); gate test passes; live check (UK persona): Cilla Black → Gene Pitney, Sandie Shaw.
+  "what changed"); gate test passes; live check (UK persona): two era-fitting singers learned from the favourite that landed.
 - **Phase 7 — how-it-works done**; compare view waits for the Anthropic key (baseline = same model, no tools).
 - **Phase 8 — demo personas + landing done**: three fictional personas seeded through the real pipeline at
   startup (public, read-only), `/demo` picker, new landing, demo banners and read-only screens. Live check
-  (local, real Qloo): e.g. Harjeet's session 2 learned Asha Bhosle, Hemant Kumar, Mera Naam Joker, Padosan.
+  (local, real Qloo): e.g. the India persona's session 2 learned two era singers and two 1960s–70s films.
 - Next: Phase 7–9. **Blocking for the LLM steps (proposing
   era candidates, session prompts, "what changed" text, compare view): an Anthropic API key** — the
   developer creates it in the Anthropic Console (billing) and pastes it on Render (ANTHROPIC_API_KEY).
@@ -75,8 +75,8 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-13 | Stage 1 food/other via `qloo_find_tags`; describe candidates = selected + same-name alternatives (all same-type alternatives for places and non-exact matches); needs_input choices from `resolution.issues`, one option per place listing | Real recordings and live checks (WALL·E noise, "Butter chicken" → restaurant, five listings of one shrine) | 05 |
 | 2026-10-13 | PII guard exempts exact Qloo IDs (UUIDs, tag URNs) in ID fields | Stage 2 sends confirmed seed IDs; a UUID's digits matched the phone rule | 03 |
 | 2026-10-13 | Stage 2 = fixed 5-call Qloo plan + code era/avoid/gentle filters + validators; LLM proposals added when the key exists | Phase 0: no era filter in Qloo; deterministic plan is demo-safe and explainable; works before the Anthropic key | 05 |
-| 2026-10-13 | Places kept by the opening words of Qloo's description (landmarks yes, hotels/bars no) + same-country rule | Live: hotels, banquet halls, a spa, Wagah (Pakistan) came back for Amritsar | 05 |
-| 2026-10-13 | Avoid-list reads Qloo's full description, with related words for well-known painful topics; gentle filter for atrocities/suicide/abuse | Live: Wagah Border passed a "Partition" avoid; "Sophie's Choice" came back | 05, 07 |
+| 2026-10-13 | Places kept by the opening words of Qloo's description (landmarks yes, hotels/bars no) + same-country rule | Live: hotels, banquet halls, a spa and a landmark across the border came back for an Indian town | 05 |
+| 2026-10-13 | Avoid-list reads Qloo's full description, with related words for well-known painful topics; gentle filter for atrocities/suicide/abuse | Live: a border-ceremony landmark passed a "Partition" avoid; a Holocaust drama came back | 05, 07 |
 | 2026-10-13 | Gateway runs ≤3 live calls at once | Phase 0: bursts of 8 hit a 429 | 03 |
 | 2026-10-14 | Sessions planned in code from the taste profile (template + rotation + gentle prompt templates), plain JSON route; LLM prompts later through the same validators | Works before the Anthropic key; no Qloo call needed (the profile carries the evidence) | 04, 05, 06 |
 | 2026-10-14 | PII guard: only server-vouched confirmed-seed UUIDs are exempt, in `signals` only; health terms bounded by letters (not ); Latin accents folded; places refuse street names | security-reviewer W1, W5, S1, S9 | 03, 07 |
@@ -84,9 +84,23 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-14 | Taste profile UX: badges stacked above names, "Found by Qloo" tag, summary "N favourites you confirmed, M more found by Qloo", partial chip, evidence drawer retry + plain status words, dialogs scroll / bottom sheet on phones | ux-reviewer C1, C2, W4–W11 | 06 |
 | 2026-10-14 | Stage 4 runs when the next session is planned (not on "finish"), learned items become a new taste profile version (`source: "learned"`), distressed items join the avoid-list | One place to learn and plan; the profile visibly evolves; avoid-list learning also protects future builds | 05, 04 |
 | 2026-10-14 | Demo personas seeded through the real pipeline at startup (SEED_DEMOS, default on in production), public read-only; demo players don't save reactions | The judge path needs ready profiles and sessions; using the real stages keeps it honest and grounded | 04, 06, 11 |
+| 2026-10-14 | Stage 2 asks each domain with its own favourites, places twice (from tastes and from loved places), dishes for town + region with dish-only filters | Live: all favourites together gave a UK persona American dramas; music signals found a town's famous music venues; food tags were mostly restaurant styles | 05 |
+| 2026-10-14 | Stage 4 uses `qloo_rank` to order what is still to play against what landed (Qloo decides the next session's order; rank call joins the item's evidence) | Judge review: give Qloo a real decision role in the learning loop | 03, 05 |
+| 2026-10-14 | Build steps saved with each taste profile ("How Memory Lane built this"); evidence API returns names for the ids sent and Qloo's result names | Make the agent's work visible; richer evidence drawer | 04, 06 |
+| 2026-10-14 | "Try it yourself": private copy of a demo persona (first taste profile + copied evidence rows), session 1 ready | Lets judges run the learning loop live without building a profile | 04, 06, 07 |
+| 2026-10-14 | Demo personas versioned (`DEMO_VERSION`), complete-only listing, stale half-built rebuild, unique demo index; older versions removed after the new one is complete | Security review W2/UX W15: restarts and overlapping deploys left broken or duplicate demos | 04, 07 |
+| 2026-10-14 | An untouched newest session is returned instead of planning again; ≤50 sessions per profile; notes refuse personal/health details | Security review W1/W3 | 04, 07 |
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-14: **Phase 9 hardening round 1 (judge 7.25/10, UX and security reviews).** Agent: per-domain
+  Stage 2 signals, two place calls, town + region food with dish filters, medical/horror screen filter,
+  lasting-place rules, map links with the town, decade in song searches, possessive fix, link path
+  allow-list, `qloo_rank` in Stage 4 with rank evidence, saved build steps, evidence names/results,
+  session reuse + cap, note PII check, demo guards, versioned/robust demo seeding, "try it yourself"
+  copies. Web: evidence chips on session items, player rework (wrapping sticky nav, save races, retry,
+  notes on blur, demo end card, a11y), plan print + top Start, demo-first taste page with build log,
+  demo picker polling and direct session link, request timeout + slow notes, GitHub link. Agent 151 tests.
 - 2026-10-14: **Phases 7 (how it works) + 8 (demos, landing).** `demo/` (personas, seeder), read access for
   demos, `planNextSession` shared by route and seeder, `/demo`, `/how-it-works`, new landing, footer
   links, demo banners. Agent 140 tests.

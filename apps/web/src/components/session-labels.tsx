@@ -36,12 +36,17 @@ export function slotLabel(item: SessionItem, index: number, total: number): stri
   return KIND_LABELS[item.kind];
 }
 
+// Plain, warm words for what the caregiver saw (ux review S3); the stored values stay the same.
 export const REACTIONS: { value: Reaction; label: string; icon: LucideIcon }[] = [
   { value: "sang", label: "Sang along", icon: Mic2 },
-  { value: "engaged", label: "Engaged", icon: Smile },
-  { value: "neutral", label: "Neutral", icon: Meh },
+  { value: "engaged", label: "Enjoyed it", icon: Smile },
+  { value: "neutral", label: "Quiet", icon: Meh },
   { value: "distressed", label: "Seemed upset", icon: Frown },
 ];
+
+/** A session item that came from the caregiver's own favourites (its reason says so). */
+export const isFavouriteItem = (item: Pick<SessionItem, "why">) =>
+  /^(?:Added as a favourite|You added this favourite)/.test(item.why);
 
 export const REACTION_LABEL: Record<Reaction, string> = Object.fromEntries(
   REACTIONS.map((r) => [r.value, r.label]),

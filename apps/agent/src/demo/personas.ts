@@ -33,7 +33,7 @@ export const DEMO_PERSONAS: DemoPersona[] = [
       ],
       avoid: [{ text: "Unchained Melody" }, { text: "Vietnam War" }],
     },
-    reactions: ["sang", "engaged", "neutral", "engaged", "distressed", "sang"],
+    reactions: ["sang", "engaged", "neutral", "distressed", "engaged", "sang"],
   },
   {
     key: "harjeet-in",
@@ -78,5 +78,14 @@ export const DEMO_PERSONAS: DemoPersona[] = [
   },
 ];
 
+/**
+ * Bump when the research or session logic changes what a persona should contain: the next start
+ * builds the new version and removes the old one once the new one is complete.
+ */
+export const DEMO_VERSION = 2;
+
+/** Every version of a persona's owner hash starts with this. */
+export const demoOwnerPrefix = (key: string) => `demo:${key}`;
+
 /** The owner hash a demo profile is stored under: no device token can ever produce it. */
-export const demoOwnerHash = (key: string) => `demo:${key}`;
+export const demoOwnerHash = (key: string) => `${demoOwnerPrefix(key)}:v${DEMO_VERSION}`;

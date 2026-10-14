@@ -73,7 +73,13 @@ export const profiles = pgTable(
     // Bumped when the owner opens or lists it; idle non-demo profiles are purged (docs/07 §2.8).
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("profiles_owner_idx").on(t.ownerTokenHash)],
+  (t) => [
+    index("profiles_owner_idx").on(t.ownerTokenHash),
+    // One row per demo persona version, even when two instances seed at once (security review W2).
+    uniqueIndex("profiles_demo_owner_idx")
+      .on(t.ownerTokenHash)
+      .where(sql`${t.isDemo}`),
+  ],
 );
 
 export const seeds = pgTable(
@@ -168,6 +174,8 @@ export const tasteProfiles = pgTable(
     partial: boolean("partial").notNull().default(false),
     items: jsonb("items").notNull(),
     notes: jsonb("notes").notNull().default([]),
+    // The build's own step log, shown as "How Memory Lane built this".
+    steps: jsonb("steps").notNull().default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("taste_profiles_profile_version_idx").on(t.profileId, t.version)],

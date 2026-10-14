@@ -48,6 +48,31 @@ function scan(text: string | null): { year: number; decade: boolean }[] {
 /** "1929–1987", "1950s–60s", "the late 1980s" → [1929, 1987], [1950, 1960], [1980]. */
 export const mentionedYears = (text: string | null) => scan(text).map((m) => m.year);
 
+/** The era from a stored profile's years (from = birth + 5, as in `eraFor`). */
+export const eraOfRange = (range: { from: number; to: number }): Era => ({
+  from: range.from,
+  to: range.to,
+  bumpFrom: range.from + 5,
+  bumpTo: range.from + 25,
+});
+
+/**
+ * The decade to search a singer's songs by ("1960s"): a decade their Qloo description mentions inside
+ * the person's era, the one closest to the middle of the reminiscence bump; else the bump's own decade.
+ */
+export function searchDecade(text: string | null, era: Era): string {
+  const middle = (era.bumpFrom + era.bumpTo) / 2;
+  const decades = scan(text)
+    .filter((m) => m.decade && m.year + 9 >= era.from && m.year <= era.to)
+    .map((m) => m.year);
+  const pick = decades.length
+    ? decades.reduce((best, y) =>
+        Math.abs(y + 5 - middle) < Math.abs(best + 5 - middle) ? y : best,
+      )
+    : Math.floor(middle / 10) * 10;
+  return `${pick}s`;
+}
+
 /** Where a description places someone in time, relative to the person's era. */
 export type EraPlacement = "fits" | "unknown" | "later";
 

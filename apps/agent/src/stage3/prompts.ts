@@ -1,4 +1,5 @@
 import type { SessionItemKind } from "@memory-lane/shared";
+import { promptAllowed } from "../stage2/language";
 
 /**
  * Conversation prompts written in code (docs/05 §4.2 style): open, gentle invitations that work for
@@ -8,7 +9,7 @@ import type { SessionItemKind } from "@memory-lane/shared";
  */
 const PROMPTS: Record<SessionItemKind, ((name: string) => string)[]> = {
   song: [
-    (n) => `What does ${n}'s voice bring to mind?`,
+    (n) => `What does ${soundOf(n)} bring to mind?`,
     () => "Would you like to sing along, or just listen for a while?",
     () => "Where did music like this play when you were young: the radio, the cinema, a wedding?",
     () => "Who would you have danced with to a song like this?",
@@ -27,7 +28,7 @@ const PROMPTS: Record<SessionItemKind, ((name: string) => string)[]> = {
     () => "Tell me about the room where the television was.",
   ],
   food: [
-    (n) => `What does ${n} smell like when it's cooking?`,
+    (n) => `What comes to mind with the smell of ${n}?`,
     () => "Who made it best in your family?",
     () => "Tell me about a meal you shared with people you love.",
     () => "What else was on the table on a special day?",
@@ -40,10 +41,23 @@ const PROMPTS: Record<SessionItemKind, ((name: string) => string)[]> = {
   ],
 };
 
-/** 2–3 prompts for an item, rotating with the session number so later sessions feel fresh. */
+/** "Mohammed Rafi's voice", "Tom Jones' voice", "the sound of The Hollies". */
+function soundOf(name: string): string {
+  if (/^the\s/i.test(name)) return `the sound of ${name}`;
+  return name.endsWith("s") ? `${name}' voice` : `${name}'s voice`;
+}
+
+/**
+ * 2–3 prompts for an item, rotating with the session number so later sessions feel fresh. Only
+ * prompts that pass the language checks are returned; the name-free ones always do.
+ */
 export function promptsFor(kind: SessionItemKind, name: string, sessionNumber: number): string[] {
   const all = PROMPTS[kind];
   const start = ((sessionNumber - 1) * 2) % all.length;
   const picked = [all[0], all[(start + 1) % all.length], all[(start + 2) % all.length]];
-  return [...new Set(picked.map((p) => (p as (n: string) => string)(name)))].slice(0, 3);
+  const prompts = [...new Set(picked.map((p) => (p as (n: string) => string)(name)))]
+    .filter(promptAllowed)
+    .slice(0, 3);
+  // A name that trips the checks (security review S3) still leaves gentle, name-free prompts.
+  return prompts.length ? prompts : all.slice(1, 3).map((p) => p(name));
 }
