@@ -11,6 +11,7 @@ import {
   readableProfile,
 } from "../profiles/owned";
 import { ProfileLimitError, type ProfileStore } from "../profiles/store";
+import type { LlmClient } from "../llm/client";
 import type { QlooGateway } from "../qloo/gateway";
 import { createRunLock } from "../sse";
 import { BUSY, type ResearchRouteOpts } from "../stage1/routes";
@@ -24,6 +25,8 @@ export interface SessionRouteDeps {
   sessions: SessionStore;
   /** Stage 4 asks Qloo for more like what landed; without it, sessions adapt by weights only. */
   gateway?: Pick<QlooGateway, "call">;
+  /** Warmer prompts for planned sessions (off without a key). */
+  llm?: LlmClient;
 }
 
 const IdParams = z.object({ id: z.uuid() });
@@ -82,6 +85,7 @@ export async function sessionRoutes(
             taste: deps.taste,
             sessions: deps.sessions,
             ...(deps.gateway ? { gateway: deps.gateway } : {}),
+            ...(deps.llm ? { llm: deps.llm } : {}),
             allowCall: () => allowance.take(owned.ownerHash, client),
             budgetReserve: allowance.budgetReserve,
           },
@@ -143,7 +147,7 @@ export async function sessionRoutes(
         const view = await deps.profiles.get(profileId, ownerHash);
         result = await planNextSession(
           { profileId, nickname: view?.view.nickname ?? null },
-          { taste: deps.taste, sessions: deps.sessions },
+          { taste: deps.taste, sessions: deps.sessions, ...(deps.llm ? { llm: deps.llm } : {}) },
         );
       } catch (err) {
         await discard();

@@ -5,12 +5,12 @@
 flowchart LR
   U[Caregiver / Judge<br/>browser, phone] -->|HTTPS| W[apps/web<br/>Next.js on Vercel]
   W -->|REST + SSE<br/>/api/*| A[apps/agent<br/>Node 22 + Fastify<br/>Render Docker container]
-  A -->|Messages API<br/>tool use| C[Claude API<br/>claude-sonnet-5-5]
+  A -->|Chat Completions<br/>structured JSON| C[LLM API<br/>OpenAI-compatible<br/>gpt-6-luna]
   A -->|stdio MCP| Q[qloo mcp<br/>@qloo/qloo-harness<br/>child process]
   Q -->|HTTPS + QLOO_API_KEY| QA[(Qloo API)]
   A --> DB[(Postgres<br/>Neon)]
 ```
-- Browser **never** talks to Qloo or Claude directly. Keys live only in the agent container.
+- Browser **never** talks to Qloo or the LLM directly. Keys live only in the agent container.
 - Frontend calls agent service via `NEXT_PUBLIC_AGENT_URL`; agent restricts CORS to the web origin.
 
 ## 2. Tech stack (use latest stable versions at scaffold time; pin in lockfile)
@@ -23,7 +23,7 @@ flowchart LR
 | Data fetching | `fetch` + a small SSE reader (`lib/sse.ts`) | streaming agent progress; EventSource can't POST or send the bearer header |
 | Backend | Node ≥ 22.19, Fastify, zod; built with tsup into one self-contained `dist/server.cjs` | light, fast, long-lived process for MCP; tiny runtime image |
 | Qloo | `@qloo/qloo-harness` (global in container) + `@modelcontextprotocol/sdk` client | official route |
-| LLM | `@anthropic-ai/sdk`, model `claude-sonnet-5-5` (cost/speed); optionally `claude-opus-5-5` for compose step | strong tool use |
+| LLM | Any OpenAI-compatible Chat Completions API via plain `fetch` (`llm/client.ts`): structured JSON output, reasoning effort low; default OpenAI `gpt-6-luna` ($0.10 / $0.50 per 1M tokens) | the developer's existing key; cheap, fast, structured outputs; Gemini/Groq work through `LLM_BASE_URL` |
 | DB | Postgres + Drizzle ORM + drizzle-kit migrations | simple, typed |
 | Cache | Postgres table `qloo_cache` (no Redis needed) | fewer moving parts |
 | Rate limit | `@fastify/rate-limit` + DB daily budget counter | quota safety |
@@ -34,8 +34,10 @@ flowchart LR
 | Hosting | Vercel (web), **Render free** (agent, `apps/agent/Dockerfile` via `render.yaml`), **Neon free** (DB); all US East | MCP needs a container; all free. Render free sleeps after 15 min idle → UptimeRobot 5-min keep-alive on `/api/health/live` (750 free h/month covers 24/7; touches no DB). Readiness monitor on `/api/health` only **hourly**, because Neon free has ~100 CU-h/month and a 5-min DB ping would keep it awake 24/7 |
 | Observability | pino logs (redacted), simple `/api/health` | debugging |
 
-**Note:** Claude Code Max plan pays for *building* with Claude Code. The deployed app's own LLM
-calls need a separate **Anthropic API key** (Console billing). Budget it; cache aggressively.
+**Note:** Claude Code pays for *building*. The deployed app's own LLM calls use the developer's
+OpenAI API key (`LLM_API_KEY` on Render; a $5 monthly limit in the OpenAI dashboard). Calls are
+cached by input hash in `llm_calls` and capped per day (`LLM_DAILY_CALLS`, default 400); without a key
+the LLM steps are switched off and say so.
 
 ## 3. Repo layout
 ```
@@ -108,7 +110,7 @@ profiles get an owner hash no token can produce. Limits: 20 profiles per owner, 
 | POST `/api/session-items/:id/reaction` | owner only (never a demo), 60/min: `{value: sang|engaged|neutral|distressed|null, note?}` (no `note` keeps the stored note, `""` removes it); the note (≤300 chars) is refused with 400 `invalid_note` and a gentle message when it carries health, contact or address details |
 | POST `/api/sessions/:id/complete` | owner only (never a demo): marks it done (Stage 4 adapts when the next one is planned) |
 | POST `/api/demo-profiles/:id/try` | "Try it yourself", 10/hour/IP shared with POST `/api/profiles`; idempotent per device while the copy is untouched (`copied_from`); a copy whose session 1 can't be planned is removed again: a private copy of a demo persona for this device (mints an owner token if needed; profile limits apply): confirmed favourites, caregiver avoid-list and the first taste profile, with copies of the Qloo call records behind them; session 1 planned → 201 `{session, ownerToken?}` |
-| GET `/api/profiles/:id/compare` | baseline (LLM-only) vs grounded plan (cached) |
+| GET `/api/profiles/:id/compare` | owner, or anyone for a demo, 10/min: the same LLM asked for the same session from the same public facts (no tools; cached by input; demos warmed at seeding) next to the newest session, with code counts (Qloo evidence, outside their years, touching the avoid-list, shared with the other demo people's plans); `state` off/budget/failed when the LLM side isn't available |
 | GET `/api/evidence/:id` | owner of the profile it was made for, or anyone for a demo: tool, args (as sent, after the PII guard), status, result count, cached, time, `names` (this profile's own names for the ids sent) and `results` (Qloo's result names, ≤20) — never the harness summary |
 
 SSE event shape: `{type:"step"|"tool"|"result"|"error"|"done", message, tool?, status?, evidenceId?, data?}`.

@@ -34,8 +34,8 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 
 ## Next steps
 1. Submit on Devpost by Oct 29 IST (text ready in docs/devpost.md; screenshots in docs/screenshots/).
-2. With the Anthropic key (developer creates it in the Anthropic Console and adds `ANTHROPIC_API_KEY`
-   on Render): LLM proposals ranked by Qloo in Stage 2, warmer prompts in Stage 3, compare view.
+2. Developer adds `LLM_API_KEY` (OpenAI) on Render; then bump `DEMO_VERSION` so the demos are rebuilt
+   with the LLM's prompts and gap filling (the compare view's generic plans warm by themselves).
 3. Keep the app live and free through Nov 17 (UptimeRobot monitors on); re-run the reviewers after
    any larger change; bump `DEMO_VERSION` when research or session logic changes.
 
@@ -90,12 +90,17 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-14 | Build steps saved with each taste profile ("How Memory Lane built this"); evidence API returns names for the ids sent and Qloo's result names | Make the agent's work visible; richer evidence drawer | 04, 06 |
 | 2026-10-14 | "Try it yourself": private copy of a demo persona (first taste profile + copied evidence rows), session 1 ready | Lets judges run the learning loop live without building a profile | 04, 06, 07 |
 | 2026-10-14 | Demo personas versioned (`DEMO_VERSION`), complete-only listing, stale half-built rebuild, unique demo index; older versions removed after the new one is complete | Security review W2/UX W15: restarts and overlapping deploys left broken or duplicate demos | 04, 07 |
+| 2026-10-15 | LLM steps on any OpenAI-compatible API (default OpenAI `gpt-6-luna`), not the Anthropic SDK: compare view, Stage 2 gap filling (LLM proposes, `qloo_rank` decides, code checks years), warmer Stage 3 prompts; cached by input hash, daily cap, off without a key | The developer has OpenAI API credit; the hackathon allows any model; gpt-6-luna is cheap ($0.10/$0.50 per 1M) with structured outputs | 04, 05, 07, CLAUDE.md |
 | 2026-10-14 | Qloo's rank alone orders ranked items; each domain ranked against its own hits; Stage 2 asks again when <3 films fit; the log names what was left out | Judge re-score 7.9: the "what changed" text must match the plan; show the agent adapting and its reasons | 05 |
 | 2026-10-14 | Player saves one at a time per item with the merged wanted state; a reaction never erases a note (server keeps the note when none is sent) | UX re-review C1: note lost on a natural flow; out-of-order writes could undo "Seemed upset" | 04, 06 |
 | 2026-10-14 | An untouched newest session is returned instead of planning again; ≤50 sessions per profile; notes refuse personal/health details | Security review W1/W3 | 04, 07 |
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-15: **LLM steps (Phase 7 compare + Phase 4/5 LLM parts).** `llm/client.ts` (OpenAI-compatible,
+  structured outputs, guard, cache, daily cap), `/api/profiles/:id/compare` + screen 9, Stage 2 gap
+  filling with `qloo_rank` on named options, warmer prompts with validators, demos' generic plans
+  warmed at seeding. Agent 157 tests.
 - 2026-10-14: **Phase 9 round 2** (judge 7.9, security: no criticals, UX: 1 critical). Rank-led session
   order, per-domain ranking, Stage 2 second look and named exclusions, lodging filter, town-first place
   prompts; try-it idempotent with cleanup and a shared rate bucket; rank evidence replaced; player save

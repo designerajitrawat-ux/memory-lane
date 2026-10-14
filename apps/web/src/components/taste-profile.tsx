@@ -303,6 +303,7 @@ export function TasteProfileView() {
       {/* On a demo the sessions are the point, so they come first (ux review W13). */}
       {readOnly && <SessionsPanel profileId={id} readOnly />}
       {readOnly && <TryDemo profileId={id} name={nickname} />}
+      <CompareLink profileId={id} />
       <div className="space-y-3">
         <h2
           ref={readyRef}
@@ -493,6 +494,27 @@ function ItemCard({ item }: { item: TasteItem }) {
         }}
       />
     </li>
+  );
+}
+
+/** The way to screen 9: the same AI without Qloo, next to this profile's session. */
+function CompareLink({ profileId }: { profileId: string }) {
+  return (
+    <Link
+      href={`/profiles/${profileId}/compare`}
+      className="group flex min-h-12 items-center justify-between gap-3 rounded-2xl border-2 border-field-border bg-card px-5 py-4 text-base outline-hidden hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+    >
+      <span>
+        <span className="block font-bold">Generic AI vs Memory Lane</span>
+        <span className="text-muted-foreground">
+          The same AI asked without Qloo: what it suggests, and what code finds wrong with it.
+        </span>
+      </span>
+      <ArrowRight
+        aria-hidden="true"
+        className="size-6 shrink-0 text-primary transition-transform group-hover:translate-x-1"
+      />
+    </Link>
   );
 }
 

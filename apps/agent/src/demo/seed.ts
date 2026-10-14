@@ -10,6 +10,8 @@ import { buildTasteProfile } from "../stage2/build";
 import type { TasteStore } from "../stage2/store";
 import { planNextSession } from "../stage3/plan";
 import type { SessionStore } from "../stage3/store";
+import { warmGenericPlan } from "../compare/compare";
+import { NO_LLM, type LlmClient } from "../llm/client";
 import { DEMO_PERSONAS, demoOwnerHash, demoOwnerPrefix, type DemoPersona } from "./personas";
 
 export interface SeedDeps {
@@ -20,6 +22,8 @@ export interface SeedDeps {
   sessions: SessionStore;
   gateway: Pick<QlooGateway, "call">;
   log: { info(obj: object, msg: string): void; warn(obj: object, msg: string): void };
+  /** The LLM steps (era proposals, warmer prompts, the compare view's generic plan); off by default. */
+  llm?: LlmClient;
   /** For tests. */
   now?: () => number;
 }
@@ -51,6 +55,7 @@ export async function ensureDemoProfiles(deps: SeedDeps): Promise<void> {
     if (existing) {
       if (await demoComplete(deps.db, existing.id)) {
         await removeOlderVersions(deps.db, persona.key);
+        await warmCompare(existing.id, persona, deps);
         continue;
       }
       if (now() - existing.createdAt.getTime() < STALE_SEED_MS) continue; // being seeded elsewhere
@@ -63,6 +68,7 @@ export async function ensureDemoProfiles(deps: SeedDeps): Promise<void> {
         createdId = id;
       });
       await removeOlderVersions(deps.db, persona.key);
+      if (createdId) await warmCompare(createdId, persona, deps);
       deps.log.info({ persona: persona.key }, "demo persona seeded");
     } catch (err) {
       const code = errorCode(err);
@@ -108,6 +114,17 @@ async function removeOlderVersions(db: AppDb, key: string) {
   );
 }
 
+/** The compare view's generic plan, made once (cached), so judges never wait for it. */
+async function warmCompare(profileId: string, persona: DemoPersona, deps: SeedDeps) {
+  const llm = deps.llm ?? NO_LLM;
+  if (!llm.configured) return;
+  try {
+    await warmGenericPlan(profileId, persona.input.nickname ?? null, { ...deps, llm });
+  } catch (err) {
+    deps.log.warn({ persona: persona.key, code: errorCode(err) ?? "error" }, "compare not warmed");
+  }
+}
+
 function errorCode(err: unknown): string | undefined {
   const e = err as { code?: string; cause?: { code?: string } };
   return e.code ?? e.cause?.code;
@@ -140,7 +157,12 @@ async function seedPersona(
   // Stage 2.
   const profile = await buildTasteProfile(
     { profileId: view.id, nickname },
-    { gateway: deps.gateway, store: deps.taste, persistent: true },
+    {
+      gateway: deps.gateway,
+      store: deps.taste,
+      persistent: true,
+      ...(deps.llm ? { llm: deps.llm } : {}),
+    },
     quiet,
   );
   if (!profile) throw new Error("taste profile not built");
@@ -149,7 +171,13 @@ async function seedPersona(
   const plan = () =>
     planNextSession(
       { profileId: view.id, nickname },
-      { taste: deps.taste, sessions: deps.sessions, gateway: deps.gateway, persistent: true },
+      {
+        taste: deps.taste,
+        sessions: deps.sessions,
+        gateway: deps.gateway,
+        persistent: true,
+        ...(deps.llm ? { llm: deps.llm } : {}),
+      },
     );
   const first = await plan();
   if (first.kind !== "planned") throw new Error("session 1 not planned");

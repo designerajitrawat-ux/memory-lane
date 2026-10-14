@@ -238,3 +238,26 @@ export const sessionItems = pgTable(
     check("session_items_evidence_check", sql`cardinality(${t.evidenceIds}) > 0`),
   ],
 );
+
+/**
+ * LLM calls (proposals, prompts, the compare baseline): the cache, the daily budget and the audit trail
+ * in one. Only a hash of the input is kept (the input never holds personal data, and isn't stored);
+ * the output is cultural names and prompt text.
+ */
+export const llmCalls = pgTable(
+  "llm_calls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    task: text("task").notNull(), // compare | propose | prompts
+    inputHash: text("input_hash").notNull(),
+    model: text("model").notNull(),
+    output: jsonb("output").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("llm_calls_cache_idx").on(t.task, t.inputHash, t.model),
+    index("llm_calls_created_idx").on(t.createdAt),
+  ],
+);

@@ -25,8 +25,8 @@ every item grounded in Qloo's taste graph, and a learning loop from caregiver-lo
 2. Every recommended item must carry Qloo evidence (`evidence_ids`); validators block anything else.
 3. Never fall back silently to LLM-only content when Qloo fails — show the state honestly.
 4. Qloo access only via `qloo mcp` (harness) from the agent backend through `qloo/gateway.ts`.
-   Never call Qloo or Claude from the browser. No serverless for the agent service.
-5. Secrets (`QLOO_API_KEY`, `ANTHROPIC_API_KEY`, `DATABASE_URL`) only in env vars. Never in code,
+   Never call Qloo or the LLM from the browser. No serverless for the agent service.
+5. Secrets (`QLOO_API_KEY`, `LLM_API_KEY`, `DATABASE_URL`) only in env vars. Never in code,
    repo, logs, prompts, fixtures, screenshots. Never ask the user to paste a key into chat.
 6. No personal data to Qloo (no nickname, contact info, addresses, health terms). Coarse regions only.
 7. Aggregate wording ("people who grew up with X often enjoyed Y"); no medical/treatment claims.

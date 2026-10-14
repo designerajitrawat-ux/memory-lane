@@ -7,6 +7,7 @@ import { profiles, qlooCalls, seeds } from "../db/schema";
 import type { AppDb } from "../db/types";
 import type { DigestItem } from "../qloo/evidence";
 import { createResearchAllowance } from "../limits";
+import type { LlmClient } from "../llm/client";
 import type { QlooGateway } from "../qloo/gateway";
 import {
   needsDatabase,
@@ -27,6 +28,8 @@ export interface TasteRouteDeps {
   gateway: Pick<QlooGateway, "call">;
   /** For GET /api/evidence/:id (owner-checked through the profile). */
   db: AppDb;
+  /** Proposes era-typical names for gaps Qloo left (off without a key). */
+  llm?: LlmClient;
 }
 
 const EvidenceParams = z.object({ id: z.uuid() });
@@ -91,6 +94,7 @@ export async function tasteRoutes(
             store: deps.store,
             allowCall: () => allowance.take(ownerHash, client),
             budgetReserve: allowance.budgetReserve,
+            ...(deps.llm ? { llm: deps.llm } : {}),
           },
           send,
           sse.isAborted,

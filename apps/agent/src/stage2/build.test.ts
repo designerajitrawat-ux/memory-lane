@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TasteEvent, TasteProfile } from "@memory-lane/shared";
 import type { GatewayResult, QlooGateway } from "../qloo/gateway";
+import type { LlmClient } from "../llm/client";
 import { buildTasteProfile } from "./build";
 import type { EvidenceRow, TasteContext, TasteStore } from "./store";
 
@@ -84,15 +85,17 @@ function fakes() {
       calls.push({ tool, args: args as Record<string, unknown> });
       const a = args as unknown as Record<string, unknown>;
       const key =
-        tool === "qloo_find_tags"
-          ? String(a.query).startsWith("Example Town")
-            ? "food:town"
-            : "food:region"
-          : a.target_type === "place"
-            ? (a.signals as string[]).includes(LANDMARK)
-              ? "place:favourite"
-              : "place:taste"
-            : String(a.target_type);
+        tool === "qloo_rank"
+          ? `rank:${String(a.option_type)}`
+          : tool === "qloo_find_tags"
+            ? String(a.query).startsWith("Example Town")
+              ? "food:town"
+              : "food:region"
+            : a.target_type === "place"
+              ? (a.signals as string[]).includes(LANDMARK)
+                ? "place:favourite"
+                : "place:taste"
+              : String(a.target_type);
       const envelope = ANSWERS[key] ?? recommend([]);
       const evidenceId = `ev-${calls.length}`;
       const results = (envelope.results as { entity_id?: string; id?: string; name: string }[]).map(
@@ -193,5 +196,45 @@ describe("Stage 2 research plan", () => {
     expect(profile.steps.length).toBeGreaterThan(4);
     expect(profile.steps.join(" ")).toMatch(/singers enjoyed by people who love Example Singer/);
     expect(events.filter((e) => e.type === "step").length).toBe(profile.steps.length - 1);
+  });
+});
+
+describe("Stage 2 gap filling with the LLM", () => {
+  it("lets the AI propose era singers, which count only once Qloo ranks them and their years fit", async () => {
+    ANSWERS["rank:artist"] = recommend([
+      entity(40, "Proposed Voice", "urn:entity:artist", { description: "A star of 1960s radio." }),
+      entity(41, "Modern Star", "urn:entity:artist", { description: "Famous in the 2010s." }),
+    ]);
+    const { calls, gateway, store } = fakes();
+    const asked: unknown[] = [];
+    const llm: LlmClient = {
+      configured: true,
+      model: "test-model",
+      async json(req) {
+        asked.push(req.input);
+        const data = { tvShows: [], singers: ["Proposed Voice", "Modern Star"] };
+        return { kind: "ok", data: req.schema.parse(data), cached: false };
+      },
+    };
+    const profile = await buildTasteProfile(
+      { profileId: "p", nickname: null },
+      { gateway, store, llm },
+      () => {},
+    );
+    if (!profile) throw new Error("not built");
+    // Only one Qloo-placed era singer was kept, so singers were asked for (TV was already there).
+    expect(asked[0]).toMatchObject({ asked: ["singers"], years: { from: 1949, to: 1989 } });
+    const rank = calls.find((c) => c.tool === "qloo_rank");
+    expect(rank?.args).toMatchObject({
+      options: ["Proposed Voice", "Modern Star"],
+      option_type: "artist",
+      signals: [SINGER],
+    });
+    // The later star is left out; the era voice joins, with the rank call as its evidence.
+    const music = profile.items.filter((i) => i.domain === "music").map((i) => i.name);
+    expect(music).toContain("Proposed Voice");
+    expect(music).not.toContain("Modern Star");
+    expect(profile.steps.join(" ")).toMatch(/the AI suggested Proposed Voice and Modern Star/);
+    delete ANSWERS["rank:artist"];
   });
 });

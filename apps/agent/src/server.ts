@@ -16,6 +16,7 @@ import { createSessionStore } from "./stage3/store";
 import { createProfileStore } from "./profiles/store";
 import { purgeStaleData } from "./db/maintenance";
 import { ensureDemoProfiles } from "./demo/seed";
+import { createLlmClient, createMemoryLlmStore, createPgLlmStore } from "./llm/client";
 
 async function main() {
   const env = loadEnv();
@@ -52,6 +53,16 @@ async function main() {
     // Only called once requests are served, i.e. after `app` below exists.
     log: { warn: (obj, msg) => app.log.warn(obj, msg) },
   });
+  // The LLM steps, server-side only; without LLM_API_KEY they are honestly switched off.
+  const llm = createLlmClient({
+    apiKey: env.LLM_API_KEY,
+    baseUrl: env.LLM_BASE_URL,
+    model: env.LLM_MODEL,
+    reasoningEffort: env.LLM_REASONING_EFFORT,
+    dailyCalls: env.LLM_DAILY_CALLS,
+    store: db && !dbSetupFailed ? createPgLlmStore(db.drizzle) : createMemoryLlmStore(),
+    log: { warn: (obj, msg) => app.log.warn(obj, msg) },
+  });
   const commit = process.env.RENDER_GIT_COMMIT?.slice(0, 7);
   // Without a migrated schema the data routes answer an honest 503 instead of failing per query.
   const dataDb = db && !dbSetupFailed ? db : null;
@@ -72,7 +83,7 @@ async function main() {
         : null,
     taste:
       dataDb && profiles
-        ? { profiles, store: createTasteStore(dataDb.drizzle), gateway, db: dataDb.drizzle }
+        ? { profiles, store: createTasteStore(dataDb.drizzle), gateway, db: dataDb.drizzle, llm }
         : null,
     sessions:
       dataDb && profiles
@@ -81,6 +92,17 @@ async function main() {
             taste: createTasteStore(dataDb.drizzle),
             sessions: createSessionStore(dataDb.drizzle),
             gateway,
+            llm,
+          }
+        : null,
+    compare:
+      dataDb && profiles
+        ? {
+            profiles,
+            taste: createTasteStore(dataDb.drizzle),
+            sessions: createSessionStore(dataDb.drizzle),
+            llm,
+            db: dataDb.drizzle,
           }
         : null,
     research: {
@@ -134,6 +156,7 @@ async function main() {
       taste: createTasteStore(dataDb.drizzle),
       sessions: createSessionStore(dataDb.drizzle),
       gateway,
+      llm,
       log: app.log,
     }).catch((err: unknown) =>
       app.log.warn({ code: (err as { code?: string }).code ?? "error" }, "demo seeding failed"),

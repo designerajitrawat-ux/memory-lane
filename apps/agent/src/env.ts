@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Secrets (QLOO_API_KEY, ANTHROPIC_API_KEY, DATABASE_URL) are read from the process env only and
+// Secrets (QLOO_API_KEY, LLM_API_KEY, DATABASE_URL) are read from the process env only and
 // are never logged. QLOO_API_KEY is not read here at all: the qloo harness reads it itself from the
 // allow-listed env we pass to the MCP child process (qloo/mcpClient.ts).
 const DEV_WEB_ORIGIN = "http://localhost:3000";
@@ -54,6 +54,18 @@ const EnvSchema = z
     // Stage 1 favourite lookups per device token and per client IP (/64) in 24 h (in memory).
     STAGE1_LOOKUPS_PER_OWNER_DAY: z.coerce.number().int().min(1).default(50),
     STAGE1_LOOKUPS_PER_CLIENT_DAY: z.coerce.number().int().min(1).default(100),
+    // The LLM steps (compare baseline, era proposals for Qloo to rank, warmer prompts): any
+    // OpenAI-compatible Chat Completions API. Without a key those steps are honestly switched off.
+    LLM_API_KEY: z
+      .string()
+      .optional()
+      .transform((v) => v?.trim() || undefined),
+    LLM_BASE_URL: z.url({ protocol: /^https$/ }).default("https://api.openai.com/v1"),
+    LLM_MODEL: z.string().trim().min(1).default("gpt-6-luna"),
+    // Sent only when set (OpenAI reasoning models); "none" turns it off for other providers.
+    LLM_REASONING_EFFORT: z.enum(["none", "low", "medium", "high"]).default("low"),
+    // LLM calls per UTC day across everyone (cache hits don't count): keeps spend bounded.
+    LLM_DAILY_CALLS: z.coerce.number().int().min(0).default(400),
     // Seed the three fictional demo personas at startup (default: on in production, off elsewhere).
     SEED_DEMOS: z.enum(["0", "1"]).optional(),
     // SQL migrations applied at startup (relative to the working directory).

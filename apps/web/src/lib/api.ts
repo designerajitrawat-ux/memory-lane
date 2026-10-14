@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   ApiErrorSchema,
+  CompareResponseSchema,
   DemoProfilesResponseSchema,
   EvidenceViewSchema,
   SessionItemSchema,
@@ -190,6 +191,9 @@ export const api = {
       onEvent,
       signal,
     ),
+  /** The same model without Qloo next to Memory Lane's session (the first view may ask the AI). */
+  getCompare: (id: string) =>
+    request(`/api/profiles/${encodeURIComponent(id)}/compare`, CompareResponseSchema, {}, 60_000),
   getEvidence: (id: string) =>
     request(`/api/evidence/${encodeURIComponent(id)}`, EvidenceViewSchema),
 

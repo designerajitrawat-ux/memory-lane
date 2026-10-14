@@ -11,14 +11,14 @@ Judges (and Qloo's kit) explicitly value responsible data handling. Treat this f
 | Favourites / avoid-list | Yes | Public cultural entities only |
 | Health / diagnosis | **No** | Not asked, not stored, never sent anywhere |
 | Caregiver identity | **No** | No login; a random owner token kept on the caregiver's device (localStorage), sent as a bearer header; the DB stores only its sha256 |
-| Reactions & notes | Yes | Notes stay in our DB; never sent to Qloo; sent to Claude only as needed for adaptation |
+| Reactions & notes | Yes | Notes stay in our DB; never sent to Qloo or the LLM |
 
 ## 2. Rules (enforced in code)
 1. `qloo/redact.ts` rejects Qloo args containing: the nickname, email/phone/URL patterns, street-address
    patterns, health terms list (dementia, alzheimer, diagnosis, medication, etc.). Unit-tested.
 2. Qloo results are aggregate affinities → UI wording is aggregate (validator in agent).
 3. No claims of medical benefit anywhere (validator + copy review).
-4. Secrets: `QLOO_API_KEY`, `ANTHROPIC_API_KEY`, `DATABASE_URL` only in hosting env vars. Never in
+4. Secrets: `QLOO_API_KEY`, `LLM_API_KEY`, `DATABASE_URL` only in hosting env vars. Never in
    repo, frontend, logs, screenshots, or prompts. `.env*` gitignored. Run `security-reviewer` subagent
    before every deploy.
 5. Logs: pino with redaction paths for headers and args; no request bodies with notes.
@@ -49,6 +49,13 @@ Judges (and Qloo's kit) explicitly value responsible data handling. Treat this f
    (with copies of its Qloo call records, never the harness summary) under the same profile limits and
    rate bucket as creating a profile, one per device while untouched; a copy that can't be planned is
    removed again, so no unreachable profile is left behind.
+12. The LLM (server-side only, `llm/client.ts`) receives public facts only: birth year, town-level
+   regions, languages, confirmed favourites' names, the caregiver's avoid topics (without reasons),
+   era years and Qloo's one-line descriptions of items. Never the nickname, notes, reasons or anything
+   personal: the same guard as for Qloo refuses the call otherwise, and avoid entries with health words
+   are left out. Inputs are not stored (only a hash, for the cache); outputs are cultural names and
+   prompt text. OpenAI's API doesn't train on API data by default; a free-tier provider may, which is
+   why only public facts are sent.
 11. Map searches carry the place's town (Qloo's geocode, or the town-level region the caregiver typed),
    never the nickname or notes. Links are built in code and checked against https search paths per host (YouTube `/results`,
    Spotify `/search/`, Google Maps `/maps/search/`), so allowed hosts' redirect pages can't be used.
@@ -64,7 +71,9 @@ Judges (and Qloo's kit) explicitly value responsible data handling. Treat this f
 
 ## 4. Prompt-injection hygiene
 - Treat Qloo results, user free text, and model output as untrusted data.
-- User free-text fields are length-limited and passed to Claude inside clearly delimited data blocks.
+- What reaches the LLM is a JSON data block (the user message), never mixed into the instructions; its
+  output is parsed against a strict schema and then checked like everything else (Qloo evidence for
+  any name, the language policy for any prompt). It can't add items or call tools.
 - The agent has no tools that write anything except via validated app tools.
 
 ## 5. Limitations to state publicly (README "Known limitations")

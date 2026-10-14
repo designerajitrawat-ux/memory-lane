@@ -93,6 +93,21 @@ years, hotels and venues — never naming what touched the avoid-list or a painf
 **With the Claude key (next):** `propose_candidates` adds era-typical names per domain, which only
 survive through `qloo_rank` / `qloo_describe` with evidence (Phase 0: rank pushes modern names down).
 
+### The LLM steps (built: `apps/agent/src/llm/`, `stage2/propose.ts`, `stage3/warmPrompts.ts`, `compare/`)
+Any OpenAI-compatible API (default OpenAI `gpt-6-luna`, structured outputs, reasoning effort low),
+server-side, same privacy guard as Qloo, cached by input hash, capped per day; off without a key.
+1. **Gap filling (Stage 2):** when Qloo's recommendations leave no TV from their years, or fewer than two
+   singers it places in their era, the LLM proposes up to 8 era-typical names; `qloo_rank` with named
+   options matches and orders them against the favourites; code keeps ≤2 whose years fit (and that pass
+   the avoid-list and gentle filters). The rank call is their evidence; the log names what was asked
+   and kept.
+2. **Warmer prompts (Stage 3):** one call per planned session writes 3 item-specific prompts from each
+   item's kind, year and Qloo description; each must pass the prompt and caption checks (and no memory
+   words at all); an item keeps its template prompts unless two pass.
+3. **Compare (screen 9):** the same model, no tools, asked for the same session from the same public
+   facts (§4.3); code counts Qloo evidence, items outside their years, items touching the avoid-list
+   and items shared with the other demo people's plans, next to Memory Lane's newest session.
+
 ### Stage 3 — Compose session (built: `apps/agent/src/stage3/`)
 - Code fills the template from the newest taste profile (`compose.ts`): favourites open, items from the
   last session rotate out, an empty domain becomes another song; Stage 4 weights (reactions) and the

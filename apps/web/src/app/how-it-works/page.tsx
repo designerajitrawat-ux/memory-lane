@@ -155,10 +155,13 @@ export default function HowItWorksPage() {
           <p className="flex gap-3 text-base">
             <BrainCircuit aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
             <span>
-              The design is &ldquo;the AI proposes, Qloo decides, code verifies&rdquo;. A language
-              model step (suggesting era-typical names for Qloo to rank, and warmer prompts) is
-              designed but not switched on in this demo: everything you see comes from Qloo and the
-              code above, so nothing depends on a model making things up.
+              The design is &ldquo;the AI proposes, Qloo decides, code verifies&rdquo;. When Qloo
+              leaves a gap (say, no TV from their years), a language model suggests era-typical
+              names, and they count only once Qloo has matched and ranked them and their years fit.
+              The model also writes warmer prompts for items already in a session, and each one
+              passes the same checks as the templates. Without an AI key the app runs on Qloo and
+              code alone. The &ldquo;Generic AI vs Memory Lane&rdquo; page on every profile shows
+              the same model asked without Qloo, and what code finds wrong with its plan.
             </span>
           </p>
         </Section>

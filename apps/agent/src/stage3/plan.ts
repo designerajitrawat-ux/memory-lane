@@ -1,4 +1,5 @@
 import type { Session, TasteItem } from "@memory-lane/shared";
+import type { LlmClient } from "../llm/client";
 import type { QlooGateway } from "../qloo/gateway";
 import { avoidMatcher } from "../stage2/avoid";
 import type { TasteStore } from "../stage2/store";
@@ -6,6 +7,7 @@ import { adapt, type Adaptation } from "../stage4/adapt";
 import { composeSession } from "./compose";
 import type { SessionStore } from "./store";
 import { validateSessionItems } from "./validate";
+import { warmPrompts } from "./warmPrompts";
 
 export interface PlanDeps {
   taste: TasteStore;
@@ -16,6 +18,8 @@ export interface PlanDeps {
   budgetReserve?: number;
   /** Demo personas: Qloo answers are cached without expiry. Server-side only. */
   persistent?: boolean;
+  /** Writes warmer item-specific prompts (checked like the templates). Off without a key. */
+  llm?: LlmClient;
 }
 
 export type PlanResult =
@@ -117,10 +121,12 @@ export async function planNextSession(
     sessionNumber,
   );
   if (kept.length === 0) return { kind: "nothing_to_plan" };
+  const warmed =
+    deps.llm && ctx ? (await warmPrompts(kept, ctx, input.nickname, deps.llm)).items : kept;
   const session = await deps.sessions.create(
     profileId,
     profile.id,
-    kept,
+    warmed,
     learned?.whatChanged ?? [],
   );
   return { kind: "planned", session };

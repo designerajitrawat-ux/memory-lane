@@ -5,3 +5,4 @@ export * from "./qloo";
 export * from "./resolve";
 export * from "./taste";
 export * from "./session";
+export * from "./compare";

@@ -8,7 +8,9 @@ import type {
 import type { GatewayResult, QlooGateway } from "../qloo/gateway";
 import { typeLabel } from "../stage1/labels";
 import { normalise, short, str, yearOf } from "../stage1/mapDescribe";
+import type { LlmClient } from "../llm/client";
 import { avoidMatcher } from "./avoid";
+import { proposeNames } from "./propose";
 import { bumpDistance, eraFor, eraPlacement, yearFits, type Era, type EraPlacement } from "./era";
 import type { ConfirmedSeed, TasteStore } from "./store";
 import { validateTasteItems } from "./validators";
@@ -27,12 +29,16 @@ export interface TasteDeps {
   budgetReserve?: number;
   /** Demo personas: Qloo answers are cached without expiry. Server-side only. */
   persistent?: boolean;
+  /** Proposes era-typical names for gaps Qloo left; Qloo ranks them. Off without a key. */
+  llm?: LlmClient;
 }
 
 const PER_DOMAIN = 6;
+/** Items the AI's proposals may add to a domain, once Qloo has ranked them. */
+const MAX_PROPOSED = 2;
 /** Dishes Qloo finds for where they grew up, on top of the favourites: food is the lightest domain. */
 const MAX_FOUND_DISHES = 3;
-const TOOLS = ["qloo_recommend", "qloo_find_tags"] as const;
+const TOOLS = ["qloo_recommend", "qloo_find_tags", "qloo_rank"] as const;
 const FAVOURITE_CAPTION = "Added as a favourite; Qloo confirmed the match.";
 // Qloo's food tag kinds, most dish-like first: a popular dish ("Buckeye") beats a restaurant's menu
 // specialty ("The Ohio Burger"), which beats a cuisine label.
@@ -453,6 +459,81 @@ export async function buildTasteProfile(
     } else if (suggested > kept) {
       notes.push(
         `Films and TV were kept to ${era.from}–${era.to}; Qloo's other suggestions were from later years.`,
+      );
+    }
+  }
+
+  // Gaps Qloo's recommendations left — no TV from their years, or few singers it places in their era:
+  // the AI proposes era-typical names, Qloo matches and ranks them against the favourites (named
+  // options), and code checks the years. A proposal counts only with that Qloo evidence.
+  const needTv = hasSignals && !filmTv.some((i) => i.entityType?.endsWith(":tv_show"));
+  const needSingers =
+    hasSignals && singersKept.filter((s) => s.place === PLACEMENT_ORDER.fits).length < 2;
+  if (deps.llm?.configured && (needTv || needSingers) && !isAborted()) {
+    const proposal = await proposeNames(
+      {
+        birthYear: ctx.birthYear,
+        grewUpIn: youth,
+        languages: ctx.languages,
+        years: { from: era.from, to: era.to },
+        favourites: entitySeeds.map((s) => s.name),
+        alreadyHave: [...music, ...filmTv].map((i) => i.name),
+        need: { tvShows: needTv, singers: needSingers },
+      },
+      deps.llm,
+      input.nickname,
+    );
+    const rankProposals = async (
+      proposed: string[],
+      optionType: "tv_show" | "artist",
+      against: readonly ConfirmedSeed[],
+    ) => {
+      step(
+        `${optionType === "tv_show" ? "Qloo had no TV from their years for these favourites" : "Qloo placed few singers in their years"}; the AI suggested ${join(proposed.slice(0, 3))} and others, for Qloo to match and rank against ${join(names(against))}…`,
+      );
+      const ranked = read(
+        await call("qloo_rank", {
+          options: proposed.slice(0, 10),
+          option_type: optionType,
+          signals: against.map((s) => s.entityId),
+        }),
+        readRecommend,
+      );
+      return { ranked, sent: names(against).slice(0, 2) };
+    };
+    if (proposal?.tvShows.length) {
+      const { ranked, sent } = await rankProposals(proposal.tvShows, "tv_show", plan.tv);
+      const shows = found(ranked)
+        .map((f) => ({ ...f, sent }))
+        .filter((f) => yearFits(f.year, era))
+        .filter(keep)
+        .filter(gentleScreen)
+        .filter(fresh(filmTv))
+        .slice(0, MAX_PROPOSED);
+      filmTv.push(...shows.map((f) => fromFound(f, "film_tv")));
+      step(
+        ranked.kind === "found"
+          ? shows.length
+            ? `Qloo matched ${count(found(ranked).length, "of them", "of them")} and ranked them; kept ${join(shows.map((f) => `${f.name} (${f.year})`))} from their years.`
+            : "Qloo matched none of them from their years, so none were added."
+          : "Qloo couldn't rank them just now, so none were added.",
+      );
+    }
+    if (proposal?.singers.length) {
+      const { ranked, sent } = await rankProposals(proposal.singers, "artist", plan.artist);
+      const voices = found(ranked)
+        .map((f) => ({ ...f, sent }))
+        .filter((f) => eraPlacement(f.description, era) !== "later")
+        .filter(keep)
+        .filter(fresh(music))
+        .slice(0, MAX_PROPOSED);
+      music.push(...voices.map((f) => fromFound(f, "music")));
+      step(
+        ranked.kind === "found"
+          ? voices.length
+            ? `Qloo matched and ranked them; kept ${join(voices.map((f) => f.name))}.`
+            : "Qloo matched none of them from their years, so none were added."
+          : "Qloo couldn't rank them just now, so none were added.",
       );
     }
   }
