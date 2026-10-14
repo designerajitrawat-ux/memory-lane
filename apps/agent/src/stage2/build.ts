@@ -34,8 +34,9 @@ const PER_DOMAIN = 6;
 const MAX_FOUND_DISHES = 3;
 const TOOLS = ["qloo_recommend", "qloo_find_tags"] as const;
 const FAVOURITE_CAPTION = "Added as a favourite; Qloo confirmed the match.";
-// Qloo's food tag kinds, most dish-like first: a named dish beats a cuisine label.
-const FOOD_TAGS = ["specialty_dish", "popular_food_item", "cuisine"];
+// Qloo's food tag kinds, most dish-like first: a popular dish ("Buckeye") beats a restaurant's menu
+// specialty ("The Ohio Burger"), which beats a cuisine label.
+const FOOD_TAGS = ["popular_food_item", "specialty_dish", "cuisine"];
 
 const SEED_DOMAIN: Record<string, TasteDomain | undefined> = {
   music: "music",

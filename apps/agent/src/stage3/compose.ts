@@ -89,7 +89,11 @@ export function composeSession(input: ComposeInput): ComposedItem[] {
     const { link, altLink } = linksFor(kind, item.name, {
       year: item.year,
       decade: kind === "song" ? searchDecade(item.description, era) : null,
-      locality: item.locality ?? null,
+      // "… Museum, Liverpool" already says where it is.
+      locality:
+        item.locality && !item.name.toLowerCase().includes(item.locality.toLowerCase())
+          ? item.locality
+          : null,
       cuisine: kind === "food" && isCuisine(item),
     });
     return {
