@@ -20,10 +20,10 @@ import type { ReactedItem } from "../stage3/store";
 
 /** How much one reaction moves an item (Stage 4, docs/05): ≤ -1 means it never comes back. */
 const WEIGHT: Record<Reaction, number> = { sang: 2, engaged: 1, neutral: -0.5, distressed: -100 };
-/** Learned items start a little ahead of the rest of their domain… */
-export const LEARNED_BOOST = 1;
-/** …and Qloo's ranking against what landed decides the order: top gets this much, the last none. */
+/** Qloo's ranking against what landed decides the order: top gets this much, the last none… */
 export const RANK_BOOST = 1.5;
+/** …and a learned item Qloo didn't rank (its domain couldn't be ranked) starts a little ahead. */
+export const LEARNED_BOOST = 1;
 const PER_DOMAIN = 2;
 /** qloo_rank takes at most 10 options. */
 const RANK_OPTIONS = 10;
@@ -206,7 +206,6 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
   ]);
   const { kept: learnedItems } = validateTasteItems(candidates, evidence, isAvoided);
   for (const item of learnedItems) {
-    weights.set(item.entityId, (weights.get(item.entityId) ?? 0) + LEARNED_BOOST);
     // Ids Qloo just returned to the server (validated against the evidence): rankable like the rest.
     trustedIds.add(item.entityId.toLowerCase());
   }
@@ -220,11 +219,11 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
       .filter((i) => !played.has(i.entityId) && (weights.get(i.entityId) ?? 0) > -1)
       .filter((i, n, all) => all.findIndex((x) => x.entityId === i.entityId) === n)
       .slice(0, RANK_OPTIONS);
-  const lovedFirst = (domain: string) =>
-    [
-      ...lovedEntities.filter((r) => r.domain === domain),
-      ...lovedEntities.filter((r) => r.domain !== domain),
-    ]
+  // Each domain is ranked against what landed in that domain only (live check: singers as signals
+  // pulled a UK persona's TV ranking toward an American drama).
+  const lovedIn = (domain: string) =>
+    lovedEntities
+      .filter((r) => r.domain === domain)
       .slice(0, 5)
       .map((r) => r.entityId);
   const musicPool = pool("music", "urn:entity:artist");
@@ -239,8 +238,8 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
         })
       : Promise.resolve(null);
   const [musicRank, screenRank] = await Promise.all([
-    rank(musicPool, "artist", lovedFirst("music")),
-    rank(screenPool, screenTarget, lovedFirst("film_tv")),
+    rank(musicPool, "artist", lovedIn("music")),
+    rank(screenPool, screenTarget, lovedIn("film_tv")),
   ]);
   const rankEvidence = new Map<string, string>();
   const ranked = (res: GatewayResult | "refused" | null, options: TasteItem[]): TasteItem[] => {
@@ -255,6 +254,12 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
   };
   const musicRanked = ranked(musicRank, musicPool);
   const screenRanked = ranked(screenRank, screenPool);
+  // Qloo's order leads; only learned items it didn't rank get a fixed head start.
+  for (const item of learnedItems) {
+    if (!rankEvidence.has(item.entityId)) {
+      weights.set(item.entityId, (weights.get(item.entityId) ?? 0) + LEARNED_BOOST);
+    }
+  }
 
   // What changed, in plain words (it reports what the caregiver logged; it claims nothing).
   const whatChanged: string[] = [];
@@ -287,7 +292,7 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
   );
   if (lovedNotExtended.length) {
     whatChanged.push(
-      `${names(lovedNotExtended)} landed well, so ${lovedNotExtended.length === 1 ? "it comes" : "they come"} up sooner.`,
+      `${names(lovedNotExtended)} landed well, so ${lovedNotExtended.length === 1 ? "it comes" : "they come"} back again in a later session.`,
     );
   }
   const failed = [musicOutcome, screenOutcome].some((o) => o.kind === "failed");

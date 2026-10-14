@@ -20,18 +20,18 @@ describe("era", () => {
 
   it("reads years and decades from descriptions", () => {
     expect(mentionedYears("famous in 1950s–60s Hindi cinema")).toEqual([1950, 1960]);
-    expect(mentionedYears("Kishore Kumar (1929–1987)")).toEqual([1929, 1987]);
+    expect(mentionedYears("Example Singer (1929–1987)")).toEqual([1929, 1987]);
     expect(mentionedYears("from the late 1980s through the 2000s")).toEqual([1980, 2000]);
     expect(mentionedYears(null)).toEqual([]);
   });
 
   it("places singers by the years Qloo's description mentions", () => {
     expect(eraPlacement("associated with 1950s–60s Hindi cinema", era)).toBe("fits");
-    expect(eraPlacement("Kishore Kumar (1929–1987) … hits across the 1950s–1980s", era)).toBe(
+    expect(eraPlacement("Example Singer (1929–1987) … hits across the 1950s–1980s", era)).toBe(
       "fits",
     );
     expect(eraPlacement("a soulful, versatile voice", era)).toBe("unknown");
-    // Live check: these ranked above Lata Mangeshkar before; their centre is past the bump.
+    // Live check: later voices once ranked above era singers; their centre is past the bump.
     expect(eraPlacement("a defining sound from the late 1980s through the 2000s", era)).toBe(
       "later",
     );
@@ -50,7 +50,7 @@ describe("avoidMatcher", () => {
   });
 
   it("brings the related words of well-known painful topics", () => {
-    // Wagah's description never says "Partition" (live check).
+    // A border landmark's description never says "Partition" (live check).
     expect(avoided("Example Border Post", "A daily ceremony at the India Pakistan border.")).toBe(
       true,
     );

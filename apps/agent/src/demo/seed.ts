@@ -1,4 +1,4 @@
-import { and, count, eq, like, ne } from "drizzle-orm";
+import { and, count, eq, like, ne, or } from "drizzle-orm";
 import { ProfileInputSchema } from "@memory-lane/shared";
 import { profiles as profilesTable, sessions as sessionsTable, tasteProfiles } from "../db/schema";
 import type { AppDb } from "../db/types";
@@ -95,15 +95,17 @@ export async function demoComplete(db: AppDb, profileId: string): Promise<boolea
 
 /** Earlier versions of a persona (built by older code), once the current one is complete. */
 async function removeOlderVersions(db: AppDb, key: string) {
-  await db
-    .delete(profilesTable)
-    .where(
-      and(
-        eq(profilesTable.isDemo, true),
-        like(profilesTable.ownerTokenHash, `${demoOwnerPrefix(key)}%`),
-        ne(profilesTable.ownerTokenHash, demoOwnerHash(key)),
+  await db.delete(profilesTable).where(
+    and(
+      eq(profilesTable.isDemo, true),
+      // The first version had no suffix; later ones end ":v<n>" (never another persona's key).
+      or(
+        eq(profilesTable.ownerTokenHash, demoOwnerPrefix(key)),
+        like(profilesTable.ownerTokenHash, `${demoOwnerPrefix(key)}:v%`),
       ),
-    );
+      ne(profilesTable.ownerTokenHash, demoOwnerHash(key)),
+    ),
+  );
 }
 
 function errorCode(err: unknown): string | undefined {

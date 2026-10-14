@@ -70,7 +70,7 @@ export const EvidenceViewSchema = z.object({
   createdAt: z.string(),
   /** Names for the Qloo ids that were sent (favourites, session items), from this profile. */
   names: z.record(z.string(), z.string()).default({}),
-  /** What Qloo returned, by name (up to 20, in Qloo's order). */
+  /** What Qloo returned, by name (up to 10, in Qloo's order). */
   results: z.array(z.string()).default([]),
 });
 

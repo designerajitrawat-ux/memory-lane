@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { Session } from "@memory-lane/shared";
 import { DemoBanner } from "@/components/demo-banner";
-import { Loading } from "@/components/loading";
+import { Loading, useAfter } from "@/components/loading";
 import { KIND_ICONS, REACTION_LABEL } from "@/components/session-labels";
 import { Button } from "@/components/ui/button";
 import { api, type ApiFailureKind } from "@/lib/api";
@@ -29,6 +29,7 @@ export function SessionSummary() {
   const [planning, setPlanning] = useState(false);
   // On a demo persona: the session Stage 4 planned from this one, to see what it learned.
   const [nextId, setNextId] = useState<string | null>(null);
+  const slowPlan = useAfter(planning);
 
   useEffect(() => {
     let active = true;
@@ -161,6 +162,9 @@ export function SessionSummary() {
             {planning ? "Planning…" : "Plan the next session"}
           </Button>
         )}
+        <p role="status" className="text-base text-muted-foreground empty:hidden">
+          {slowPlan ? "Asking Qloo for more like what landed, and ranking what comes next…" : ""}
+        </p>
         {readOnly && nextId && (
           <Link href={`/sessions/${nextId}`} className={primary}>
             See session {session.number + 1}: what Memory Lane learned

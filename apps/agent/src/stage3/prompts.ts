@@ -51,8 +51,23 @@ function soundOf(name: string): string {
  * 2–3 prompts for an item, rotating with the session number so later sessions feel fresh. Only
  * prompts that pass the language checks are returned; the name-free ones always do.
  */
-export function promptsFor(kind: SessionItemKind, name: string, sessionNumber: number): string[] {
-  const all = PROMPTS[kind];
+export function promptsFor(
+  kind: SessionItemKind,
+  name: string,
+  sessionNumber: number,
+  opts: { locality?: string | null } = {},
+): string[] {
+  // A place Qloo found near their town may be one they never visited: start from the town instead.
+  const town =
+    kind === "place" && opts.locality && !name.toLowerCase().includes(opts.locality.toLowerCase())
+      ? opts.locality
+      : null;
+  const all = town
+    ? [
+        (n: string) => `${n} is in ${town}. What was ${town} like when you were young?`,
+        ...PROMPTS.place.slice(1),
+      ]
+    : PROMPTS[kind];
   const start = ((sessionNumber - 1) * 2) % all.length;
   const picked = [all[0], all[(start + 1) % all.length], all[(start + 2) % all.length]];
   const prompts = [...new Set(picked.map((p) => (p as (n: string) => string)(name)))]

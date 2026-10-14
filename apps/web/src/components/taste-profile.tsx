@@ -24,7 +24,7 @@ import type {
 import { AgentLog, ProblemBanner } from "@/components/agent-run";
 import { DemoBanner } from "@/components/demo-banner";
 import { EvidenceDrawer } from "@/components/evidence-drawer";
-import { Loading } from "@/components/loading";
+import { Loading, useAfter } from "@/components/loading";
 import { TryDemo } from "@/components/try-demo";
 import { Button } from "@/components/ui/button";
 import { api, type ApiFailureKind } from "@/lib/api";
@@ -76,21 +76,23 @@ export function TasteProfileView() {
     let active = true;
     Promise.all([api.getTasteProfile(id), api.getProfile(id)]).then(([t, p]) => {
       if (!active) return;
-      if (!t.ok) {
-        setLoadError({ kind: t.kind, message: t.message });
+      // Whose profile it is decides what can be done here: without that answer, show a retry rather
+      // than guess (an owner must never see their own profile as a demo; ux review W4).
+      if (!t.ok || !p.ok) {
+        const failed = !t.ok ? t : p;
+        if (!failed.ok) setLoadError({ kind: failed.kind, message: failed.message });
         return;
       }
       setProfile(t.data.tasteProfile);
-      if (p.ok) {
-        setReadOnly(!p.data.isOwner);
-        setNickname(p.data.profile.nickname);
-        const s = p.data.profile.seeds;
-        setSeeds({
-          confirmed: s.filter((x) => x.status === "confirmed").length,
-          toChoose: s.filter((x) => x.status === "needs_input").length,
-          toCheck: s.filter((x) => x.status === "pending").length,
-        });
-      }
+      setReadOnly(!p.data.isOwner);
+      const { nickname: name, seeds: s } = p.data.profile;
+      setNickname(name);
+      document.title = `${name ? `${name}’s ` : ""}Life Taste Profile · Memory Lane`;
+      setSeeds({
+        confirmed: s.filter((x) => x.status === "confirmed").length,
+        toChoose: s.filter((x) => x.status === "needs_input").length,
+        toCheck: s.filter((x) => x.status === "pending").length,
+      });
     });
     return () => {
       active = false;
@@ -550,6 +552,7 @@ function SessionsPanel({ profileId, readOnly }: { profileId: string; readOnly: b
     setError(r.message);
   }
 
+  const slowPlan = useAfter(planning);
   const any = (sessions?.length ?? 0) > 0;
   const newest = sessions?.[0];
   const learnedSession = readOnly && newest && newest.number > 1 ? newest : null;
@@ -571,6 +574,9 @@ function SessionsPanel({ profileId, readOnly }: { profileId: string; readOnly: b
           {planning ? "Planning…" : any ? "Plan the next session" : "Plan the first session"}
         </Button>
       )}
+      <p role="status" className="text-base text-muted-foreground empty:hidden">
+        {slowPlan ? "Asking Qloo for more like what landed, and ranking what comes next…" : ""}
+      </p>
       {learnedSession && (
         <Link href={`/sessions/${learnedSession.id}`} className={primaryLink}>
           <span>

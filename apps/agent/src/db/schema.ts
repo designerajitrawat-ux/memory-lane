@@ -69,6 +69,8 @@ export const profiles = pgTable(
     languages: text("languages").array().notNull(),
     lifeStages: jsonb("life_stages").$type<LifeStageRow[]>().notNull(),
     isDemo: boolean("is_demo").notNull().default(false),
+    // "Try it yourself" copies: which demo persona (owner-hash prefix, no version) it was copied from.
+    copiedFrom: text("copied_from"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     // Bumped when the owner opens or lists it; idle non-demo profiles are purged (docs/07 §2.8).
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),

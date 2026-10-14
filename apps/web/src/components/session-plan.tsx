@@ -147,7 +147,7 @@ export function SessionPlan() {
               <li key={item.id} className="print-plain flex gap-4 rounded-2xl border bg-card p-4">
                 <span
                   aria-hidden="true"
-                  className="flex size-12 shrink-0 items-center justify-center rounded-full bg-secondary text-primary"
+                  className="hidden size-12 shrink-0 items-center justify-center rounded-full bg-secondary text-primary min-[24rem]:flex"
                 >
                   <Icon className="size-6" />
                 </span>
@@ -165,6 +165,16 @@ export function SessionPlan() {
                   <p className="text-base text-muted-foreground">
                     <span className="font-bold">To start: </span>
                     {item.prompts[0]}
+                  </p>
+                  {/* On paper: the other prompts, and what to search for (links don't work there). */}
+                  <ul className="hidden list-disc pl-5 text-base print:block">
+                    {item.prompts.slice(1).map((p, n) => (
+                      <li key={n}>{p}</li>
+                    ))}
+                  </ul>
+                  <p className="hidden text-base print:block">
+                    <span className="font-bold">Search: </span>
+                    {searchWords(item.link.url)}
                   </p>
                   {item.reaction && (
                     <p className="text-base font-bold text-evidence">
@@ -193,6 +203,11 @@ export function SessionPlan() {
 
       {readOnly && <TryDemo profileId={session.profileId} name={null} />}
 
+      <p className="hidden text-base print:block">
+        Memory Lane supports reminiscence activities. It is not a medical device and does not
+        diagnose or treat any condition.
+      </p>
+
       <div className="no-print flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         {start}
         <Button
@@ -209,4 +224,23 @@ export function SessionPlan() {
       </div>
     </div>
   );
+}
+
+/** The words a link searches for, for the printed plan ("Asha Bhosle 1970s songs on YouTube"). */
+function searchWords(url: string): string {
+  try {
+    const u = new URL(url);
+    const where = u.host.includes("google")
+      ? "Google Maps"
+      : u.host.includes("spotify")
+        ? "Spotify"
+        : "YouTube";
+    const q =
+      u.searchParams.get("search_query") ??
+      u.searchParams.get("query") ??
+      decodeURIComponent(u.pathname.split("/").pop() ?? "");
+    return `${q} (${where})`;
+  } catch {
+    return url;
+  }
 }

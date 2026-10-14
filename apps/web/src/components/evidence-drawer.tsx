@@ -145,7 +145,8 @@ function CallRecord({ record: r, subject }: { record: EvidenceView; subject: Evi
   const position = r.results.findIndex((n) => n === subject.name);
   const others = r.results.filter((n) => n !== subject.name).slice(0, 6);
   return (
-    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 rounded-xl border bg-card p-3 text-base">
+    // Labels sit beside their values when there is room, above them on narrow screens or large text.
+    <dl className="grid grid-cols-1 gap-x-4 gap-y-1 rounded-xl border bg-card p-3 text-base min-[26rem]:grid-cols-[auto_minmax(0,1fr)] [&>dt]:font-bold min-[26rem]:[&>dt]:font-normal">
       <dt className="text-muted-foreground">What</dt>
       <dd>{TOOL_LABELS[r.tool] ?? r.tool}</dd>
       <dt className="text-muted-foreground">Asked</dt>
@@ -204,5 +205,6 @@ function describeArgs(r: EvidenceView): string {
     if (from) parts.push(`enjoyed by people who love ${from}`);
   }
   if (typeof a.filter_location === "string") parts.push(`near ${a.filter_location}`);
-  return parts.join(", ") || "—";
+  const text = parts.join(", ").replace(/s, enjoyed by/, "s enjoyed by");
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : "—";
 }

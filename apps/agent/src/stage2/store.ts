@@ -42,6 +42,8 @@ export interface TasteStore {
   ): Promise<TasteProfile>;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function createTasteStore(db: AppDb): TasteStore {
   const toProfile = (row: typeof tasteProfiles.$inferSelect): TasteProfile => ({
     id: row.id,
@@ -100,6 +102,8 @@ export function createTasteStore(db: AppDb): TasteStore {
     },
 
     async evidence(profileId, ids) {
+      // Evidence ids are UUIDs; anything else can't be a record (and would fail the uuid column).
+      ids = ids.filter((id) => UUID_RE.test(id));
       if (ids.length === 0) return [];
       const rows = await db
         .select({

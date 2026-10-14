@@ -51,7 +51,10 @@ export interface ProfileStore {
    * call records behind them (so the copy stands alone if the demo is rebuilt). Counts toward the
    * same limits as a new profile. Null when it isn't a ready demo.
    */
-  copyDemo(demoId: string, ownerTokenHash: string): Promise<{ profileId: string } | null>;
+  copyDemo(
+    demoId: string,
+    ownerTokenHash: string,
+  ): Promise<{ profileId: string; existing: boolean } | null>;
 }
 
 export interface ProfileLimits {
@@ -247,7 +250,7 @@ export function createProfileStore(
           regions: p.lifeStages.map((s) => s.region),
           favourites: seedRows
             .filter((s) => s.status === "confirmed")
-            .slice(0, 4)
+            .slice(0, 8)
             .map((s) => s.displayName ?? s.rawText),
           latestSessionId: latest?.id ?? null,
         });
@@ -271,6 +274,23 @@ export function createProfileStore(
         .where(and(eq(profiles.id, demoId), eq(profiles.isDemo, true)))
         .limit(1);
       if (!demo) return null;
+      // One copy per demo persona per device while it is untouched: trying again (a double tap, a
+      // timeout) returns it instead of making another (security review B).
+      const copiedFrom = demo.ownerTokenHash.replace(/:v\d+$/, "");
+      const [mine] = await db
+        .select({ id: profiles.id })
+        .from(profiles)
+        .where(
+          and(
+            eq(profiles.ownerTokenHash, ownerTokenHash),
+            eq(profiles.isDemo, false),
+            eq(profiles.copiedFrom, copiedFrom),
+            sql`not exists (select 1 from ${sessions} where ${sessions.profileId} = ${profiles.id} and ${sessions.status} <> 'planned')`,
+          ),
+        )
+        .orderBy(desc(profiles.createdAt))
+        .limit(1);
+      if (mine) return { profileId: mine.id, existing: true };
       const [first] = await db
         .select()
         .from(tasteProfiles)
@@ -312,6 +332,7 @@ export function createProfileStore(
             birthYear: demo.birthYear,
             languages: demo.languages,
             lifeStages: demo.lifeStages,
+            copiedFrom,
           })
           .returning({ id: profiles.id });
         if (!copy) throw new Error("profile insert returned no row");
@@ -325,7 +346,7 @@ export function createProfileStore(
               tool: call.tool,
               argsChecked: call.argsChecked,
               status: call.status,
-              summary: call.summary,
+              summary: null, // harness text is never copied (it can carry setup hints)
               resultCount: call.resultCount,
               resultsDigest: call.resultsDigest,
               cached: call.cached,
@@ -383,7 +404,7 @@ export function createProfileStore(
           notes: first.notes,
           steps: first.steps,
         });
-        return { profileId: copy.id };
+        return { profileId: copy.id, existing: false };
       });
     },
 

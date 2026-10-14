@@ -158,7 +158,8 @@ export async function tasteRoutes(
       ...call,
       createdAt: row.createdAt.toISOString(),
       names: profileId ? await namesFor(profileId, idsSent(row.args)) : {},
-      results: (digest as DigestItem[]).flatMap((d) => (d.name ? [d.name] : [])),
+      // Enough for the drawer (this item's place and a few others), not the whole answer.
+      results: (digest as DigestItem[]).flatMap((d) => (d.name ? [d.name] : [])).slice(0, 10),
     } satisfies EvidenceView;
   });
 }

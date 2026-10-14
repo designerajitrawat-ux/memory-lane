@@ -237,7 +237,9 @@ describe("Stage 2: Life Taste Profile", () => {
     expect(profile.notes.join(" ")).toMatch(/kept to 1955–1995/);
     expect(profile.notes.join(" ")).toMatch(/things to avoid/);
     // Never the nickname or the avoid text in what reached Qloo (the PII guard sits in front).
-    expect(mcp.calls.filter((c) => c.startsWith("qloo_recommend"))).toHaveLength(4);
+    // Artist, movie, TV, places from their tastes, and one second look for films (only one fitted).
+    expect(mcp.calls.filter((c) => c.startsWith("qloo_recommend"))).toHaveLength(5);
+    expect(profile.steps.join(" ")).toMatch(/asking Qloo again from Old Classic/);
     expect(mcp.sent.join(" ")).not.toMatch(/Harjeet|Partition/i);
     expect(res.body).not.toMatch(/Harjeet/);
   });

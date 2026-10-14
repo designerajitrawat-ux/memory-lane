@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Check, ExternalLink, MapPin, Play, TriangleAlert } from "lucide-react";
+import { Check, ExternalLink, MapPin, Play, TriangleAlert, WifiOff } from "lucide-react";
 import type { Reaction, Session, SessionItem } from "@memory-lane/shared";
 import { DemoBanner } from "@/components/demo-banner";
 import { EvidenceDrawer } from "@/components/evidence-drawer";
@@ -15,21 +15,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { api, type ApiFailureKind } from "@/lib/api";
 
 const bigLink =
-  "inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-6 py-3 text-center text-lg font-bold text-primary-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto";
+  "inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-4 py-3 text-center text-lg font-bold text-primary-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto sm:px-6";
 const textLink =
   "inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4";
 
-type Status = { text: string; error?: boolean; retry?: () => void };
+type Status = { text: string; error?: boolean };
+/** What the caregiver last asked to keep for an item; `note` only while a note change is unsaved. */
+type Wanted = { value: Reaction | null; note?: string };
 
-const UPSET_SAVED =
-  "Saved. It's fine to stop or move on; Memory Lane won't suggest this one again. Tap it again to undo.";
 const UPSET_DEMO =
   "Noted for this visit. In your own profile, Memory Lane wouldn't suggest this one again.";
 
 /**
  * Screen 7 (docs/06): the session player. One item at a time, large type, one-handed: play it, talk
- * if it feels right, tap how it landed, move on. Reactions save as soon as they are tapped; a save
- * that fails says which item it was for and can be tried again.
+ * if it feels right, tap how it landed, move on. Saves for an item go one at a time, each carrying
+ * everything still wanted for it (reaction and any unsaved note), so a tap never erases a note and
+ * the server can't apply them out of order. A failed save stays listed until it goes through.
  */
 export function SessionPlayer() {
   const { id } = useParams<{ id: string }>();
@@ -43,15 +44,22 @@ export function SessionPlayer() {
   const [attempt, setAttempt] = useState(0);
   const [step, setStep] = useState(0);
   const [status, setStatus] = useState<Status>({ text: "" });
+  const [unsaved, setUnsaved] = useState<Record<string, string>>({});
+  const [offline, setOffline] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const [confirmFinish, setConfirmFinish] = useState(false);
   const [ended, setEnded] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const endRef = useRef<HTMLHeadingElement>(null);
   const started = useRef(false);
   const stepRef = useRef(0);
-  // The newest request per item wins; finishing waits for saves still on their way (ux review W3).
+  const sessionRef = useRef<Session | null>(null);
+  const wanted = useRef(new Map<string, Wanted>());
   const latest = useRef(new Map<string, number>());
+  const chains = useRef(new Map<string, Promise<unknown>>());
   const pending = useRef(new Set<Promise<unknown>>());
+  // Note drafts as typed, so moving on or finishing saves them too (ux review C1).
+  const drafts = useRef(new Map<string, string>());
 
   useEffect(() => {
     let active = true;
@@ -79,22 +87,109 @@ export function SessionPlayer() {
     };
   }, [id, attempt]);
 
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
+
   const retryLoad = useCallback(() => {
     setLoadError(null);
     setAttempt((n) => n + 1);
   }, []);
 
-  // Back online: try again whatever failed (a load, or the last save).
-  useEffect(() => {
-    const retry = loadError ? retryLoad : status.error ? status.retry : undefined;
-    if (!retry) return;
-    window.addEventListener("online", retry);
-    return () => window.removeEventListener("online", retry);
-  }, [loadError, retryLoad, status]);
+  const updateItem = useCallback((next: SessionItem) => {
+    setSession((s) => (s ? { ...s, items: s.items.map((i) => (i.id === next.id ? next : i)) } : s));
+  }, []);
 
+  const itemById = useCallback(
+    (itemId: string) => sessionRef.current?.items.find((i) => i.id === itemId),
+    [],
+  );
+  const isCurrent = useCallback(
+    (itemId: string) => sessionRef.current?.items[stepRef.current]?.id === itemId,
+    [],
+  );
+
+  /**
+   * Queues a save for an item: one request at a time per item, and only the newest queued one is
+   * sent, carrying the merged wanted state. Resolves true when that state is stored.
+   */
+  const save = useCallback(
+    (itemId: string, change: Partial<Wanted>): Promise<boolean> => {
+      const current = itemById(itemId);
+      const before = wanted.current.get(itemId) ?? { value: current?.reaction ?? null };
+      wanted.current.set(itemId, { ...before, ...change });
+      const seq = (latest.current.get(itemId) ?? 0) + 1;
+      latest.current.set(itemId, seq);
+      const run = (chains.current.get(itemId) ?? Promise.resolve()).then(async () => {
+        if (latest.current.get(itemId) !== seq) return null; // a newer save carries it
+        const want = wanted.current.get(itemId) ?? { value: null };
+        const r = await api.react(itemId, want.value, want.note);
+        return { r, want };
+      });
+      const done = run.then((out) => {
+        if (!out) return true;
+        const { r, want } = out;
+        const name = itemById(itemId)?.name ?? "this item";
+        if (r.ok) {
+          // Stored: keep what was asked unless a newer change came in meanwhile.
+          if (wanted.current.get(itemId) === want)
+            wanted.current.set(itemId, { value: want.value });
+          if (latest.current.get(itemId) === seq) updateItem(r.data.item);
+          setUnsaved((u) => {
+            const rest = { ...u };
+            delete rest[itemId];
+            return rest;
+          });
+          return true;
+        }
+        setUnsaved((u) => ({ ...u, [itemId]: name }));
+        if (r.code === "invalid_note") {
+          // A note the agent refused is dropped from what's wanted; the reaction still saves.
+          wanted.current.set(itemId, { value: want.value });
+          setStatus({ text: `Note not saved for “${name}”: ${r.message}`, error: true });
+        } else {
+          setStatus({ text: `Not saved for “${name}”: ${r.message}`, error: true });
+        }
+        return false;
+      });
+      chains.current.set(
+        itemId,
+        done.catch(() => false),
+      );
+      pending.current.add(done);
+      void done.finally(() => pending.current.delete(done));
+      return done;
+    },
+    [updateItem, itemById],
+  );
+
+  /** Tries every save that failed, with what is still wanted for each. */
+  const retryUnsaved = useCallback(() => {
+    for (const itemId of Object.keys(unsaved)) {
+      void save(itemId, {}).then((ok) => {
+        if (ok && isCurrent(itemId)) setStatus({ text: "Saved." });
+      });
+    }
+  }, [unsaved, save, isCurrent]);
+
+  // Back online: try the load again, or every save that failed. Offline: say so.
   useEffect(() => {
-    stepRef.current = step;
-  }, [step]);
+    const online = () => {
+      setOffline(false);
+      if (loadError) retryLoad();
+      else retryUnsaved();
+    };
+    const gone = () => setOffline(true);
+    window.addEventListener("online", online);
+    window.addEventListener("offline", gone);
+    return () => {
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", gone);
+    };
+  }, [loadError, retryLoad, retryUnsaved]);
 
   // Each new item (not each saved reaction): back to the top, and its title takes focus, so screen
   // readers hear "Item 2 of 6" and the name first (ux review W2).
@@ -116,23 +211,7 @@ export function SessionPlayer() {
     if (ended) endRef.current?.focus();
   }, [ended]);
 
-  const updateItem = useCallback((next: SessionItem) => {
-    setSession((s) => (s ? { ...s, items: s.items.map((i) => (i.id === next.id ? next : i)) } : s));
-  }, []);
-
-  /** Sends a save; resolves to its result, or null when a newer save for the item replaced it. */
-  async function send(itemId: string, value: Reaction | null, note: string | undefined) {
-    const seq = (latest.current.get(itemId) ?? 0) + 1;
-    latest.current.set(itemId, seq);
-    const request = api.react(itemId, value, note);
-    pending.current.add(request);
-    const r = await request.finally(() => pending.current.delete(request));
-    return latest.current.get(itemId) === seq ? r : null;
-  }
-
-  const isCurrent = (target: SessionItem) => session?.items[stepRef.current]?.id === target.id;
-
-  async function react(target: SessionItem, value: Reaction) {
+  function react(target: SessionItem, value: Reaction) {
     const next = target.reaction === value ? null : value; // tapping again clears it
     updateItem({ ...target, reaction: next });
     if (readOnly) {
@@ -146,66 +225,78 @@ export function SessionPlayer() {
       return;
     }
     setStatus({ text: "Saving…" });
-    const r = await send(target.id, next, target.note ?? undefined);
-    if (!r) return;
-    if (r.ok) {
-      updateItem(r.data.item);
-      if (isCurrent(target)) {
-        setStatus({ text: !next ? "Cleared." : next === "distressed" ? UPSET_SAVED : "Saved." });
+    // An unsaved note draft goes with the reaction, so neither overwrites the other.
+    const draft = drafts.current.get(target.id);
+    const noteChange =
+      draft !== undefined && draft.trim() !== (target.note ?? "") ? { note: draft.trim() } : {};
+    void save(target.id, { value: next, ...noteChange }).then((ok) => {
+      if (ok && isCurrent(target.id)) {
+        setStatus({ text: !next ? "Cleared." : "Saved. Tap it again to undo." });
       }
-    } else {
-      updateItem(target);
-      setStatus({
-        text: `Not saved for “${target.name}”: ${r.message}`,
-        error: true,
-        retry: () => void react(target, value),
-      });
-    }
+    });
   }
 
-  async function saveNote(target: SessionItem, note: string) {
+  function saveNote(target: SessionItem, note: string) {
     const text = note.trim();
-    if ((target.note ?? "") === text) return;
+    const want = wanted.current.get(target.id);
+    const known = want?.note !== undefined ? want.note : (target.note ?? "");
+    if (known === text) return; // nothing new (blur, then the button)
     if (readOnly) {
       updateItem({ ...target, note: text || null });
       setStatus({ text: "Noted for this visit (demo notes aren't saved)." });
       return;
     }
     setStatus({ text: "Saving the note…" });
-    const r = await send(target.id, target.reaction, text);
-    if (!r) return;
-    if (r.ok) {
-      updateItem(r.data.item);
-      if (isCurrent(target)) setStatus({ text: text ? "Note saved." : "Note removed." });
-    } else {
-      setStatus({
-        text: `Note not saved for “${target.name}”: ${r.message}`,
-        error: true,
-        ...(r.code === "invalid_note" ? {} : { retry: () => void saveNote(target, note) }),
-      });
+    void save(target.id, { note: text }).then((ok) => {
+      if (ok && isCurrent(target.id)) setStatus({ text: text ? "Note saved." : "Note removed." });
+    });
+  }
+
+  const draftFor = useCallback((itemId: string) => drafts.current.get(itemId), []);
+
+  /** Saves any note typed but not saved yet (moving on, finishing). */
+  function flushDrafts() {
+    if (readOnly || !session) return;
+    for (const [itemId, draft] of drafts.current) {
+      const target = session.items.find((i) => i.id === itemId);
+      if (target) saveNote(target, draft);
     }
   }
 
   function go(to: number) {
+    flushDrafts();
     setStatus({ text: "" });
     setStep(to);
   }
 
-  async function finish() {
+  async function finish(anyway = false) {
     if (readOnly) {
       setEnded(true);
       return;
     }
+    flushDrafts();
     setFinishing(true);
     await Promise.allSettled([...pending.current]);
+    const left = Object.keys(unsavedRef.current).length;
+    if (left > 0 && !anyway) {
+      setFinishing(false);
+      setConfirmFinish(true);
+      return;
+    }
     const r = await api.completeSession(id);
     if (r.ok) {
       router.push(`/sessions/${id}/summary`);
       return;
     }
     setFinishing(false);
-    setStatus({ text: `Couldn't finish: ${r.message}`, error: true, retry: () => void finish() });
+    setStatus({ text: `Couldn't finish: ${r.message}`, error: true });
   }
+
+  // The latest unsaved list for finish(), which awaits saves that update it.
+  const unsavedRef = useRef(unsaved);
+  useEffect(() => {
+    unsavedRef.current = unsaved;
+  }, [unsaved]);
 
   if (loadError) {
     return (
@@ -245,8 +336,8 @@ export function SessionPlayer() {
           </h1>
           <p className="text-lg">
             In your own profile, finishing saves the reactions, and the next plan learns from them:
-            what they sang along to comes first, Qloo is asked for more like it and ranks what comes
-            next, and anything that upset them never returns.
+            Qloo is asked for more like what they sang along to and ranks what comes next, and
+            anything that upset them never returns.
           </p>
           {learned && (
             <p className="text-base text-muted-foreground">
@@ -264,9 +355,6 @@ export function SessionPlayer() {
             <Link href={`/profiles/${session.profileId}/taste`} className={textLink}>
               The Life Taste Profile
             </Link>
-            <Link href="/profiles/new" className={textLink}>
-              Create your own profile
-            </Link>
           </div>
         </section>
         <TryDemo profileId={session.profileId} name={null} />
@@ -279,11 +367,31 @@ export function SessionPlayer() {
   const last = step === total - 1;
   const LinkIcon = item.kind === "place" ? MapPin : Play;
   const destination = new URL(item.link.url).host.includes("google") ? "Google Maps" : "YouTube";
+  const unsavedCount = Object.keys(unsaved).length;
+
+  const statusLine = (
+    <div role="status" aria-live="polite" className="min-h-6">
+      {status.text && (
+        <p
+          className={`flex items-start gap-2 text-base ${status.error ? "font-bold text-destructive" : "text-muted-foreground"}`}
+        >
+          {status.error && <TriangleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />}
+          {status.text}
+        </p>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
       {readOnly && <DemoBanner playing />}
-      <div className="flex items-center justify-between gap-4">
+      {offline && (
+        <p className="flex items-start gap-2 rounded-xl border-2 border-warning p-3 text-base">
+          <WifiOff aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+          You&apos;re offline. Reactions will save when you&apos;re back online.
+        </p>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-x-4">
         <p className="text-base font-bold text-muted-foreground" aria-hidden="true">
           Session {session.number} · {step + 1} of {total}
         </p>
@@ -311,7 +419,7 @@ export function SessionPlayer() {
         className="space-y-6 rounded-2xl border bg-card p-5 sm:p-8"
       >
         <p className="flex items-center gap-2 text-lg font-bold text-primary">
-          <Icon aria-hidden="true" className="size-6" />
+          <Icon aria-hidden="true" className="size-6 shrink-0" />
           {slotLabel(item, step, total)} · {item.minutes} min
         </p>
         <h1
@@ -331,8 +439,11 @@ export function SessionPlayer() {
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <a href={item.link.url} target="_blank" rel="noopener noreferrer" className={bigLink}>
               <LinkIcon aria-hidden="true" className="size-6 shrink-0" />
-              {item.link.label}
-              <ExternalLink aria-hidden="true" className="size-5 shrink-0 opacity-80" />
+              <span className="min-w-0">{item.link.label}</span>
+              <ExternalLink
+                aria-hidden="true"
+                className="hidden size-5 shrink-0 opacity-80 min-[360px]:inline"
+              />
               <span className="sr-only"> (opens in a new tab)</span>
             </a>
             {item.altLink && (
@@ -340,9 +451,9 @@ export function SessionPlayer() {
                 href={item.altLink.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-field-border px-6 py-3 text-center text-lg font-bold outline-hidden hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-field-border px-4 py-3 text-center text-lg font-bold outline-hidden hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:px-6"
               >
-                {item.altLink.label}
+                <span className="min-w-0">{item.altLink.label}</span>
                 <ExternalLink aria-hidden="true" className="size-5 shrink-0" />
                 <span className="sr-only"> (opens in a new tab)</span>
               </a>
@@ -385,56 +496,84 @@ export function SessionPlayer() {
           key={item.id}
           item={item}
           readOnly={readOnly}
+          draftFor={draftFor}
+          status={statusLine}
           onReact={react}
+          onDraft={(text) => drafts.current.set(item.id, text)}
           onSaveNote={saveNote}
         />
-        <div role="status" aria-live="polite" className="min-h-6">
-          {status.text && (
-            <div
-              className={`flex flex-wrap items-center gap-x-4 gap-y-2 text-base ${status.error ? "font-bold text-destructive" : "text-muted-foreground"}`}
-            >
-              <span className="flex items-start gap-2">
-                {status.error && (
-                  <TriangleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-                )}
-                {status.text}
-              </span>
-              {status.retry && (
-                <Button variant="outline" className="h-12 px-5 text-base" onClick={status.retry}>
-                  Try again
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
       </article>
 
-      <nav aria-label="Session" className="player-nav grid grid-cols-[auto_1fr] gap-3">
-        <Button
-          variant="outline"
-          className="h-auto min-h-14 px-5 text-lg"
-          disabled={step === 0}
-          onClick={() => go(Math.max(0, step - 1))}
-        >
-          Back
-        </Button>
-        {last ? (
-          <Button
-            className="h-auto min-h-14 px-5 text-lg whitespace-normal"
-            disabled={finishing}
-            focusableWhenDisabled
-            onClick={finish}
-          >
-            {finishing ? "Finishing…" : "Finish the session"}
-          </Button>
-        ) : (
-          <Button
-            className="h-auto min-h-14 px-5 text-lg whitespace-normal"
-            onClick={() => go(Math.min(total - 1, step + 1))}
-          >
-            Next
-          </Button>
+      <nav aria-label="Session" className="player-nav space-y-3">
+        {unsavedCount > 0 && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-base font-bold text-destructive">
+            <span className="flex items-start gap-2">
+              <TriangleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+              {unsavedCount === 1
+                ? `Not saved yet: “${Object.values(unsaved)[0]}”`
+                : `${unsavedCount} reactions not saved yet`}
+            </span>
+            <Button variant="outline" className="h-12 px-5 text-base" onClick={retryUnsaved}>
+              Try again
+            </Button>
+          </div>
         )}
+        {confirmFinish && (
+          <div className="space-y-2 rounded-xl border-2 border-warning p-3">
+            <p className="text-base">
+              {unsavedCount === 1 ? "One reaction isn't" : `${unsavedCount} reactions aren't`} saved
+              yet. Try again, or finish without {unsavedCount === 1 ? "it" : "them"}.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                className="h-12 px-5 text-base"
+                onClick={() => {
+                  setConfirmFinish(false);
+                  retryUnsaved();
+                }}
+              >
+                Try again
+              </Button>
+              <Button
+                className="h-12 px-5 text-base"
+                onClick={() => {
+                  setConfirmFinish(false);
+                  void finish(true);
+                }}
+              >
+                Finish anyway
+              </Button>
+            </div>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-3">
+          <Button
+            variant="outline"
+            className="h-auto min-h-14 flex-none border-2 border-field-border px-5 text-lg"
+            disabled={step === 0}
+            onClick={() => go(Math.max(0, step - 1))}
+          >
+            Back
+          </Button>
+          {last ? (
+            <Button
+              className="h-auto min-h-14 flex-[1_1_10rem] px-5 text-lg whitespace-normal"
+              disabled={finishing}
+              focusableWhenDisabled
+              onClick={() => void finish()}
+            >
+              {finishing ? "Finishing…" : "Finish the session"}
+            </Button>
+          ) : (
+            <Button
+              className="h-auto min-h-14 flex-[1_1_10rem] px-5 text-lg whitespace-normal"
+              onClick={() => go(Math.min(total - 1, step + 1))}
+            >
+              Next
+            </Button>
+          )}
+        </div>
       </nav>
     </div>
   );
@@ -443,17 +582,24 @@ export function SessionPlayer() {
 function Reactions({
   item,
   readOnly,
+  draftFor,
+  status,
   onReact,
+  onDraft,
   onSaveNote,
 }: {
   item: SessionItem;
   readOnly: boolean;
+  /** The unsaved draft for an item, if any (read once, when the item opens). */
+  draftFor: (itemId: string) => string | undefined;
+  status: ReactNode;
   onReact: (item: SessionItem, value: Reaction) => void;
+  onDraft: (text: string) => void;
   onSaveNote: (item: SessionItem, note: string) => void;
 }) {
-  const [note, setNote] = useState(item.note ?? "");
-  // A saved note shows when they come back to the item (ux review W5).
-  const [open, setOpen] = useState(!!item.note);
+  const [note, setNote] = useState(() => draftFor(item.id) ?? item.note ?? "");
+  // A saved note (or a draft) shows when they come back to the item (ux review W5).
+  const [open, setOpen] = useState(() => !!(draftFor(item.id) ?? item.note));
   return (
     <section aria-labelledby="reaction-heading" className="space-y-3 border-t pt-5">
       <h2 id="reaction-heading" className="text-xl font-bold">
@@ -462,7 +608,7 @@ function Reactions({
       <div
         role="group"
         aria-labelledby="reaction-heading"
-        className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+        className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-3"
       >
         {REACTIONS.map(({ value, label, icon: Icon }) => {
           const on = item.reaction === value;
@@ -472,7 +618,7 @@ function Reactions({
               type="button"
               aria-pressed={on}
               onClick={() => onReact(item, value)}
-              className={`relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border-2 px-3 py-2 text-lg font-bold outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:text-xl ${
+              className={`relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border-2 px-3 py-2 text-center text-lg font-bold outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:text-xl ${
                 on
                   ? "border-evidence bg-evidence/10 text-foreground"
                   : "border-field-border bg-card hover:bg-secondary"
@@ -481,7 +627,7 @@ function Reactions({
               {on && (
                 <Check
                   aria-hidden="true"
-                  className="absolute top-2 right-2 size-5 rounded-full bg-evidence p-0.5 text-white"
+                  className="absolute top-2 right-2 size-5 rounded-full bg-evidence p-0.5 text-card"
                 />
               )}
               <Icon aria-hidden="true" className={`size-6 ${on ? "text-evidence" : ""}`} />
@@ -490,6 +636,7 @@ function Reactions({
           );
         })}
       </div>
+      {status}
       {item.reaction === "distressed" && (
         <p className="rounded-xl border border-warning p-3 text-base">
           It&apos;s fine to stop or move on.{" "}
@@ -515,7 +662,10 @@ function Reactions({
             id={`note-${item.id}`}
             value={note}
             maxLength={300}
-            onChange={(e) => setNote(e.target.value)}
+            onChange={(e) => {
+              setNote(e.target.value);
+              onDraft(e.target.value);
+            }}
             onBlur={() => onSaveNote(item, note)}
             className="min-h-24 text-base"
           />

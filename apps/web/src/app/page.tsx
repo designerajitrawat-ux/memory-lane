@@ -50,8 +50,10 @@ export default function Home() {
               href="/demo"
               className={`inline-flex min-h-12 items-center justify-center rounded-lg bg-primary px-6 py-3 text-center text-base font-bold text-primary-foreground ${linkFocus}`}
             >
-              Try a demo profile
-              <span className="ml-2 font-normal opacity-90">· no sign-up</span>
+              <span className="flex flex-wrap items-baseline justify-center gap-x-2">
+                <span>Try a demo profile</span>
+                <span className="font-normal opacity-90">no sign-up</span>
+              </span>
             </Link>
             <Link
               href="/profiles/new"
@@ -77,7 +79,7 @@ export default function Home() {
               <li key={title} className="flex gap-4 rounded-2xl border bg-card p-4">
                 <span
                   aria-hidden="true"
-                  className="flex size-12 shrink-0 items-center justify-center rounded-full bg-secondary text-primary"
+                  className="hidden size-12 shrink-0 items-center justify-center rounded-full bg-secondary text-primary min-[24rem]:flex"
                 >
                   <Icon className="size-6" />
                 </span>

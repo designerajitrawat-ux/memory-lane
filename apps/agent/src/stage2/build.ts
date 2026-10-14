@@ -75,6 +75,9 @@ const NOT_A_LASTING_PLACE =
 // Lasting places whose description doesn't name a kind of building: a statue, or a venue Qloo
 // describes by the decade it belongs to ("steeped in 1960s memorabilia").
 const LASTING_PLACE = /\b(statues?|sculptures?|memorabilia|19[0-8]0s)\b/i;
+// Somewhere to stay, read anywhere in Qloo's description.
+const LODGING =
+  /\b(guest ?rooms?|rooms|suites|overnight stays?|accommodation|lodging|check-?in|bed and breakfast)\b/i;
 // A reminiscence session is gentle, whatever the avoid-list says: Qloo suggestions about atrocities or
 // suicide are left out (live check: a Holocaust drama came back for a 1946 US persona)…
 export const HEAVY =
@@ -347,7 +350,17 @@ export async function buildTasteProfile(
     step(
       `Qloo suggested ${count(artistAll.length, "singer")}; kept ${singersKept.length}, the ones it describes as active in their era first.`,
     );
+    const later = placed
+      .filter((p) => p.place === PLACEMENT_ORDER.later && !singersKept.includes(p))
+      .map((p) => p.f.name);
+    if (later.length) {
+      step(
+        `Left out ${count(later.length, "singer")} Qloo describes as mostly later, such as ${join(later.slice(0, 2))}.`,
+      );
+    }
   }
+  // Named in the log only when nothing about them touches the avoid-list or a painful subject.
+  const nameable = (f: Found) => !isAvoided(f.name, f.text) && !HEAVY.test(`${f.name} ${f.text}`);
 
   // Films and TV: only what was made in their era, nothing set around illness or fear, closest to the
   // reminiscence bump first.
@@ -378,12 +391,61 @@ export async function buildTasteProfile(
     ...films.map((f) => fromFound(f, "film_tv")),
     ...tv.map((f) => fromFound(f, "film_tv")),
   );
+  let secondLookFailed = false;
   if (outcomes.movies.kind === "found" || outcomes.shows.kind === "found") {
     const suggested = filmPick.all + tvPick.all;
     const kept = films.length + tv.length;
     step(
       `Qloo suggested ${count(suggested, "film or TV show", "films and TV shows")}; kept ${kept} from ${era.from}–${era.to}.`,
     );
+    const otherYears = [...via(outcomes.movies, plan.movie), ...via(outcomes.shows, plan.tv)]
+      .filter((f) => !yearFits(f.year, era) && nameable(f))
+      .map((f) => (f.year ? `${f.name} (${f.year})` : f.name));
+    if (otherYears.length) {
+      step(
+        `Left out ${count(otherYears.length, "film or show", "films and shows")} from other years, such as ${join(otherYears.slice(0, 2))}.`,
+      );
+    }
+    // Too few from their years: ask Qloo once more, from the ones that fit (the same move that works
+    // for Stage 4 — films from their era lead to more films from their era).
+    const fitted = [...films, ...tv];
+    if (fitted.length > 0 && fitted.length < 3 && !isAborted()) {
+      const from = fitted.slice(0, 3);
+      const movies = from.filter((f) => f.entityType?.endsWith(":movie")).length;
+      const target = movies * 2 >= from.length ? "movie" : "tv_show";
+      for (const f of from) trustedIds.add(f.entityId.toLowerCase());
+      step(
+        `Only ${count(fitted.length, "film or TV show", "films and TV shows")} from their years; asking Qloo again from ${join(from.map((f) => f.name))}…`,
+      );
+      const again = read(
+        await call("qloo_recommend", {
+          target_type: target,
+          signals: from.map((f) => f.entityId),
+          limit: 20,
+          explain: true,
+        }),
+        readRecommend,
+      );
+      const more = found(again)
+        .map((f) => ({ ...f, sent: from.map((x) => x.name).slice(0, 2) }))
+        .filter((f) => yearFits(f.year, era))
+        .filter(keep)
+        .filter(gentleScreen)
+        .filter(fresh(filmTv))
+        .sort((a, b) => bumpDistance(a.year ?? 0, era) - bumpDistance(b.year ?? 0, era))
+        .slice(0, PER_DOMAIN - filmTv.length);
+      filmTv.push(...more.map((f) => fromFound(f, "film_tv")));
+      if (again.kind === "failed") {
+        secondLookFailed = true;
+        notes.push(`A second film search couldn't be made just now (${again.reason}).`);
+      } else {
+        step(
+          more.length
+            ? `Qloo's second answer added ${join(more.map((f) => (f.year ? `${f.name} (${f.year})` : f.name)))}.`
+            : "Qloo's second answer had nothing more from their years.",
+        );
+      }
+    }
     if (suggested > 0 && kept === 0) {
       notes.push(
         `Qloo's film and TV suggestions for these favourites were all from other years, so none were added.`,
@@ -404,9 +466,11 @@ export async function buildTasteProfile(
     via(outcomes.placesByFavourite, plan.placeByFavourite),
   );
   const localCountry = mostCommon(placeAll.map((f) => f.countryCode));
-  const placeFound = placeAll
-    .filter(keep)
+  const placesChecked = placeAll.filter(keep);
+  const placeFound = placesChecked
     .filter((f) => !NOT_A_MEMORY_PLACE.test(lead(f)) && !NOT_A_LASTING_PLACE.test(lead(f)))
+    // A "living museum" with guest rooms is a resort (live check), whatever its opening words say.
+    .filter((f) => !LODGING.test(f.text))
     .filter((f) => MEMORY_PLACE.test(lead(f)) || LASTING_PLACE.test(lead(f)))
     .filter((f) => !HEAVY_PLACE.test(lead(f)))
     .filter((f) => !localCountry || !f.countryCode || f.countryCode === localCountry)
@@ -438,8 +502,19 @@ export async function buildTasteProfile(
     );
   }
   if (youthLabel && (placeAll.length > 0 || dishAll.length > 0)) {
+    // Only the hotels, bars, stays and new venues are named (never a site of grief).
+    const notLasting = placesChecked
+      .filter(
+        (f) =>
+          NOT_A_MEMORY_PLACE.test(lead(f)) ||
+          NOT_A_LASTING_PLACE.test(lead(f)) ||
+          LODGING.test(f.text),
+      )
+      .filter((f) => !HEAVY_PLACE.test(lead(f)))
+      .map((f) => f.name)
+      .slice(0, 2);
     step(
-      `Qloo suggested ${count(placeAll.length, "place")} near ${youthLabel}; kept ${placesKept.length} lasting ones (hotels, bars and newer venues were left out), and ${count(dishesKept, "dish", "dishes")} from its food tags.`,
+      `Qloo suggested ${count(placeAll.length, "place")} near ${youthLabel}; kept ${placesKept.length} lasting ones${notLasting.length ? ` (left out hotels, bars and newer venues such as ${join(notLasting)})` : ""}, and ${count(dishesKept, "dish", "dishes")} from its food tags.`,
     );
   }
 
@@ -485,7 +560,7 @@ export async function buildTasteProfile(
     return null;
   }
 
-  const partial = Object.values(outcomes).some((o) => o.kind === "failed");
+  const partial = Object.values(outcomes).some((o) => o.kind === "failed") || secondLookFailed;
   const domains = [...new Set(kept.map((i) => i.domain))].map((d) => DOMAIN_NAMES[d]);
   const ready = `Life Taste Profile ready: ${count(kept.length, "item")} across ${join(domains)}.`;
   const profile = await deps.store.save(input.profileId, {

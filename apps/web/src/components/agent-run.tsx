@@ -47,7 +47,10 @@ export function ProblemBanner({
       {offerDemo && (
         <p>
           Meanwhile, the demo profiles already have everything built.{" "}
-          <Link href="/demo" className="font-bold underline underline-offset-4">
+          <Link
+            href="/demo"
+            className="inline-flex min-h-12 items-center font-bold underline underline-offset-4"
+          >
             Try a demo profile
           </Link>
         </p>

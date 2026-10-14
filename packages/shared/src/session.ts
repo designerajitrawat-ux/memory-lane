@@ -13,7 +13,10 @@ export const SessionStatusSchema = z.enum(["planned", "in_progress", "done"]);
 
 /** Search pages built in code (YouTube, Spotify, Google Maps); only https links are shown. */
 export const SessionLinkSchema = z.object({
-  url: z.url({ protocol: /^https$/ }),
+  url: z.url({
+    protocol: /^https$/,
+    hostname: /^(?:www\.youtube\.com|open\.spotify\.com|www\.google\.com)$/,
+  }),
   label: z.string(),
 });
 

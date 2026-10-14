@@ -106,7 +106,9 @@ export function composeSession(input: ComposeInput): ComposedItem[] {
       year: item.year,
       description: item.description,
       why: item.source === "favourite" ? FAVOURITE_WHY : item.caption,
-      prompts: promptsFor(kind, item.name, sessionNumber + position),
+      prompts: promptsFor(kind, item.name, sessionNumber + position, {
+        locality: item.source === "favourite" ? null : (item.locality ?? null),
+      }),
       minutes: position === picked.length - 1 && kind === "song" ? 3 : MINUTES[kind],
       link,
       altLink,

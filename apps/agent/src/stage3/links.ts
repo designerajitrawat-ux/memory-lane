@@ -3,8 +3,9 @@ import type { SessionItemKind } from "@memory-lane/shared";
 /**
  * Listen/watch links are built in code, never by the LLM (docs/05 §2): search pages on YouTube,
  * Spotify and Google Maps, so Memory Lane never hosts or reproduces media (CLAUDE.md rule 8). The
- * search terms are public cultural names from Qloo (plus a decade or a town), never anything about the
- * person. Labels say where the link goes.
+ * search terms are public cultural names from Qloo plus a decade or a town (Qloo's geocode, or the
+ * town-level region the caregiver typed — the same coarse place Qloo receives); never the nickname,
+ * notes or anything else about the person. Labels say where the link goes.
  */
 export interface Link {
   url: string;

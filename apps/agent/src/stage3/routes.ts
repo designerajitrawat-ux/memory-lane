@@ -110,7 +110,8 @@ export async function sessionRoutes(
   // as creating a profile; the demo itself never changes.
   app.post(
     "/api/demo-profiles/:id/try",
-    { config: { rateLimit: { max: 10, timeWindow: "1 hour" } } },
+    // One bucket with POST /api/profiles: both spend the same daily new-profile slots (review S1).
+    { config: { rateLimit: { max: 10, timeWindow: "1 hour", groupId: "new-profile" } } },
     async (req, reply) => {
       const params = IdParams.safeParse(req.params);
       if (!params.success) return notFound(reply);
@@ -119,7 +120,7 @@ export async function sessionRoutes(
         !!presented && (await deps.profiles.ownerHasProfiles(hashOwnerToken(presented)));
       const token = reuse && presented ? presented : mintOwnerToken();
       const ownerHash = hashOwnerToken(token);
-      let copied: { profileId: string } | null;
+      let copied: { profileId: string; existing: boolean } | null;
       try {
         copied = await deps.profiles.copyDemo(params.data.id, ownerHash);
       } catch (err) {
@@ -133,12 +134,23 @@ export async function sessionRoutes(
         } satisfies ApiError);
       }
       if (!copied) return notFound(reply);
-      const view = await deps.profiles.get(copied.profileId, ownerHash);
-      const result = await planNextSession(
-        { profileId: copied.profileId, nickname: view?.view.nickname ?? null },
-        { taste: deps.taste, sessions: deps.sessions },
-      );
+      const profileId = copied.profileId;
+      // A copy without its first session would be unreachable for a new device: remove it again.
+      const discard = () =>
+        copied?.existing ? Promise.resolve(false) : deps.profiles.delete(profileId, ownerHash);
+      let result;
+      try {
+        const view = await deps.profiles.get(profileId, ownerHash);
+        result = await planNextSession(
+          { profileId, nickname: view?.view.nickname ?? null },
+          { taste: deps.taste, sessions: deps.sessions },
+        );
+      } catch (err) {
+        await discard();
+        throw err;
+      }
       if (result.kind !== "planned") {
+        await discard();
         return reply.code(409).send({
           error: "nothing_to_plan",
           message: "There's nothing in the profile that can go into a session yet.",
@@ -179,12 +191,10 @@ export async function sessionRoutes(
           message: noteIssue?.message ?? "That reaction couldn't be read.",
         } satisfies ApiError);
       }
-      const item = await deps.sessions.react(
-        params.data.id,
-        ownerHash,
-        body.data.value,
-        body.data.note?.length ? body.data.note : null,
-      );
+      // No note in the request keeps the note it has (a reaction tap must never erase it); an empty
+      // note removes it (ux review C1).
+      const note = body.data.note === undefined ? undefined : body.data.note || null;
+      const item = await deps.sessions.react(params.data.id, ownerHash, body.data.value, note);
       return item ? { item } : sessionNotFound(reply);
     },
   );

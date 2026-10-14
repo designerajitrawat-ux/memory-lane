@@ -25,3 +25,17 @@ export function Loading({ children }: { children: string }) {
     </p>
   );
 }
+
+/** True once `active` has stayed true for `ms` (a progress line for slow agent work; ux W9). */
+export function useAfter(active: boolean, ms = 4_000) {
+  const [late, setLate] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(() => setLate(true), ms);
+    return () => {
+      clearTimeout(timer);
+      setLate(false);
+    };
+  }, [active, ms]);
+  return active && late;
+}

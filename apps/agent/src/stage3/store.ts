@@ -55,7 +55,8 @@ export interface SessionStore {
     itemId: string,
     ownerHash: string,
     value: Reaction | null,
-    note: string | null,
+    /** undefined keeps the current note; null removes it. */
+    note: string | null | undefined,
     opts?: { seeding?: boolean },
   ): Promise<SessionItem | null>;
   complete(
@@ -293,7 +294,11 @@ export function createSessionStore(db: AppDb): SessionStore {
       if (!hit) return null;
       const [updated] = await db
         .update(sessionItems)
-        .set({ reaction: value, note, reactedAt: value ? new Date() : null })
+        .set({
+          reaction: value,
+          ...(note === undefined ? {} : { note }),
+          reactedAt: value ? new Date() : null,
+        })
         .where(eq(sessionItems.id, itemId))
         .returning();
       if (hit.status === "planned") {

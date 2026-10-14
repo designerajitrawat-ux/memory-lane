@@ -176,6 +176,56 @@ describe("demo personas (the judge path)", () => {
         payload: { value: "sang" },
       });
       expect(react.statusCode).toBe(200);
+      // Trying again on that device before playing returns the same copy and session (idempotent).
+      const fresh = await app.inject({
+        method: "POST",
+        url: `/api/demo-profiles/${id}/try`,
+        headers: { "x-forwarded-for": "192.0.2.79" },
+      });
+      const freshBody = TryDemoResponseSchema.parse(fresh.json());
+      const again = await app.inject({
+        method: "POST",
+        url: `/api/demo-profiles/${id}/try`,
+        headers: {
+          "x-forwarded-for": "192.0.2.79",
+          authorization: `Bearer ${freshBody.ownerToken}`,
+        },
+      });
+      expect(again.statusCode).toBe(201);
+      const againBody = TryDemoResponseSchema.parse(again.json());
+      expect(againBody.session.id).toBe(freshBody.session.id);
+      expect(againBody.ownerToken).toBeUndefined();
+      // Only demos can be tried; a copy's records stay its owner's.
+      const notDemo = await app.inject({
+        method: "POST",
+        url: `/api/demo-profiles/${triedBody.session.profileId}/try`,
+        headers: { "x-forwarded-for": "192.0.2.80" },
+      });
+      expect(notDemo.statusCode).toBe(404);
+      expect(
+        (
+          await app.inject({
+            method: "GET",
+            url: `/api/evidence/${copyEvidence}`,
+            headers: { authorization: `Bearer ${otherToken}` },
+          })
+        ).statusCode,
+      ).toBe(404);
+      // A demo's notes are never shown to visitors.
+      await deps.sessions.react(
+        second.session.items[1]?.id ?? "",
+        demoOwnerHash("dorothy-us"),
+        "sang",
+        "Hummed along",
+        {
+          seeding: true,
+        },
+      );
+      const visitorView = SessionResponseSchema.parse(
+        (await app.inject({ method: "GET", url: `/api/sessions/${second.session.id}` })).json(),
+      );
+      expect(visitorView.session.items.every((i) => i.note === null)).toBe(true);
+
       // The demo itself is unchanged.
       const demoSessions = (
         await app.inject({ method: "GET", url: `/api/profiles/${id}/sessions` })

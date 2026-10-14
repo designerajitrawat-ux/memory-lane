@@ -83,8 +83,9 @@ async function failureFrom<T>(res: Response): Promise<ApiResult<T>> {
     ? {
         code: body.data.error,
         ...(body.data.fields ? { fields: body.data.fields } : {}),
-        // A note the agent refused says why, gently (it names the kind of detail, never echoes it).
-        ...(body.data.error === "invalid_note" ? { message: body.data.message } : {}),
+        // The agent's own words for what went wrong (fixed, user-facing text; ux review W1): which
+        // limit, a run already going, nothing to plan, a refused note.
+        ...(res.status === 400 || res.status === 409 ? { message: body.data.message } : {}),
       }
     : {};
   return failure<T>(kindForStatus(res.status), extra);
@@ -92,20 +93,39 @@ async function failureFrom<T>(res: Response): Promise<ApiResult<T>> {
 
 // The free host can take a while to wake; past this a request fails honestly with a retry (ux W17).
 const TIMEOUT_MS = 25_000;
+const SLOW_MESSAGE = "This is taking longer than usual. Please try again in a moment.";
+
+/** A signal that aborts after `ms` (and with `outer`), also on browsers without AbortSignal.any. */
+export function timeoutSignal(ms: number, outer?: AbortSignal | null) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new DOMException("timeout", "TimeoutError")), ms);
+  if (outer) {
+    if (outer.aborted) controller.abort(outer.reason);
+    else outer.addEventListener("abort", () => controller.abort(outer.reason), { once: true });
+  }
+  return {
+    signal: controller.signal,
+    timedOut: () =>
+      controller.signal.reason instanceof DOMException &&
+      controller.signal.reason.name === "TimeoutError",
+    clear: () => clearTimeout(timer),
+  };
+}
 
 /** One request to the agent: bearer token attached, response validated, failures turned into kinds. */
 export async function request<S extends z.ZodType>(
   path: string,
   schema: S | null,
   init: RequestInit = {},
+  timeoutMs = TIMEOUT_MS,
 ): Promise<ApiResult<z.infer<S>>> {
   const token = getOwnerToken();
-  const timeout = AbortSignal.timeout(TIMEOUT_MS);
+  const timeout = timeoutSignal(timeoutMs, init.signal);
   let res: Response;
   try {
     res = await fetch(`${AGENT_URL}${path}`, {
       ...init,
-      signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
+      signal: timeout.signal,
       cache: "no-store",
       headers: {
         ...(init.body ? { "content-type": "application/json" } : {}),
@@ -114,9 +134,12 @@ export async function request<S extends z.ZodType>(
       },
     });
   } catch {
+    if (timeout.timedOut()) return failure("unreachable", { message: SLOW_MESSAGE });
     return failure(
       typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "unreachable",
     );
+  } finally {
+    timeout.clear();
   }
 
   if (!res.ok) return failureFrom<z.infer<S>>(res);
@@ -170,10 +193,14 @@ export const api = {
   getEvidence: (id: string) =>
     request(`/api/evidence/${encodeURIComponent(id)}`, EvidenceViewSchema),
 
+  // Planning may ask Qloo (Stage 4): more time than a plain read.
   planSession: (profileId: string) =>
-    request(`/api/profiles/${encodeURIComponent(profileId)}/sessions`, SessionResponseSchema, {
-      method: "POST",
-    }),
+    request(
+      `/api/profiles/${encodeURIComponent(profileId)}/sessions`,
+      SessionResponseSchema,
+      { method: "POST" },
+      60_000,
+    ),
   listSessions: (profileId: string) =>
     request(`/api/profiles/${encodeURIComponent(profileId)}/sessions`, SessionListResponseSchema),
   getSession: (id: string) =>
@@ -190,6 +217,7 @@ export const api = {
       `/api/demo-profiles/${encodeURIComponent(profileId)}/try`,
       TryDemoResponseSchema,
       { method: "POST" },
+      60_000,
     );
     if (result.ok && result.data.ownerToken) setOwnerToken(result.data.ownerToken);
     return result;

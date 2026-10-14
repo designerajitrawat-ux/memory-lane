@@ -4,7 +4,7 @@ import {
   BrainCircuit,
   CheckCircle2,
   ExternalLink,
-  HeartPulse,
+  ListMusic,
   ListChecks,
   RefreshCcw,
   ShieldCheck,
@@ -32,10 +32,10 @@ const FLOW: { icon: LucideIcon; title: string; who: string; text: string }[] = [
     icon: Sparkles,
     title: "2 · Build the Life Taste Profile",
     who: "Qloo recommends, code checks",
-    text: "qloo_recommend from the confirmed favourites' Qloo IDs, each domain from its own favourites: singers from the singers they love, films and TV from their films and shows, places in and around where they grew up from their tastes and from a place they love; dishes from Qloo's food tags for the town and its region. Code keeps films and TV to their years, keeps lasting landmarks (not hotels or bars), leaves out the avoid-list (with related words) and painful subjects, and drops anything without Qloo evidence. Every step is kept as the build's log.",
+    text: "qloo_recommend from the confirmed favourites' Qloo IDs, each domain from its own favourites; places near where they grew up; dishes from Qloo's food tags. When too few films fit their years, it asks Qloo again from the ones that do. Code keeps it to their era, lasting places and real dishes, leaves out the avoid-list and painful subjects, and logs every step, including what it left out.",
   },
   {
-    icon: HeartPulse,
+    icon: ListMusic,
     title: "3 · Plan a session",
     who: "Code composes from the profile only",
     text: "Six items for about 25 minutes: an opening song, a film or TV memory, food, a place, a choice, a closing song. Gentle prompts that invite, never test. Links to YouTube, Spotify or a map, built in code.",
@@ -65,7 +65,7 @@ const LIMITS = [
   "Qloo has no year filter. Memory Lane keeps films and TV to the right years in code, and orders singers by the decades Qloo's descriptions mention; it isn't perfect.",
   "Dishes are tags in Qloo, not things with a year or place, so food is lighter than music.",
   "Most places Qloo knows near a town today are new; only lasting landmarks are kept, so some towns get few places.",
-  "Reminiscence is an activity, not a treatment. Memory Lane makes no medical claims.",
+  "Reminiscence is an activity, not medical care. Memory Lane makes no medical claims.",
 ];
 
 const RESEARCH = [
@@ -156,9 +156,9 @@ export default function HowItWorksPage() {
             <BrainCircuit aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
             <span>
               The design is &ldquo;the AI proposes, Qloo decides, code verifies&rdquo;. A language
-              model can suggest era-typical names and write warmer prompts, but a suggestion only
-              counts once Qloo has matched and ranked it, and every word passes the same checks. The
-              steps above work without it, so nothing depends on the model making things up.
+              model step (suggesting era-typical names for Qloo to rank, and warmer prompts) is
+              designed but not switched on in this demo: everything you see comes from Qloo and the
+              code above, so nothing depends on a model making things up.
             </span>
           </p>
         </Section>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 export function SiteHeader() {
   return (
@@ -57,9 +58,11 @@ export function SiteFooter({ minimal = false }: { minimal?: boolean } = {}) {
           href={SOURCE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-12 items-center underline underline-offset-4"
+          className="inline-flex min-h-12 items-center gap-1 underline underline-offset-4"
         >
-          Source on GitHub<span className="sr-only"> (opens in a new tab)</span>
+          Source on GitHub
+          <ExternalLink aria-hidden="true" className="size-4" />
+          <span className="sr-only"> (opens in a new tab)</span>
         </a>
       </nav>
       <p>

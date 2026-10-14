@@ -17,7 +17,10 @@ const notFound = (reply: FastifyReply) =>
  */
 export async function profileRoutes(app: FastifyInstance, opts: { store: ProfileStore | null }) {
   const { store } = opts;
-  const create = { config: { rateLimit: { max: 10, timeWindow: "1 hour" } } };
+  // One bucket with "try a demo" (both spend the same daily new-profile slots).
+  const create = {
+    config: { rateLimit: { max: 10, timeWindow: "1 hour", groupId: "new-profile" } },
+  };
   const remove = { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } };
 
   // Bodies depend on the bearer token, so no shared caches may keep them.

@@ -72,13 +72,22 @@ export async function planNextSession(
     );
     await deps.sessions.addLearnedAvoid(profileId, learned.learnedAvoid);
     if (learned.learnedItems.length || learned.rankEvidence.size) {
-      // Items Qloo re-ranked also carry that call as evidence, so the drawer shows why they lead.
+      // Items Qloo re-ranked carry that call as evidence (replacing an older ranking, so the list
+      // doesn't grow with every session), and the drawer shows why they lead.
       const rankEvidence = learned.rankEvidence;
+      const allIds = [...new Set(taste.items.flatMap((i) => i.evidenceIds))];
+      const olderRanks = new Set(
+        rankEvidence.size
+          ? (await deps.taste.evidence(profileId, allIds))
+              .filter((e) => e.tool === "qloo_rank")
+              .map((e) => e.id)
+          : [],
+      );
       const withRank = (i: TasteItem): TasteItem => {
         const id = rankEvidence.get(i.entityId);
-        return id && !i.evidenceIds.includes(id)
-          ? { ...i, evidenceIds: [...i.evidenceIds, id] }
-          : i;
+        if (!id) return i;
+        const kept = i.evidenceIds.filter((e) => !olderRanks.has(e) && e !== id);
+        return { ...i, evidenceIds: [...kept, id] };
       };
       profile = await deps.taste.save(profileId, {
         era: taste.era,

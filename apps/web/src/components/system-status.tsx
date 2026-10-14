@@ -5,6 +5,7 @@ import { Check, CircleHelp, TriangleAlert, type LucideIcon } from "lucide-react"
 import { HealthResponseSchema } from "@memory-lane/shared";
 import { Button } from "@/components/ui/button";
 import { AGENT_URL } from "@/lib/agent";
+import { timeoutSignal } from "@/lib/api";
 import { canRetry, describeHealth, type HealthResult, type Tone } from "@/lib/health-labels";
 
 const TIMEOUT_MS = 25_000; // the agent may need ~10 s to start its Qloo tools after a cold start
@@ -42,10 +43,12 @@ export function SystemStatus() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(TIMEOUT_MS)]);
+    // Not AbortSignal.any/timeout: older iOS Safari lacks them (ux review W7).
+    const timeout = timeoutSignal(TIMEOUT_MS, controller.signal);
     const slowTimer = setTimeout(() => setSlow(true), SLOW_MS);
-    fetchHealth(signal).then((r) => {
+    fetchHealth(timeout.signal).then((r) => {
       clearTimeout(slowTimer);
+      timeout.clear();
       if (controller.signal.aborted) return;
       setResult(r);
       setChecking(false);
