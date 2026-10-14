@@ -309,7 +309,7 @@ describe("Stage 4: Qloo ranks what comes next", () => {
       method: "POST",
       url: `/api/session-items/${song.id}/reaction`,
       headers: headers(token),
-      payload: { value: "sang" },
+      payload: { value: "sang", note: "Sentinel words: she hummed along" },
     });
     await a.inject({
       method: "POST",
@@ -318,6 +318,8 @@ describe("Stage 4: Qloo ranks what comes next", () => {
     });
 
     const second = await plan();
+    // The caregiver's note never reaches Qloo (security review S6).
+    expect(JSON.stringify(calls.map((c) => c.args))).not.toMatch(/Sentinel/);
     const rankCall = calls.find((c) => c.name === "qloo_rank");
     // Only what wasn't in the last session is ranked, against the song that landed.
     expect(rankCall?.args).toMatchObject({ option_type: "artist", signals: ["a1"] });

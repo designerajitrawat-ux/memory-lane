@@ -303,7 +303,7 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
   }
   if (quiet.length) {
     whatChanged.push(
-      `${names(quiet)} got a quieter response, so ${quiet.length === 1 ? "it moves" : "they move"} back.`,
+      `${names(quiet)} got a quieter response, so other choices come first where there are any.`,
     );
   }
   if (favouriteDomain) {

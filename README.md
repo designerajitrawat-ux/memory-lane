@@ -3,117 +3,157 @@
 > Qloo Agentic Hackathon 2026 · **Live demo: https://memory-lane-sable-rho.vercel.app** · No login
 > needed: tap **Try a demo profile**.
 
+![Memory Lane landing page](docs/screenshots/landing.png)
+
 Memory Lane is an agent that prepares personalised reminiscence sessions — music, films and TV, food
 and places, with gentle conversation prompts — for older adults living with memory loss. Every item
-comes from Qloo's taste graph with its evidence one tap away, and the agent learns from how each
-item landed.
+comes from Qloo's taste graph with its evidence one tap away, and Qloo decides what comes next as the
+agent learns from how each item landed.
 
 Memory Lane supports reminiscence activities. It is not a medical device and does not diagnose or
 treat any condition.
 
+## Try it in 60 seconds
+
+1. Open the [live demo](https://memory-lane-sable-rho.vercel.app/demo) and pick **Margaret** (Liverpool),
+   **Harjeet** (Amritsar) or **Dorothy** (Dayton). They are fictional; everything they show was found
+   with Qloo for real.
+2. Tap **Open session 2: what it learned from session 1**. Read **What changed since last time**: Qloo
+   was asked for more like what landed, ranked what is still to play, and the item that upset them is
+   gone.
+3. Tap any green **Qloo ·** chip: the exact Qloo calls behind that item (what was asked, with the
+   favourites by name, what Qloo answered and where this item sat in the answer).
+4. Run the learning loop yourself: **Try the learning yourself** makes a private copy on your device.
+   Play session 1, tap how each item lands, finish, then **Plan the next session** — the agent asks
+   Qloo live and explains what it changed.
+
 ## The problem
 
-Reminiscence and personalised music are widely used in dementia care, with evidence of small
-benefits for quality of life and communication
+Reminiscence and personalised music are widely used in dementia care, with evidence of small benefits
+for quality of life and communication
 ([Cochrane review, 2018](https://www.cochranelibrary.com/cdsr/doi/10.1002/14651858.CD001120.pub3/information)).
-They are delivered inconsistently
-([review](https://pmc.ncbi.nlm.nih.gov/articles/PMC8132012/)), and the biggest practical barrier is
-finding material that is truly personal: the songs, films and places of *this* person's youth, in
-*their* culture. Generic playlists and generic AI answers are Western-centric "greatest hits".
-Memory Lane removes that barrier — and is honest that it is an activity aid, not a treatment
-(evidence on agitation is mixed: [trial](https://pmc.ncbi.nlm.nih.gov/articles/PMC9256757/)).
+They are delivered inconsistently ([review](https://pmc.ncbi.nlm.nih.gov/articles/PMC8132012/)), and the
+biggest practical barrier is finding material that is truly personal: the songs, films and places of
+*this* person's youth, in *their* culture. Generic playlists and generic AI answers drift to
+Western-centric "greatest hits". Memory Lane removes that barrier, and is honest that it is an activity
+aid, not a treatment (evidence on agitation is mixed:
+[trial](https://pmc.ncbi.nlm.nih.gov/articles/PMC9256757/)).
 
 ## What it does
 
-1. **Favourites.** A caregiver adds a few public favourites (a singer, a film, a dish, a place),
-   where the person grew up (town level) and anything to avoid. No personal details.
-2. **Match them in Qloo.** Each favourite is looked up in Qloo; when there are several matches,
-   the caregiver picks one. Nothing unconfirmed is used.
-3. **Life Taste Profile.** From the confirmed Qloo IDs the agent asks Qloo what people with the same
-   favourites also enjoy — singers, films and TV from the years they grew up in, places near where
-   they lived, dishes — and checks every item in code.
+1. **Favourites.** A caregiver adds a few public favourites (a singer, a film, a dish, a place), where
+   the person grew up (town level) and anything to avoid. No personal details.
+2. **Match them in Qloo.** Each favourite is looked up in Qloo; when there are several matches, the
+   caregiver picks one. Nothing unconfirmed is used.
+3. **Life Taste Profile.** From the confirmed Qloo IDs the agent asks Qloo, domain by domain, what people
+   with the same favourites also enjoy: singers from the singers they love, films and TV from their
+   films and shows, places in and around where they grew up, dishes from Qloo's food tags. Code keeps
+   it to their era, gentle and on-topic, and checks every item. The agent's own step log is saved and
+   shown as **How Memory Lane built this**.
 4. **Session.** A 25-minute plan: opening song, a film or TV memory, food, a place, "your choice",
-   closing song. Gentle prompts that invite, never test. Links to YouTube, Spotify or a map.
-5. **It learns.** The caregiver taps how each item landed. Next time, what they sang along to comes
-   first and Qloo is asked for more like it; anything that upset them never returns and joins the
-   avoid-list. The plan says what changed.
+   closing song. Gentle prompts that invite, never test. Links to YouTube, Spotify or Google Maps.
+   Printable for a care-home folder.
+5. **It learns, and Qloo decides what's next.** The caregiver taps how each item landed. Next time,
+   Qloo is asked for more like what they sang along to, **`qloo_rank` orders everything still to play
+   against it**, anything that upset them never returns and joins the avoid-list, and the plan says
+   what changed.
+
+| | | |
+|---|---|---|
+| ![Demo picker](docs/screenshots/demo-picker.png) | ![Life Taste Profile](docs/screenshots/taste-profile.png) | ![Session 2 plan with what changed](docs/screenshots/session-plan.png) |
+| Demo personas, ready to explore | Harjeet's Life Taste Profile, demo-first | Margaret's session 2: what it learned |
+| ![Evidence drawer](docs/screenshots/evidence-drawer.png) | ![Session player](docs/screenshots/player.png) | |
+| The evidence drawer: recommend + rank calls | The player: one item at a time, one hand | |
 
 ## Why it needs Qloo
 
-The interesting part isn't "an AI suggests songs" — it is that **every suggestion is a Qloo answer
-for this person's actual favourites**, kept to their era, with evidence. Real results from the demo
-personas (fictional people, real Qloo calls):
+The interesting part isn't "an AI suggests songs": **every suggestion is a Qloo answer for this
+person's actual favourites**, kept to their era, with evidence, and Qloo's ranking decides the order of
+the next session. Live results from the demo personas (fictional people, real Qloo calls; Stage 1
+takes each favourite's first match, as a caregiver would):
 
-| Persona | Confirmed favourites | Qloo found (kept by the agent) | Session 2 learned |
+| Persona | Confirmed favourites | Qloo found (kept by the agent) | Session 2 learned (recommend) · led by (rank) |
 |---|---|---|---|
-| Harjeet, b. 1950, Amritsar → Delhi | Mohammed Rafi, Mughal-e-Azam, Sarson da saag, Sri Harmandir Sahib | Kishore Kumar, Mukesh, Lata Mangeshkar; *Guide* (1965), *Deewaar* (1975); Amritsari kulcha; Gobindgarh Fort, Sadda Pind | Asha Bhosle, Hemant Kumar (from Rafi & Mukesh); *Mera Naam Joker*, *Padosan* (from Mughal-e-Azam) |
-| Margaret, b. 1944, Liverpool → Manchester | Cilla Black, The Beatles, Coronation Street, Fish and chips, The Blackpool Tower | The Kinks, Tom Jones, Roy Orbison; *Upstairs, Downstairs* (1971); Haydock Park, Theatre Royal | Gene Pitney, Sandie Shaw (from Cilla Black); *Emmerdale Farm*, *Brookside* (from Coronation Street) |
-| Dorothy, b. 1946, Dayton → Columbus | Patsy Cline, The Sound of Music, Elvis Presley, I Love Lucy, Pot roast | Roy Orbison, Harry Belafonte, The Platters; *Out of Africa*, *The Waltons*; Carillon Historical Park, Packard Museum | Dion, Del Shannon (from Patsy Cline & Roy Orbison); *Mary Poppins*, *My Fair Lady* (from The Sound of Music) |
+| Harjeet, b. 1950, Amritsar → Delhi | Mohammed Rafi, Mughal-e-Azam, Sarson da saag, Sri Harmandir Sahib | Kishore Kumar, Mukesh, Lata Mangeshkar; *Guide* (1965), *Deewaar* (1975); Amritsari naan, Punjabi paneer; Gobindgarh Fort, Sadda Pind, Gurudwara Chheharta Sahib | Asha Bhosle, Hemant Kumar; *Mera Naam Joker*, *Padosan* · Lata Mangeshkar and Asha Bhosle lead the music |
+| Margaret, b. 1944, Liverpool → Manchester | Cilla Black, The Beatles, Coronation Street, Fish and chips, The Blackpool Tower | The Searchers, The Hollies, Roy Orbison; *Educating Rita* (1983), *Brookside*, *Upstairs, Downstairs*; The Cavern Club, The Beatles Story, Liverpool Cathedral | The Righteous Brothers, The Mamas & the Papas; *EastEnders*, *The Bill* · The Monkees and The Hollies lead the music |
+| Dorothy, b. 1946, Dayton → Columbus | Patsy Cline, The Sound of Music, Elvis Presley, I Love Lucy, Pot roast | Roy Orbison, Jerry Lee Lewis; *Breakfast at Tiffany's* (1961), *Funny Girl* (1968), *The Waltons*; Buckeye, Dayton-style pizza; Carillon Historical Park, the Packard Museum | The Platters, Del Shannon; *Mary Poppins*, *My Fair Lady* · Breakfast at Tiffany's and Funny Girl lead the films |
 
-The avoid-list is absolute, and Qloo's own descriptions make it work: for Dorothy, a group whose
-Qloo description mentions "Unchained Melody" (on her avoid-list) was left out; for Harjeet, an
-avoid entry "Partition" also keeps out a border-ceremony landmark whose description never says the
-word.
+Asking each domain with its own favourites matters: with all of Margaret's favourites at once Qloo
+suggested American dramas; with Coronation Street and Cilla Black it suggests British soaps, and her
+singers near Liverpool find the city's music landmarks. The avoid-list is absolute and reads Qloo's
+own descriptions, with related words for well-known painful topics (an entry "Partition" also covers
+the border, 1947 and refugees), so a suggestion whose description touches the topic is left out even
+when its name doesn't.
 
 ## How the agent works
 
 ```mermaid
 flowchart LR
   F[Favourites<br/>caregiver] --> S1[Stage 1 · match<br/>qloo_describe / qloo_find_tags<br/>caregiver confirms]
-  S1 --> S2[Stage 2 · Life Taste Profile<br/>qloo_recommend from confirmed IDs<br/>code: era, avoid, gentle, evidence]
+  S1 --> S2[Stage 2 · Life Taste Profile<br/>qloo_recommend per domain<br/>qloo_find_tags food<br/>code: era, avoid, gentle, evidence]
   S2 --> S3[Stage 3 · session<br/>template + gentle prompts<br/>validators]
   S3 --> R[Reactions<br/>caregiver]
-  R --> S4[Stage 4 · learn<br/>qloo_recommend from what landed<br/>upset → avoid-list]
+  R --> S4[Stage 4 · learn<br/>qloo_recommend more like it<br/>qloo_rank what comes next<br/>upset → avoid-list]
   S4 --> S3
 ```
 
-**Qloo decides, code verifies.** The plan of each stage is fixed and visible (the live log shows
-each step); the agentic part is what Qloo answers and how the agent adapts:
+**Qloo decides, code verifies.** Each stage's plan is fixed and visible (the live log and the saved
+build steps show every step); the agentic part is what Qloo answers and how the agent adapts:
 
 | Qloo tool (via `qloo mcp`) | Used for | Why it fits |
 |---|---|---|
 | `qloo_describe` | Stage 1: singers, films, TV, places | Resolves a typed name to a Qloo entity; several matches → the caregiver chooses (one option per real place listing) |
-| `qloo_find_tags` | Stage 1 dishes/interests; Stage 2 "<town> food" | Dishes are tags in Qloo, not entities ("Butter chicken" as an entity is a restaurant) |
-| `qloo_recommend` (`explain`) | Stage 2 artists, films, TV, places (`filter_location`); Stage 4 neighbours of what landed | "People who enjoy X also enjoy Y" from exact entity IDs; Qloo's explanation names which favourites contributed, and that becomes the caption |
+| `qloo_find_tags` | Stage 1 dishes/interests; Stage 2 "<town> food" and "<region> food" | Dishes are tags in Qloo, not entities ("Butter chicken" as an entity is a restaurant) |
+| `qloo_recommend` (`explain`) | Stage 2: singers from singers, films/TV from films and shows, places twice (from tastes and from a loved place, `filter_location`); Stage 4: more like what landed | "People who enjoy X also enjoy Y" from exact entity IDs; Qloo's explanation names which favourites contributed, and that becomes the caption |
+| `qloo_rank` | Stage 4: what is still to play (≤10 options) ranked against what landed | Qloo, not code, decides the order of the next session; the rank call joins each item's evidence |
 
-Code around Qloo (because Phase 0 showed what Qloo can't do — [findings](docs/qloo-findings.md)):
-no year filter exists, so films/TV are kept to birth +5 … +45 by `release_year` and singers are
-ordered by the decades Qloo's descriptions mention; places are kept only when Qloo's description
-opens with a lasting landmark (not a hotel or bar) in the same country; the avoid-list reads Qloo's
-full descriptions; a gentle filter leaves out atrocities, suicide and abuse.
+Code around Qloo (Phase 0 showed what Qloo can't do — [findings](docs/qloo-findings.md)): no year
+filter exists, so films/TV are kept to birth +5 … +45 by `release_year` and singers are ordered by the
+decades Qloo's descriptions mention; places are kept only when Qloo's description opens with a lasting
+landmark (not a hotel, bar or new venue) in the same country; dishes are named dishes only (restaurant
+styles and "Punjabi"-style labels are left out, variants merged); the avoid-list reads Qloo's full
+descriptions; a gentle filter leaves out atrocities, suicide, abuse, hospital dramas and horror. Song
+searches add the decade they are remembered for; map searches add the town.
 
 ### Redacted request → result example
 
-How one request became session items (request shape and names only; IDs and payloads are not
+How requests became session items for Harjeet (request shape and names only; IDs and payloads are not
 stored in this public repo, per Qloo's developer guide):
 
 1. **Entity choice.** Stage 1 sent `qloo_describe {entity: "Mohammed Rafi", type: "artist"}` → status
-   `ok`, exact match "Mohammed Rafi" (artist). The caregiver confirmed it; its Qloo ID is stored.
-2. **Tag choice.** `qloo_find_tags {query: "Sarson da saag"}` → five dish tags; the agent kept the ones
-   sharing a real word with the favourite ("Sarson Da Saag", "Sarson Ka Saag", "Saag"), preferring the
-   cuisine tag; the caregiver chose "Sarson Da Saag".
-3. **Recommendation.** Stage 2 sent
-   `qloo_recommend {target_type: "artist", signals: ["<Mohammed Rafi id>", "<Mughal-e-Azam id>"], limit: 20, explain: true}`
-   → status `ok`, 20 results led by Lata Mangeshkar, Kishore Kumar, Asha Bhosle, Mukesh, Manna Dey.
-4. **Checks.** Code put singers whose descriptions centre in the 1960s–70s first, dropped mostly-later
-   voices, checked the avoid-list and the evidence record, and wrote the caption from Qloo's
-   explanation: *"People who enjoy Mughal-E-Azam and Mohammed Rafi often also enjoy Kishore Kumar."*
-5. **Session.** Kishore Kumar became a session item with a YouTube search link and prompts such as
-   *"Where did music like this play when you were young: the radio, the cinema, a wedding?"* The
-   evidence drawer shows the recorded call (tool, what was asked, status, result count, time).
+   `ok`, exact match "Mohammed Rafi" (artist). The demo takes the first match; a caregiver confirms it
+   on the confirm screen. Its Qloo ID is stored.
+2. **Tag choice.** `qloo_find_tags {query: "Sarson da saag"}` → dish tags; the agent kept the ones
+   sharing a real word with the favourite ("Sarson Da Saag", "Sarson Ka Saag", "Saag"); the first,
+   Qloo's popular-food-item tag "Sarson Da Saag", was chosen.
+3. **Recommendation.** Stage 2 sent `qloo_recommend {target_type: "artist", signals: ["<Mohammed Rafi
+   id>"], limit: 20, explain: true}` → status `ok`, 20 results including Kishore Kumar, Mukesh and Lata
+   Mangeshkar. Code put singers whose descriptions centre in their era first, checked the avoid-list
+   and the evidence record, and wrote the caption from Qloo's explanation: *"People who enjoy Mohammed
+   Rafi often also enjoy Kishore Kumar."*
+4. **Learning.** In session 1, Rafi and Mukesh got "Sang along". Stage 4 sent `qloo_recommend
+   {target_type: "artist", signals: ["<Rafi id>", "<Mukesh id>"], limit: 15}` → 15 results led by Lata
+   Mangeshkar, Kishore Kumar, Asha Bhosle; Asha Bhosle and Hemant Kumar were new and era-fitting. Then
+   `qloo_rank {option_type: "artist", options: [<5 singers still to play>], signals: [<what landed>]}`
+   → Lata Mangeshkar, Asha Bhosle, Hemant Kumar, Jagjit Singh, Udit Narayan.
+5. **Session.** Session 2 opens with Asha Bhosle and closes with Lata Mangeshkar, each with a YouTube
+   search ("Asha Bhosle 1970s songs") and prompts such as *"Who would you have danced with to a song
+   like this?"* Its evidence drawer shows both calls (recommend: number 3 of 15; rank).
 
 ## Responsible by design
 
 - **No personal data to Qloo.** A guard in front of every call refuses nicknames (with variants),
-  contact details, addresses and health terms; places stay at town level; only confirmed-seed Qloo
-  IDs the server vouches for pass as IDs.
+  contact details, addresses and health terms; places stay at town level; only Qloo IDs the server
+  read from its own records pass as IDs. The caregiver's notes never leave Memory Lane and refuse
+  health or contact details.
 - **Aggregate wording.** Captions describe what groups enjoy, never what this person will like.
   Validators block claims about the person and any treatment wording; prompts are never memory tests.
-- **Honest states.** No Qloo key, quota or outage → the app says so; it never invents items. A build
-  that couldn't reach Qloo never replaces a good version.
-- **Data.** No login (an owner token on the device); "Delete this profile" removes everything,
-  including Qloo call records; idle profiles go after 90 days. Shared-quota protection: per-device
-  and per-IP allowances, one research run per profile, part of the budget kept for the demos.
+- **Honest states.** No Qloo key, quota or outage → the app says so (and points to the demos); it never
+  invents items. A build that couldn't reach Qloo never replaces a good version.
+- **Data.** No login (an owner token on the device); "Delete this profile" removes the profile, its
+  sessions and its Qloo call records; idle profiles go after 90 days. Shared-quota protection:
+  per-device and per-IP allowances, one research run per profile, part of the budget kept for the
+  demos, at most 50 sessions per profile. Demo personas can't be changed by any request.
 
 ## Run it yourself
 
@@ -130,11 +170,11 @@ pnpm dev                                   # web on :3000, agent on :8787
 ```
 
 - **Without a database:** `DATABASE_URL=pglite:memory` runs an in-process Postgres (data is lost on
-  restart). Add `SEED_DEMOS=1` to build the three demo personas locally (about 36 Qloo calls once).
+  restart). Add `SEED_DEMOS=1` to build the three demo personas locally (about 50 Qloo calls once).
 - **Without a Qloo key:** `pnpm --filter @memory-lane/agent dev:fixtures` uses synthetic Qloo answers
   ("Example Artist A"), so the whole flow can be clicked through. Both dev switches are refused in
   production.
-- Checks: `pnpm test` (Vitest on synthetic envelopes, no live calls) · `pnpm typecheck` ·
+- Checks: `pnpm test` (Vitest on synthetic envelopes, no live calls; 180 tests) · `pnpm typecheck` ·
   `pnpm lint` · `pnpm build`.
 
 Deployed as: Next.js on Vercel (`apps/web`), the agent in a Docker container on Render (`apps/agent`,
@@ -152,21 +192,38 @@ Deployed as: Next.js on Vercel (`apps/web`), the agent in a Docker container on 
 - Qloo results describe what groups of people tend to enjoy; they don't establish what one person
   remembers or will enjoy, and Memory Lane makes no claim of clinical benefit.
 - No decade filter in Qloo: era fit comes from release years (films/TV) and description dates
-  (singers), which is good but not perfect (a modern singer without dates can slip in).
-- Food is lighter than music: dishes are tags in Qloo without years or places.
-- Places near a town are mostly modern venues in Qloo; only lasting landmarks are kept, so some
-  towns get few places.
-- The Claude-based steps (proposing era-typical names for Qloo to rank, warmer item-specific
-  prompts, a side-by-side "generic AI vs Qloo" comparison) are designed (docs/05) but not switched on
-  yet; every step shown works without an LLM, so nothing depends on a model inventing items.
+  (singers), which is good but not perfect (a later singer with dates near the edge can slip in, and
+  Qloo's ranking then puts them last).
+- Food is lighter than music: dishes are tags in Qloo without years, and for some towns Qloo's food tags
+  are restaurant styles only (the profile then says so and uses the favourite dishes).
+- Places near a town are mostly modern venues in Qloo; only lasting landmarks are kept, so some towns
+  get few places.
+- The Claude-based steps (proposing era-typical names for Qloo to rank, warmer item-specific prompts,
+  a side-by-side "generic AI vs Qloo" comparison) are designed (docs/05) but not switched on yet; every
+  step shown works without an LLM, so nothing depends on a model inventing items.
 - Profiles live on one device (no accounts); favourites can't be edited after creating a profile.
+
+## Business model & what's next
+
+Dementia is common and growing: 57 million people were living with dementia worldwide in 2021, with
+nearly 10 million new cases every year ([WHO](https://www.who.int/news-room/fact-sheets/detail/dementia)).
+Reminiscence is part of everyday care, but preparing it person by person is the hard part.
+
+- **Care homes and day centres (the buyer):** per-resident monthly subscription; printable session plans,
+  a coordinator view across residents, and activity records for care-quality reporting.
+- **Families:** free tier with a few sessions a month; paid tier for unlimited sessions and sharing with
+  siblings or carers.
+- **Channels:** dementia-care associations, care-home groups, memory cafés.
+- **Next:** the LLM steps above (with the same validators), multilingual prompts, a coordinator
+  dashboard, accounts with device transfer, and pilots with care homes.
 
 ## Notes for Qloo
 
-Phase 0 findings are in [docs/qloo-findings.md](docs/qloo-findings.md): artist → artist recommends
-are wonderfully era-faithful; a decade/release-year filter for `qloo_recommend` would remove most of
-our era code; `demographic` age bands above 55 are dropped; `where_popular` returns only geohash
-cells; places near a town are dominated by hotels and venues.
+Phase 0 findings are in [docs/qloo-findings.md](docs/qloo-findings.md): artist → artist recommends are
+wonderfully era-faithful; `qloo_rank` cleanly separates era names from later ones; a decade/release-year
+filter for `qloo_recommend` would remove most of our era code; `demographic` age bands above 55 are
+dropped; `where_popular` returns only geohash cells; places near a town are dominated by hotels and
+venues, and food tags near a town are mostly restaurant styles.
 
 ## Author · License
 
