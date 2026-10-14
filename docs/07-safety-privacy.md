@@ -46,8 +46,11 @@ Judges (and Qloo's kit) explicitly value responsible data handling. Treat this f
    only the server-side seeder writes their sample reactions. Seeding is robust to restarts and
    overlapping deploys (complete-only listing, unique demo index, stale half-built personas rebuilt,
    older versions removed only after the new one is complete). "Try it yourself" makes a private copy
-   (with copies of its Qloo call records) under the same profile limits.
-11. Links are built in code and checked against https search paths per host (YouTube `/results`,
+   (with copies of its Qloo call records, never the harness summary) under the same profile limits and
+   rate bucket as creating a profile, one per device while untouched; a copy that can't be planned is
+   removed again, so no unreachable profile is left behind.
+11. Map searches carry the place's town (Qloo's geocode, or the town-level region the caregiver typed),
+   never the nickname or notes. Links are built in code and checked against https search paths per host (YouTube `/results`,
    Spotify `/search/`, Google Maps `/maps/search/`), so allowed hosts' redirect pages can't be used.
 
 ## 3. Content safety

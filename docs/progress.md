@@ -33,10 +33,11 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
   use `qloo.cmd` in PowerShell (the .ps1 shim is blocked by the execution policy).
 
 ## Next steps
-1. Phase 9 hardening: reviews (security, ux, hackathon-judge), README + screenshots, submission kit.
-2. With the Anthropic key: LLM proposals in Stage 2, warmer prompts in Stage 3, compare view.
-3. Then, Phase 7 compare/how-it-works, Phase 8 demo personas + landing, Phase 9 submission.
-3. Developer: create an Anthropic API key (Console → billing) and add it on Render; join Discord.
+1. Submit on Devpost by Oct 29 IST (text ready in docs/devpost.md; screenshots in docs/screenshots/).
+2. With the Anthropic key (developer creates it in the Anthropic Console and adds `ANTHROPIC_API_KEY`
+   on Render): LLM proposals ranked by Qloo in Stage 2, warmer prompts in Stage 3, compare view.
+3. Keep the app live and free through Nov 17 (UptimeRobot monitors on); re-run the reviewers after
+   any larger change; bump `DEMO_VERSION` when research or session logic changes.
 
 ## Decisions (ADR-lite)
 | Date | Decision | Why | Docs updated |
@@ -89,10 +90,17 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-14 | Build steps saved with each taste profile ("How Memory Lane built this"); evidence API returns names for the ids sent and Qloo's result names | Make the agent's work visible; richer evidence drawer | 04, 06 |
 | 2026-10-14 | "Try it yourself": private copy of a demo persona (first taste profile + copied evidence rows), session 1 ready | Lets judges run the learning loop live without building a profile | 04, 06, 07 |
 | 2026-10-14 | Demo personas versioned (`DEMO_VERSION`), complete-only listing, stale half-built rebuild, unique demo index; older versions removed after the new one is complete | Security review W2/UX W15: restarts and overlapping deploys left broken or duplicate demos | 04, 07 |
+| 2026-10-14 | Qloo's rank alone orders ranked items; each domain ranked against its own hits; Stage 2 asks again when <3 films fit; the log names what was left out | Judge re-score 7.9: the "what changed" text must match the plan; show the agent adapting and its reasons | 05 |
+| 2026-10-14 | Player saves one at a time per item with the merged wanted state; a reaction never erases a note (server keeps the note when none is sent) | UX re-review C1: note lost on a natural flow; out-of-order writes could undo "Seemed upset" | 04, 06 |
 | 2026-10-14 | An untouched newest session is returned instead of planning again; ≤50 sessions per profile; notes refuse personal/health details | Security review W1/W3 | 04, 07 |
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-14: **Phase 9 round 2** (judge 7.9, security: no criticals, UX: 1 critical). Rank-led session
+  order, per-domain ranking, Stage 2 second look and named exclusions, lodging filter, town-first place
+  prompts; try-it idempotent with cleanup and a shared rate bucket; rank evidence replaced; player save
+  queue with drafts, unsaved list, offline notice; 4xx agent messages, longer planning timeouts with
+  progress lines, Safari-safe timeouts; GitHub About homepage + topics fixed.
 - 2026-10-14: **Phase 9 hardening round 1 (judge 7.25/10, UX and security reviews).** Agent: per-domain
   Stage 2 signals, two place calls, town + region food with dish filters, medical/horror screen filter,
   lasting-place rules, map links with the town, decade in song searches, possessive fix, link path

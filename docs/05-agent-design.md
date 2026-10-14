@@ -70,13 +70,15 @@ favourites together brought American dramas):
 2. **Films and TV** — `qloo_recommend` movie (film + TV favourites, plus the first singer) and tv_show
    (TV + film favourites, plus the first singer), limit 20: only `release_year` within birth +5 … +45,
    closest to the bump (birth +10 … +30) first; nothing set around illness or fear (medical/hospital
-   dramas, horror).
+   dramas, horror). When fewer than 3 fit their years, one bounded follow-up `qloo_recommend` asks again
+   from the ones that fit (the Stage 4 move: era films lead to era films), and the log says so.
 3. **Places** — two `qloo_recommend` place calls with `filter_location` = the earliest life-stage region:
    one from their tastes (singers, films, TV — live check: a Liverpool band's fans found its famous
    venues and museum), one from the places they love; interleaved. Kept: lasting places
    (landmarks, markets, parks, the seaside, statues, venues Qloo describes by their decade), not hotels,
    bars, farm shops, festivals or "modern" venues, in the same country as most results, not sites of
-   grief (read from the opening words). The town from Qloo's geocode makes map links specific.
+   grief (read from the opening words), not anywhere with guest rooms (read anywhere in the text). The
+   town from Qloo's geocode makes map links specific and opens the prompts for places Qloo found.
 4. **Food** — favourites (cuisine tags) + `qloo_find_tags` "<town> food" and "<region> food". Named
    dishes first (specialty dish, popular item, then cuisine); restaurant styles (bar, pub, café,
    diner, market food) and labels that only name the place or its people ("Punjabi", "British Food") are
@@ -86,7 +88,8 @@ words for well-known painful topics: "Partition" also keeps out Wagah/1947/refug
 (atrocities, suicide, abuse), then the validators (grounding, avoid, language) before saving.
 Captions use Qloo's own explanation: "People who enjoy X and Y often also enjoy Z." Up to 6 items per
 domain; favourites first. Every step message is also saved with the version (`steps`) and shown as
-"How Memory Lane built this".
+"How Memory Lane built this", including what was left out and why (later singers, films from other
+years, hotels and venues — never naming what touched the avoid-list or a painful subject).
 **With the Claude key (next):** `propose_candidates` adds era-typical names per domain, which only
 survive through `qloo_rank` / `qloo_describe` with evidence (Phase 0: rank pushes modern names down).
 
@@ -113,11 +116,12 @@ survive through `qloo_rank` / `qloo_describe` with evidence (Phase 0: rank pushe
 - For sang/engaged **entities** of the last session, ≤2 `qloo_recommend` calls (artists from songs, the
   same screen type from films/TV) with those exact ids as signals (server-vouched for the PII guard),
   then the Stage 2 filters (era, avoid incl. learned, gentle) and validators. Survivors join a new taste
-  profile version as `source: "learned"` (+1).
+  profile version as `source: "learned"`.
 - **Qloo decides the order:** ≤2 `qloo_rank` calls rank what is still to play in music and in that screen
-  type (items not in the last session, plus the learned ones; ≤10 options) against what landed well.
-  Qloo's top pick gets +1.5, the last 0, so the next session opens with what Qloo ranks highest; each
-  ranked item also carries the rank call as evidence (the drawer shows both calls).
+  type (items not in the last session, plus the learned ones; ≤10 options) against what landed well in
+  that domain only. Qloo's top pick gets +1.5, the last 0, and nothing else is added to ranked items, so
+  the next session follows Qloo's order (a learned item that couldn't be ranked starts at +1). Each
+  ranked item carries the newest rank call as evidence, replacing an older one.
 - Distressed items join the avoid-list (`source: "learned"`, owner-only reason). `what_changed`: 2–6 plain
   sentences ("X landed well, so Qloo was asked for more like that: …", "Qloo ranked the music still to
   play against what landed well; … lead.").

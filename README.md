@@ -49,7 +49,8 @@ aid, not a treatment (evidence on agitation is mixed:
    with the same favourites also enjoy: singers from the singers they love, films and TV from their
    films and shows, places in and around where they grew up, dishes from Qloo's food tags. Code keeps
    it to their era, gentle and on-topic, and checks every item. The agent's own step log is saved and
-   shown as **How Memory Lane built this**.
+   shown as **How Memory Lane built this**, including what it left out and why; when too few films
+   fit their years it asks Qloo again from the ones that do.
 4. **Session.** A 25-minute plan: opening song, a film or TV memory, food, a place, "your choice",
    closing song. Gentle prompts that invite, never test. Links to YouTube, Spotify or Google Maps.
    Printable for a care-home folder.
@@ -63,24 +64,26 @@ aid, not a treatment (evidence on agitation is mixed:
 | ![Demo picker](docs/screenshots/demo-picker.png) | ![Life Taste Profile](docs/screenshots/taste-profile.png) | ![Session 2 plan with what changed](docs/screenshots/session-plan.png) |
 | Demo personas, ready to explore | Harjeet's Life Taste Profile, demo-first | Margaret's session 2: what it learned |
 | ![Evidence drawer](docs/screenshots/evidence-drawer.png) | ![Session player](docs/screenshots/player.png) | |
-| The evidence drawer: recommend + rank calls | The player: one item at a time, one hand | |
+| The evidence drawer: the Qloo calls behind an item | The player: one item at a time, one hand | |
 
 ## Why it needs Qloo
 
 The interesting part isn't "an AI suggests songs": **every suggestion is a Qloo answer for this
 person's actual favourites**, kept to their era, with evidence, and Qloo's ranking decides the order of
-the next session. Live results from the demo personas (fictional people, real Qloo calls; Stage 1
-takes each favourite's first match, as a caregiver would):
+the next session. The live demo personas (fictional people, real Qloo calls; Stage 1 takes each
+favourite's first match, as a caregiver would) show it — open them for the full lists and evidence:
 
-| Persona | Confirmed favourites | Qloo found (kept by the agent) | Session 2 learned (recommend) · led by (rank) |
+| Persona | Confirmed favourites (caregiver input) | Found with Qloo | Session 2 |
 |---|---|---|---|
-| Harjeet, b. 1950, Amritsar → Delhi | Mohammed Rafi, Mughal-e-Azam, Sarson da saag, Sri Harmandir Sahib | Kishore Kumar, Mukesh, Lata Mangeshkar; *Guide* (1965), *Deewaar* (1975); Amritsari naan, Punjabi paneer; Gobindgarh Fort, Sadda Pind, Gurudwara Chheharta Sahib | Asha Bhosle, Hemant Kumar; *Mera Naam Joker*, *Padosan* · Lata Mangeshkar and Asha Bhosle lead the music |
-| Margaret, b. 1944, Liverpool → Manchester | Cilla Black, The Beatles, Coronation Street, Fish and chips, The Blackpool Tower | The Searchers, The Hollies, Roy Orbison; *Educating Rita* (1983), *Brookside*, *Upstairs, Downstairs*; The Cavern Club, The Beatles Story, Liverpool Cathedral | The Righteous Brothers, The Mamas & the Papas; *EastEnders*, *The Bill* · The Monkees and The Hollies lead the music |
-| Dorothy, b. 1946, Dayton → Columbus | Patsy Cline, The Sound of Music, Elvis Presley, I Love Lucy, Pot roast | Roy Orbison, Jerry Lee Lewis; *Breakfast at Tiffany's* (1961), *Funny Girl* (1968), *The Waltons*; Buckeye, Dayton-style pizza; Carillon Historical Park, the Packard Museum | The Platters, Del Shannon; *Mary Poppins*, *My Fair Lady* · Breakfast at Tiffany's and Funny Girl lead the films |
+| Harjeet, b. 1950, Amritsar → Delhi | Mohammed Rafi, Mughal-e-Azam, Sarson da saag, Sri Harmandir Sahib | 5 singers; 5 Hindi films from 1955–1995 (3 from the agent's second look, e.g. *Sholay*); 2 dishes; 5 places (gurdwaras, a fort) | 2 singers and 2 films learned; opens with Qloo's top-ranked singer |
+| Margaret, b. 1944, Liverpool → Manchester | Cilla Black, The Beatles, Coronation Street, Fish and chips, The Blackpool Tower | 4 singers (e.g. The Searchers); 5 British-led films and TV (e.g. *Brookside*); 5 places (e.g. The Cavern Club); no dishes (Qloo's Liverpool food tags were restaurant styles, and the profile says so) | 2 singers and 2 soaps learned; the TV slot is Qloo's top-ranked British soap; the upsetting place never returns |
+| Dorothy, b. 1946, Dayton → Columbus | Patsy Cline, The Sound of Music, Elvis Presley, I Love Lucy, Pot roast | 4 singers; 4 films and TV from 1951–1991; 3 Ohio dishes (e.g. Buckeye); 5 Dayton landmarks | 2 singers and 2 musicals learned; Qloo's ranking leads music and film |
 
-Asking each domain with its own favourites matters: with all of Margaret's favourites at once Qloo
-suggested American dramas; with Coronation Street and Cilla Black it suggests British soaps, and her
-singers near Liverpool find the city's music landmarks. The avoid-list is absolute and reads Qloo's
+**Specific to each person, not "greatest hits":** across the three personas the agent kept 73 items, 70
+of them distinct; only 3 appear for two people (all US/UK overlaps), and none is shared with the India
+persona. Asking each domain with its own favourites matters: with all of Margaret's favourites at once,
+Qloo suggested American dramas; with Coronation Street and Cilla Black it suggests British soaps, and
+her singers near Liverpool find the city's music landmarks. The avoid-list is absolute and reads Qloo's
 own descriptions, with related words for well-known painful topics (an entry "Partition" also covers
 the border, 1947 and refugees), so a suggestion whose description touches the topic is left out even
 when its name doesn't.
@@ -117,28 +120,28 @@ searches add the decade they are remembered for; map searches add the town.
 
 ### Redacted request → result example
 
-How requests became session items for Harjeet (request shape and names only; IDs and payloads are not
-stored in this public repo, per Qloo's developer guide):
+How requests became session items for Harjeet (request shape and a few names only; IDs, payloads and
+full result lists are not stored in this public repo, per Qloo's developer guide):
 
 1. **Entity choice.** Stage 1 sent `qloo_describe {entity: "Mohammed Rafi", type: "artist"}` → status
    `ok`, exact match "Mohammed Rafi" (artist). The demo takes the first match; a caregiver confirms it
    on the confirm screen. Its Qloo ID is stored.
 2. **Tag choice.** `qloo_find_tags {query: "Sarson da saag"}` → dish tags; the agent kept the ones
-   sharing a real word with the favourite ("Sarson Da Saag", "Sarson Ka Saag", "Saag"); the first,
-   Qloo's popular-food-item tag "Sarson Da Saag", was chosen.
+   sharing a real word with the favourite; the first, Qloo's popular-food-item tag "Sarson Da Saag",
+   was chosen.
 3. **Recommendation.** Stage 2 sent `qloo_recommend {target_type: "artist", signals: ["<Mohammed Rafi
    id>"], limit: 20, explain: true}` → status `ok`, 20 results including Kishore Kumar, Mukesh and Lata
    Mangeshkar. Code put singers whose descriptions centre in their era first, checked the avoid-list
    and the evidence record, and wrote the caption from Qloo's explanation: *"People who enjoy Mohammed
-   Rafi often also enjoy Kishore Kumar."*
+   Rafi often also enjoy Kishore Kumar."* Only two films fitted his years, so the agent asked Qloo again
+   from those two and kept three more from 1957–1975.
 4. **Learning.** In session 1, Rafi and Mukesh got "Sang along". Stage 4 sent `qloo_recommend
-   {target_type: "artist", signals: ["<Rafi id>", "<Mukesh id>"], limit: 15}` → 15 results led by Lata
-   Mangeshkar, Kishore Kumar, Asha Bhosle; Asha Bhosle and Hemant Kumar were new and era-fitting. Then
-   `qloo_rank {option_type: "artist", options: [<5 singers still to play>], signals: [<what landed>]}`
-   → Lata Mangeshkar, Asha Bhosle, Hemant Kumar, Jagjit Singh, Udit Narayan.
-5. **Session.** Session 2 opens with Asha Bhosle and closes with Lata Mangeshkar, each with a YouTube
-   search ("Asha Bhosle 1970s songs") and prompts such as *"Who would you have danced with to a song
-   like this?"* Its evidence drawer shows both calls (recommend: number 3 of 15; rank).
+   {target_type: "artist", signals: ["<Rafi id>", "<Mukesh id>"], limit: 15}` → two new era singers were
+   kept; then `qloo_rank {option_type: "artist", options: [<the singers still to play>], signals: [<what
+   landed>]}` ordered the rest.
+5. **Session.** Session 2 opens with Qloo's top-ranked singer, with a YouTube search that adds the
+   decade they are remembered for and prompts such as *"Who would you have danced with to a song like
+   this?"* Its evidence drawer shows both the recommend and the rank calls.
 
 ## Responsible by design
 
