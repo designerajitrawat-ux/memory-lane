@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import type { Session } from "@memory-lane/shared";
+import { EvidenceDrawer } from "@/components/evidence-drawer";
 import { ItemThumb } from "@/components/qloo-image";
-import { KIND_ICONS, slotLabel } from "@/components/session-labels";
+import { KIND_ICONS, isFavouriteItem, slotLabel } from "@/components/session-labels";
 import { api } from "@/lib/api";
+import { loadDemos } from "@/lib/demos";
 
 /**
  * The landing page's look at the product itself: a demo profile's newest session (the one that learned
@@ -20,7 +22,7 @@ export function SessionPeek() {
   useEffect(() => {
     let active = true;
     (async () => {
-      const demos = await api.listDemoProfiles();
+      const demos = await loadDemos();
       const demo = demos.ok ? demos.data.profiles.find((d) => d.latestSessionId) : undefined;
       if (!demo?.latestSessionId) {
         if (active) setFailed(true);
@@ -92,6 +94,17 @@ export function SessionPeek() {
                 {item.year ? <span className="text-muted-foreground"> ({item.year})</span> : null}
               </p>
               <p className="text-base break-words">{item.why}</p>
+              {/* Every item shows its Qloo evidence, here too (checklist; ux review W7). */}
+              <EvidenceDrawer
+                subject={{
+                  name: item.name,
+                  caption: item.why,
+                  entityId: item.entityId,
+                  entityType: item.entityType,
+                  evidenceIds: item.evidenceIds,
+                  ...(isFavouriteItem(item) ? { source: "favourite" as const } : {}),
+                }}
+              />
             </div>
           </li>
         ))}

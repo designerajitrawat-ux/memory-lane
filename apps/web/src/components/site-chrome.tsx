@@ -2,12 +2,13 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-export function SiteHeader() {
+/** `wide` on pages laid out at 5xl (landing, demos, profile, plan, compare), so the edges line up. */
+export function SiteHeader({ wide = false }: { wide?: boolean } = {}) {
   return (
     <header className="border-b">
       <nav
         aria-label="Main"
-        className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 px-4 py-3"
+        className={`mx-auto flex w-full flex-wrap items-center justify-between gap-x-2 px-4 py-3 ${wide ? "max-w-5xl" : "max-w-2xl"}`}
       >
         <Link
           href="/"
@@ -15,11 +16,11 @@ export function SiteHeader() {
         >
           Memory Lane
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1">
           <ThemeToggle />
           <Link
             href="/profiles"
-            className="inline-flex min-h-12 items-center px-1 text-base font-bold underline-offset-4 hover:underline"
+            className="inline-flex min-h-12 items-center text-base font-bold underline-offset-4 hover:underline"
           >
             Your profiles
           </Link>

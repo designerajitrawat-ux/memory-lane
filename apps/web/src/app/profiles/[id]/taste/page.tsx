@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Life Taste Profile · Memory Lane" }
 export default function TastePage() {
   return (
     <>
-      <SiteHeader />
+      <SiteHeader wide />
       <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 py-10">
         <Suspense fallback={<Loading>Loading the profile…</Loading>}>
           <TasteProfileView />

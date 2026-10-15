@@ -29,6 +29,7 @@ import { ItemThumb } from "@/components/qloo-image";
 import { TryDemo } from "@/components/try-demo";
 import { Button } from "@/components/ui/button";
 import { api, type ApiFailureKind } from "@/lib/api";
+import { useFitsInView } from "@/lib/use-fits";
 
 const DOMAINS: { key: TasteDomain; title: string; icon: LucideIcon }[] = [
   { key: "music", title: "Music", icon: Music },
@@ -61,6 +62,8 @@ export function TasteProfileView() {
   // agent confirms this device owns it, so a demo never flashes owner buttons (ux review S17).
   const [readOnly, setReadOnly] = useState(true);
   const [nickname, setNickname] = useState<string | null>(null);
+  // The wide-screen side panel sticks only when it fits the window (ux review C1).
+  const [asideRef, asideFits] = useFitsInView<HTMLDivElement>();
   const [loadError, setLoadError] = useState<{ kind: ApiFailureKind; message: string } | null>(
     null,
   );
@@ -296,10 +299,9 @@ export function TasteProfileView() {
   const found = profile.items.length - favourites - learned;
   const built = new Date(profile.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" });
   // Phones: one column. Wide screens: the profile on the left, the sessions in a side panel that
-  // stays in view. The DOM order stays the phone order (demo: sessions first, ux W13; a caregiver's own:
-  // after the summary).
-  const aside =
-    "space-y-6 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-2 lg:self-start";
+  // stays in view when it fits. The DOM order stays the phone order (demo: sessions first, ux W13; a
+  // caregiver's own: after the summary).
+  const aside = `space-y-6 lg:col-start-2 lg:row-span-2 lg:row-start-2 lg:self-start ${asideFits ? "lg:sticky lg:top-6" : ""}`;
   return (
     <div className="space-y-10 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-x-10 lg:gap-y-10 lg:space-y-0">
       <div className="space-y-4 lg:col-span-2">
@@ -307,12 +309,12 @@ export function TasteProfileView() {
         {readOnly && <DemoBanner />}
       </div>
       {readOnly && (
-        <aside aria-label="Sessions" className={aside}>
+        <div ref={asideRef} className={aside}>
           <SessionsPanel profileId={id} readOnly />
           <TryDemo profileId={id} name={nickname} />
           {/* On a caregiver's own profile it sits with the sessions, once one exists (ux W9). */}
           <CompareLink profileId={id} />
-        </aside>
+        </div>
       )}
       <div className="min-w-0 space-y-3 lg:col-start-1 lg:row-start-2">
         <h2
@@ -359,9 +361,9 @@ export function TasteProfileView() {
       </div>
 
       {!readOnly && (
-        <aside aria-label="Sessions" className={aside}>
+        <div ref={asideRef} className={aside}>
           <SessionsPanel profileId={id} readOnly={false} />
-        </aside>
+        </div>
       )}
 
       <div className="min-w-0 space-y-10 lg:col-start-1 lg:row-start-3">

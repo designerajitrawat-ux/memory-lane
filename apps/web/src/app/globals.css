@@ -5,10 +5,12 @@
 /* Dark mode follows the device unless the person picked Light or Dark (data-theme on <html>, set by
    the colour button before the page paints; docs/06-ui-ux.md §2). */
 @custom-variant dark {
-  &:where([data-theme="dark"], [data-theme="dark"] *) {
-    @slot;
+  @media screen {
+    &:where([data-theme="dark"], [data-theme="dark"] *) {
+      @slot;
+    }
   }
-  @media (prefers-color-scheme: dark) {
+  @media screen and (prefers-color-scheme: dark) {
     &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
       @slot;
     }
@@ -78,32 +80,35 @@
   color-scheme: light;
 }
 
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --background: #17140f;
-  --foreground: #f3ece2;
-  --card: #221e18;
-  --card-foreground: #f3ece2;
-  --popover: #221e18;
-  --popover-foreground: #f3ece2;
-  --primary: #e07a4f;
-  --primary-foreground: #17140f;
-  --secondary: #2a251e;
-  --secondary-foreground: #f3ece2;
-  --muted: #2a251e;
-  --muted-foreground: #b5aa9c;
-  --accent: #1e3533;
-  --accent-foreground: #cde7e4;
-  --evidence: #6fb7af;
-  --warning: #f2b45a;
-  --field-border: #8c7f72; /* 4.72:1 on background, 4.26:1 on cards */
-  --destructive: #f97066;
-  --border: #3a332a;
-  --input: #3a332a;
-  --ring: #e07a4f;
+/* Screens only: a printed plan always uses the light colours (ux review W1). */
+@media screen {
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --background: #17140f;
+    --foreground: #f3ece2;
+    --card: #221e18;
+    --card-foreground: #f3ece2;
+    --popover: #221e18;
+    --popover-foreground: #f3ece2;
+    --primary: #e07a4f;
+    --primary-foreground: #17140f;
+    --secondary: #2a251e;
+    --secondary-foreground: #f3ece2;
+    --muted: #2a251e;
+    --muted-foreground: #b5aa9c;
+    --accent: #1e3533;
+    --accent-foreground: #cde7e4;
+    --evidence: #6fb7af;
+    --warning: #f2b45a;
+    --field-border: #8c7f72; /* 4.72:1 on background, 4.26:1 on cards */
+    --destructive: #f97066;
+    --border: #3a332a;
+    --input: #3a332a;
+    --ring: #e07a4f;
+  }
 }
 
-@media (prefers-color-scheme: dark) {
+@media screen and (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --background: #17140f;
     --foreground: #f3ece2;
@@ -154,9 +159,10 @@
   }
 }
 
-/* The player's Back/Next bar stays within reach on tall phones (ux review W11); short or landscape
-   screens keep their space. Focused elements never hide under it (WCAG 2.4.11). */
-@media (max-width: 639px) and (min-height: 576px) {
+/* The player's Back/Next bar stays within reach on tall screens, phones and laptops alike (ux review
+   W11, layout review S8); short or landscape screens keep their space. Focused elements never hide
+   under it (WCAG 2.4.11). */
+@media screen and (min-height: 576px) {
   .player-nav {
     position: sticky;
     bottom: 0;

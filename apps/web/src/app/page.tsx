@@ -29,7 +29,7 @@ const STEPS = [
 export default function Home() {
   return (
     <>
-      <SiteHeader />
+      <SiteHeader wide />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-14 px-4 py-8 sm:py-14">
         {/* Phones: one column. Wide screens: the words on the left, Qloo's pictures on the right. */}
         <section
@@ -70,7 +70,7 @@ export default function Home() {
               </Link>
               <Link
                 href="/how-it-works"
-                className={`inline-flex min-h-12 items-center justify-center px-4 text-base font-bold underline underline-offset-4 ${linkFocus}`}
+                className={`inline-flex min-h-12 items-center justify-center px-4 text-base font-bold underline underline-offset-4 lg:px-2 ${linkFocus}`}
               >
                 How it works
               </Link>
@@ -85,9 +85,9 @@ export default function Home() {
           <h2 id="steps-heading" className="text-xl font-bold">
             Three steps
           </h2>
-          <ol role="list" className="grid gap-3 md:grid-cols-3">
+          <ol role="list" className="grid gap-3 lg:grid-cols-3">
             {STEPS.map(({ icon: Icon, title, text }, i) => (
-              <li key={title} className="flex gap-4 rounded-2xl border bg-card p-4 md:flex-col">
+              <li key={title} className="flex gap-4 rounded-2xl border bg-card p-4 lg:flex-col">
                 <span
                   aria-hidden="true"
                   className="hidden size-12 shrink-0 items-center justify-center rounded-full bg-secondary text-primary min-[24rem]:flex"

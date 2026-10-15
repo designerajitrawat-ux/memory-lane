@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { DemoProfile } from "@memory-lane/shared";
 import { QlooImage } from "@/components/qloo-image";
-import { api } from "@/lib/api";
+import { loadDemos } from "@/lib/demos";
 
 const TILES = 6;
 const tile = "block aspect-square w-full rounded-xl bg-secondary";
@@ -31,7 +31,7 @@ export function DemoGlimpse() {
 
   useEffect(() => {
     let active = true;
-    api.listDemoProfiles().then((r) => {
+    loadDemos().then((r) => {
       if (!active) return;
       if (r.ok) setDemos(r.data.profiles);
       else setFailed(true);

@@ -23,21 +23,26 @@
   frame with the icon); the confirm screen shows pictures only when every match has one; the landing
   strip and demo picker show only the pictures there are. Beside text, pictures stack above it or hide
   when the screen is narrow for the text size (rem breakpoints). No pictures on the compare page.
-- Light & dark: the device's setting by default; a colour button in the header (Same as device → Light
-  → Dark, kept on this device, announced, applied before the page paints) lets someone whose phone is
-  dark read on a light page — many older eyes read dark text on light more easily. Respect
-  `prefers-reduced-motion`.
-- Layout: phone-first, one column. From `lg` (1024px) the wide screens use the space: landing hero in
-  two columns (words | Qloo's pictures) and a "real session" preview; demo personas side by side (2
-  columns from `md`, 3 from `xl`); Life Taste Profile with the sessions in a side panel that stays in view
-  (DOM order = phone order); session plan with the title and actions in a sticky left column; player with
-  the picture on the left (sticky) and the name, links, prompts and reactions beside it. Forms (wizard,
-  confirm), reading pages and the summary stay one narrow column.
+- Light & dark: the device's setting by default; a colour button in the header ("Colours: Auto" →
+  Light → Dark; icon only on phones; kept on this device, announced, applied before the page paints)
+  lets someone whose phone is dark read on a light page — many older eyes read dark text on light more
+  easily. Not in the player (no header there). Dark colours are for screens only: printing is always
+  light. Respect `prefers-reduced-motion`.
+- Layout: phone-first, one column. From `lg` (64rem: 1024px at the default text size, later with larger
+  text, so large text gets the one-column layout) wide screens use the space: landing hero in two columns
+  (words | Qloo's pictures), the three steps side by side; demo personas side by side (2 columns from
+  `md`, 3 from `xl`); Life Taste Profile with the sessions in a side panel (DOM order = phone order);
+  session plan with the title, Start, Print, Compare and Back in a left column; player with the picture
+  (or, for a dish, the kind icon) in a left column and the name, links, prompts and reactions beside it.
+  Side panels and the player's picture stay in view while scrolling only when they fit the window;
+  the player's Back/Next bar sticks to the bottom on any screen at least 576px tall. Pages laid out wide
+  get a wide header, so the edges line up. Forms (wizard, confirm), reading pages and the summary stay
+  one narrow column; the printed plan is always one column.
 
 ## 3. Screens
 | # | Screen | Key elements |
 |---|---|---|
-| 1 | **Landing** (`/`) | "For families and carers", headline, explainer naming Qloo, **Try a demo profile** (primary), **Create a profile** (outline), **How it works**; a strip of up to six Qloo pictures, taking the demo profiles in turn (space kept while loading; hidden if none load; the pictures link to /demo), "Pictures Qloo has for the music, films and places it found for … our fictional demo profiles." and **See the demo profiles**; "Three steps"; status strip; footer links + disclaimer |
+| 1 | **Landing** (`/`) | "For families and carers", headline, explainer naming Qloo, **Try a demo profile** (primary), **Create a profile** (outline), **How it works**; a preview of a demo's newest session (up to two "what it learned" lines, the first three items with pictures, reasons and evidence chips, "Open X's session N"; space kept while loading, gone if it can't load); a strip of up to six Qloo pictures, taking the demo profiles in turn (space kept while loading; hidden if none load; the pictures link to /demo), "Pictures Qloo has for the music, films and places it found for … our fictional demo profiles." and **See the demo profiles**; "Three steps"; status strip; footer links + disclaimer |
 | 2 | **Demo picker** (`/demo`) | "Three fictional people…"; a card per complete persona (name as h2, born, regions read as "A, then B", four of Qloo's pictures from their profile, confirmed favourites) → their Life Taste Profile, plus "or go straight to session 2". While personas are being built: a status card that checks again every 15 s for 2 min, **Check again**, "Create a profile instead". Demo screens show a banner ("A fictional demo profile… Create your own") and hide every change action; the player works but reactions aren't saved |
 | 3 | **Profile wizard** (4 steps, progress bar) | Basics · Places (life-stage rows: region + years) · Favourites (chips by domain, free text) · Avoid-list. Privacy note: "Nickname only, like "Dad" or "Nani". It stays in Memory Lane and is never sent to Qloo or the AI." (it is stored in our DB, so "never sent anywhere" would be untrue) |
 | 4 | **Confirm matches** (`/profiles/[id]/confirm`, owner only) | "Not checked yet" list + **Check N favourites with Qloo** → live agent log (`role="log"`, one outcome line per favourite) → focus moves to **Choose the right matches**; per seed a radio group "Which “X” did you mean?" of candidates (Qloo's pictures when every match has one, name · type · year) + "None of these" (whole row tappable, single match preselected); "Won't be used" notes (not found / not sent: personal info); **Save choices** → profile with a focused "Choices saved." (+ how many still need a choice); no-key / quota / outage / stopped banner (focused, not a live region, so it is read once). Check turns secondary while choices wait or Qloo can't answer. Profile page chips: Not checked yet · Choose a match · Confirmed with Qloo · Not found in Qloo · Not sent to Qloo · Not used |

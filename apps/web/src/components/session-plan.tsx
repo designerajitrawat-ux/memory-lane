@@ -18,6 +18,7 @@ import {
 import { TryDemo } from "@/components/try-demo";
 import { Button } from "@/components/ui/button";
 import { api, type ApiFailureKind } from "@/lib/api";
+import { useFitsInView } from "@/lib/use-fits";
 
 const primaryLink =
   "inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-primary px-6 py-3 text-center text-base font-bold text-primary-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto";
@@ -29,6 +30,8 @@ export function SessionPlan() {
   const { id } = useParams<{ id: string }>();
   const [session, setSession] = useState<Session | null>(null);
   const [readOnly, setReadOnly] = useState(false);
+  // The wide-screen column sticks only when it fits the window (ux review W6).
+  const [columnRef, columnFits] = useFitsInView<HTMLDivElement>();
   const [error, setError] = useState<{ kind: ApiFailureKind; message: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
 
@@ -125,8 +128,11 @@ export function SessionPlan() {
       )}
       {/* Phones: one column. Wide screens: the session's title and actions stay in view on the left,
           the plan on the right. */}
-      <div className="space-y-8 lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-10 lg:space-y-0">
-        <div className="space-y-4 lg:sticky lg:top-6">
+      <div className="space-y-8 lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-10 lg:space-y-0 print:!block print:space-y-8">
+        <div
+          ref={columnRef}
+          className={`space-y-4 ${columnFits ? "lg:sticky lg:top-6 print:!static" : ""}`}
+        >
           <div className="space-y-2">
             <h1 className="font-heading text-4xl leading-tight">Session {session.number}</h1>
             <p className="flex items-center gap-2 text-lg text-muted-foreground">

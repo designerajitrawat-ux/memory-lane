@@ -16,9 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { api, type ApiFailureKind } from "@/lib/api";
 
 // The picture's frame: a share of the screen's height (not rem, which grows with text), within limits.
-// Wide screens: the picture is the left column's whole height, staying in view while the prompts scroll.
-const PLAYER_FRAME =
-  "h-[clamp(140px,24svh,320px)] w-full rounded-xl lg:sticky lg:top-6 lg:h-[min(70svh,36rem)] lg:self-start";
+// Wide screens: a tall left column that stays in view while the prompts scroll.
+const PLAYER_FRAME = "h-[clamp(140px,24svh,320px)] w-full rounded-xl lg:h-[min(70svh,36rem)]";
 
 const bigLink =
   "inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-4 py-3 text-center text-lg font-bold text-primary-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto sm:px-6";
@@ -375,6 +374,15 @@ export function SessionPlayer() {
   const destination = new URL(item.link.url).host.includes("google") ? "Google Maps" : "YouTube";
   const unsavedCount = Object.keys(unsaved).length;
 
+  const iconFrame = (
+    <span
+      aria-hidden="true"
+      className={`flex items-center justify-center bg-secondary text-primary ${PLAYER_FRAME}`}
+    >
+      <Icon className="size-12" />
+    </span>
+  );
+
   const statusLine = (
     <div role="status" aria-live="polite" className="min-h-6">
       {status.text && (
@@ -424,9 +432,9 @@ export function SessionPlayer() {
           left, everything else beside it (grid areas keep one DOM order for both). */}
       <article
         aria-labelledby="item-title"
-        className={`grid gap-6 rounded-2xl border bg-card p-5 sm:p-8 ${
+        className={`grid gap-6 rounded-2xl border bg-card p-5 sm:p-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-[auto_auto_1fr] lg:gap-x-10 lg:[grid-template-areas:'pic_label'_'pic_title'_'pic_rest'] ${
           item.image
-            ? "[grid-template-areas:'label'_'title'_'pic'_'rest'] lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-[auto_auto_1fr] lg:gap-x-10 lg:[grid-template-areas:'pic_label'_'pic_title'_'pic_rest']"
+            ? "[grid-template-areas:'label'_'title'_'pic'_'rest']"
             : "[grid-template-areas:'label'_'title'_'rest']"
         }`}
       >
@@ -448,25 +456,25 @@ export function SessionPlayer() {
         </h1>
         {/* Something to look at together: Qloo's photo, poster or place, whole, under the name (which
             takes focus, so it is always on screen) and sized by the screen, not the text (ux C1). A
-            picture that fails keeps its frame, with the kind icon (ux W3). */}
-        {item.image && (
-          <QlooImage
-            key={item.id}
-            src={item.image}
-            sizes="(min-width: 1024px) 460px, (min-width: 640px) 560px, 90vw"
-            fit="contain"
-            eager
-            className={`${PLAYER_FRAME} [grid-area:pic]`}
-            fallback={
-              <span
-                aria-hidden="true"
-                className={`flex items-center justify-center bg-secondary text-primary [grid-area:pic] ${PLAYER_FRAME}`}
-              >
-                <Icon className="size-12" />
-              </span>
-            }
-          />
-        )}
+            picture that fails keeps its frame, with the kind icon (ux W3). Wide screens: always a left
+            column (the kind icon when there is no picture), so the layout holds from item to item. */}
+        <div
+          className={`[grid-area:pic] lg:sticky lg:top-6 lg:self-start ${item.image ? "" : "hidden lg:block"}`}
+        >
+          {item.image ? (
+            <QlooImage
+              key={item.id}
+              src={item.image}
+              sizes="(min-width: 1024px) 460px, (min-width: 640px) 560px, 90vw"
+              fit="contain"
+              eager
+              className={PLAYER_FRAME}
+              fallback={iconFrame}
+            />
+          ) : (
+            iconFrame
+          )}
+        </div>
 
         <div className="min-w-0 space-y-6 [grid-area:rest]">
           <div className="space-y-2">
