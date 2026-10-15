@@ -23,7 +23,9 @@ treat any condition.
    gone.
 3. Tap any green **Qloo ·** chip: the exact Qloo calls behind that item (what was asked, with the
    favourites by name, what Qloo answered and where this item sat in the answer).
-4. Run the learning loop yourself: **Try the learning yourself** makes a private copy on your device.
+4. Tap **Generic AI vs Memory Lane**: the same AI model asked for the same session without Qloo, with
+   the differences counted in code.
+5. Run the learning loop yourself: **Try the learning yourself** makes a private copy on your device.
    Play session 1, tap how each item lands, finish, then **Plan the next session** — the agent asks
    Qloo live and explains what it changed.
 
@@ -50,10 +52,13 @@ aid, not a treatment (evidence on agitation is mixed:
    films and shows, places in and around where they grew up, dishes from Qloo's food tags. Code keeps
    it to their era, gentle and on-topic, and checks every item. The agent's own step log is saved and
    shown as **How Memory Lane built this**, including what it left out and why; when too few films
-   fit their years it asks Qloo again from the ones that do.
+   fit their years it asks Qloo again from the ones that do. When Qloo leaves a gap (no TV from their
+   years), an AI model proposes era-typical names, Qloo matches and ranks them, and code checks their
+   years: for Harjeet, Qloo knows several "Ramayan"s, and the agent picks the 1987 one.
 4. **Session.** A 25-minute plan: opening song, a film or TV memory, food, a place, "your choice",
-   closing song. Gentle prompts that invite, never test. Links to YouTube, Spotify or Google Maps.
-   Printable for a care-home folder.
+   closing song. Gentle, item-specific prompts written by the AI from Qloo's description of each item
+   and checked like everything else (invite, never test; no memory words). Links to YouTube, Spotify or
+   Google Maps. Printable for a care-home folder.
 5. **It learns, and Qloo decides what's next.** The caregiver taps how each item landed. Next time,
    Qloo is asked for more like what they sang along to, **`qloo_rank` orders everything still to play
    against it**, anything that upset them never returns and joins the avoid-list, and the plan says
@@ -75,9 +80,15 @@ favourite's first match, as a caregiver would) show it — open them for the ful
 
 | Persona | Confirmed favourites (caregiver input) | Found with Qloo | Session 2 |
 |---|---|---|---|
-| Harjeet, b. 1950, Amritsar → Delhi | Mohammed Rafi, Mughal-e-Azam, Sarson da saag, Sri Harmandir Sahib | 5 singers; 5 Hindi films from 1955–1995 (3 from the agent's second look, e.g. *Sholay*); 2 dishes; 5 places (gurdwaras, a fort) | 2 singers and 2 films learned; opens with Qloo's top-ranked singer |
+| Harjeet, b. 1950, Amritsar → Delhi | Mohammed Rafi, Mughal-e-Azam, Sarson da saag, Sri Harmandir Sahib | 5 singers; 5 Hindi films from 1955–1995 (3 from the agent's second look, e.g. *Sholay*); 2 TV classics the AI proposed and Qloo matched (e.g. *Ramayan*, 1987); 2 dishes; 5 places (gurdwaras, a fort) | 2 films learned (e.g. *Padosan*); opens with Qloo's top-ranked singer |
 | Margaret, b. 1944, Liverpool → Manchester | Cilla Black, The Beatles, Coronation Street, Fish and chips, The Blackpool Tower | 4 singers (e.g. The Searchers); 5 British-led films and TV (e.g. *Brookside*); 5 places (e.g. The Cavern Club); no dishes (Qloo's Liverpool food tags were restaurant styles, and the profile says so) | 2 singers and 2 soaps learned; the TV slot is Qloo's top-ranked British soap; the upsetting place never returns |
 | Dorothy, b. 1946, Dayton → Columbus | Patsy Cline, The Sound of Music, Elvis Presley, I Love Lucy, Pot roast | 4 singers; 4 films and TV from 1951–1991; 3 Ohio dishes (e.g. Buckeye); 5 Dayton landmarks | 2 singers and 2 musicals learned; Qloo's ranking leads music and film |
+
+**The same AI, without Qloo:** asked for the same session from the same facts, the model mostly hands
+back what the caregiver typed. For all three demo people its plan had **0 of 6 items beyond their own
+favourites and 0 with Qloo evidence**; Memory Lane's session 2 had **5 of 6 new items, all 6 with
+Qloo evidence**, inside their years and clear of the avoid-list (the counts are made in code, on the
+**Generic AI vs Memory Lane** page of every profile).
 
 **Specific to each person, not "greatest hits":** across the three personas the agent kept 73 items, 70
 of them distinct; only 3 appear for two people (all US/UK overlaps), and none is shared with the India
@@ -94,7 +105,9 @@ when its name doesn't.
 flowchart LR
   F[Favourites<br/>caregiver] --> S1[Stage 1 · match<br/>qloo_describe / qloo_find_tags<br/>caregiver confirms]
   S1 --> S2[Stage 2 · Life Taste Profile<br/>qloo_recommend per domain<br/>qloo_find_tags food<br/>code: era, avoid, gentle, evidence]
-  S2 --> S3[Stage 3 · session<br/>template + gentle prompts<br/>validators]
+  L[AI model<br/>proposes names for gaps] -.-> K[qloo_rank<br/>matches + orders]
+  K --> S2
+  S2 --> S3[Stage 3 · session<br/>template + AI-written prompts<br/>validators]
   S3 --> R[Reactions<br/>caregiver]
   R --> S4[Stage 4 · learn<br/>qloo_recommend more like it<br/>qloo_rank what comes next<br/>upset → avoid-list]
   S4 --> S3
@@ -108,7 +121,14 @@ build steps show every step); the agentic part is what Qloo answers and how the 
 | `qloo_describe` | Stage 1: singers, films, TV, places | Resolves a typed name to a Qloo entity; several matches → the caregiver chooses (one option per real place listing) |
 | `qloo_find_tags` | Stage 1 dishes/interests; Stage 2 "<town> food" and "<region> food" | Dishes are tags in Qloo, not entities ("Butter chicken" as an entity is a restaurant) |
 | `qloo_recommend` (`explain`) | Stage 2: singers from singers, films/TV from films and shows, places twice (from tastes and from a loved place, `filter_location`); Stage 4: more like what landed | "People who enjoy X also enjoy Y" from exact entity IDs; Qloo's explanation names which favourites contributed, and that becomes the caption |
-| `qloo_rank` | Stage 4: what is still to play (≤10 options) ranked against what landed | Qloo, not code, decides the order of the next session; the rank call joins each item's evidence |
+| `qloo_rank` | Stage 4: what is still to play (≤10 options) ranked against what landed; Stage 2: the AI's proposed names for a gap (an ambiguous title resolved to the one from their years) | Qloo, not code or the AI, decides the order of the next session and whether a proposal counts; the rank call joins each item's evidence |
+
+The AI model (OpenAI `gpt-6-luna` through any OpenAI-compatible API, server-side) never decides
+what's in a session: it proposes names for gaps (they count only once Qloo matches and ranks them and
+their years fit), writes prompts for items already chosen (each passes the same checks as the
+templates), and plays the "generic AI" in the comparison. It receives public facts only (birth year,
+town-level places, favourites' names, avoid topics), never the nickname or notes; answers are cached
+and capped per day. Without a key the app runs on Qloo and code alone, and says so.
 
 Code around Qloo (Phase 0 showed what Qloo can't do — [findings](docs/qloo-findings.md)): no year
 filter exists, so films/TV are kept to birth +5 … +45 by `release_year` and singers are ordered by the
@@ -135,10 +155,11 @@ full result lists are not stored in this public repo, per Qloo's developer guide
    and the evidence record, and wrote the caption from Qloo's explanation: *"People who enjoy Mohammed
    Rafi often also enjoy Kishore Kumar."* Only two films fitted his years, so the agent asked Qloo again
    from those two and kept three more from 1957–1975.
-4. **Learning.** In session 1, Rafi and Mukesh got "Sang along". Stage 4 sent `qloo_recommend
-   {target_type: "artist", signals: ["<Rafi id>", "<Mukesh id>"], limit: 15}` → two new era singers were
-   kept; then `qloo_rank {option_type: "artist", options: [<the singers still to play>], signals: [<what
-   landed>]}` ordered the rest.
+4. **Learning.** In session 1, the opening and closing songs got "Sang along". Stage 4 sent
+   `qloo_recommend {target_type: "artist", signals: [<the two singers that landed>], limit: 15}` and kept
+   only voices Qloo's descriptions date to his years (none new this time, so none were added; the films
+   that landed brought two more films), then `qloo_rank {option_type: "artist", options: [<the singers
+   still to play>], signals: [<what landed>]}` ordered the rest.
 5. **Session.** Session 2 opens with Qloo's top-ranked singer, with a YouTube search that adds the
    decade they are remembered for and prompts such as *"Who would you have danced with to a song like
    this?"* Its evidence drawer shows both the recommend and the rank calls.
@@ -147,8 +168,8 @@ full result lists are not stored in this public repo, per Qloo's developer guide
 
 - **No personal data to Qloo.** A guard in front of every call refuses nicknames (with variants),
   contact details, addresses and health terms; places stay at town level; only Qloo IDs the server
-  read from its own records pass as IDs. The caregiver's notes never leave Memory Lane and refuse
-  health or contact details.
+  read from its own records pass as IDs. The AI model gets the same public facts only, behind the
+  same guard. The caregiver's notes never leave Memory Lane and refuse health or contact details.
 - **Aggregate wording.** Captions describe what groups enjoy, never what this person will like.
   Validators block claims about the person and any treatment wording; prompts are never memory tests.
 - **Honest states.** No Qloo key, quota or outage → the app says so (and points to the demos); it never
@@ -174,10 +195,12 @@ pnpm dev                                   # web on :3000, agent on :8787
 
 - **Without a database:** `DATABASE_URL=pglite:memory` runs an in-process Postgres (data is lost on
   restart). Add `SEED_DEMOS=1` to build the three demo personas locally (about 50 Qloo calls once).
+- **AI steps (optional):** set `LLM_API_KEY` (any OpenAI-compatible API; `LLM_MODEL` defaults to
+  `gpt-6-luna`, `LLM_BASE_URL` to OpenAI). Without it the app runs on Qloo and code alone.
 - **Without a Qloo key:** `pnpm --filter @memory-lane/agent dev:fixtures` uses synthetic Qloo answers
   ("Example Artist A"), so the whole flow can be clicked through. Both dev switches are refused in
   production.
-- Checks: `pnpm test` (Vitest on synthetic envelopes, no live calls; 180 tests) · `pnpm typecheck` ·
+- Checks: `pnpm test` (Vitest on synthetic envelopes and a fake AI, no live calls; 187 tests) · `pnpm typecheck` ·
   `pnpm lint` · `pnpm build`.
 
 Deployed as: Next.js on Vercel (`apps/web`), the agent in a Docker container on Render (`apps/agent`,
@@ -201,9 +224,9 @@ Deployed as: Next.js on Vercel (`apps/web`), the agent in a Docker container on 
   are restaurant styles only (the profile then says so and uses the favourite dishes).
 - Places near a town are mostly modern venues in Qloo; only lasting landmarks are kept, so some towns
   get few places.
-- The Claude-based steps (proposing era-typical names for Qloo to rank, warmer item-specific prompts,
-  a side-by-side "generic AI vs Qloo" comparison) are designed (docs/05) but not switched on yet; every
-  step shown works without an LLM, so nothing depends on a model inventing items.
+- The AI-written prompts are only as good as Qloo's one-line description of each item; they are
+  checked for tone, not for facts beyond that line, and an item keeps its template prompts when the
+  model's don't pass. The comparison uses one model run per profile (cached), not an average.
 - Profiles live on one device (no accounts); favourites can't be edited after creating a profile.
 
 ## Business model & what's next
