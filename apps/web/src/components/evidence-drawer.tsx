@@ -24,14 +24,14 @@ export interface EvidenceSubject {
   entityType: string | null;
   evidenceIds: string[];
   /** Taste-profile items say where they came from; session items don't. */
-  source?: "favourite" | "qloo" | "learned";
+  source?: "favourite" | "qloo" | "proposed" | "learned";
 }
 
 const TOOL_LABELS: Record<string, string> = {
   qloo_describe: "Looked up in Qloo, then chosen as a favourite",
   qloo_find_tags: "Matched to Qloo's tags",
   qloo_recommend: "Recommended by Qloo",
-  qloo_rank: "Ranked by Qloo against what landed well",
+  qloo_rank: "Ranked by Qloo",
 };
 
 const STATUS_WORDS: Record<string, string> = {
@@ -47,6 +47,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 function chipFor(subject: EvidenceSubject): string {
   if (subject.source === "favourite") return "Qloo · confirmed";
   if (subject.source === "learned") return "Qloo · learned";
+  if (subject.source === "proposed") return "Qloo · ranked an AI suggestion";
   if (subject.entityType?.startsWith("urn:tag:")) return "Qloo · food tag";
   if (!subject.source && subject.evidenceIds.length > 1) return "Qloo · recommended and ranked";
   return "Qloo · recommended";

@@ -457,7 +457,11 @@ function ItemCard({ item }: { item: TasteItem }) {
       ) : (
         <span className="inline-flex items-center gap-1 self-start rounded-full bg-accent px-3 py-1 text-base text-accent-foreground">
           <Sparkles aria-hidden="true" className="size-4" />
-          {item.source === "learned" ? "Learned from a session" : "Found by Qloo"}
+          {item.source === "learned"
+            ? "Learned from a session"
+            : item.source === "proposed"
+              ? "Suggested by AI, ranked by Qloo"
+              : "Found by Qloo"}
         </span>
       )}
       <div className="min-w-0">

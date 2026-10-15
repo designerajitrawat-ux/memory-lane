@@ -526,7 +526,7 @@ export async function buildTasteProfile(
         .filter(gentleScreen)
         .filter(fresh(filmTv))
         .slice(0, MAX_PROPOSED);
-      filmTv.push(...shows.map((f) => fromFound(f, "film_tv")));
+      filmTv.push(...shows.map((f) => proposed(fromFound(f, "film_tv"))));
       step(
         ranked.kind === "found"
           ? shows.length
@@ -543,7 +543,7 @@ export async function buildTasteProfile(
         .filter(keep)
         .filter(fresh(music))
         .slice(0, MAX_PROPOSED);
-      music.push(...voices.map((f) => fromFound(f, "music")));
+      music.push(...voices.map((f) => proposed(fromFound(f, "music"))));
       step(
         ranked.kind === "found"
           ? voices.length
@@ -669,6 +669,16 @@ export async function buildTasteProfile(
   });
   emit({ type: "done", message: ready, data: profile });
   return profile;
+
+  /** An AI-proposed name Qloo ranked: said plainly on the card, in the caption and in the session. */
+  function proposed(item: TasteItem): TasteItem {
+    const by = item.becauseOf.length ? ` for people who enjoy ${join(item.becauseOf)}` : "";
+    return {
+      ...item,
+      source: "proposed",
+      caption: `Suggested for their years by the AI; Qloo ranks ${item.name} highly${by}.`,
+    };
+  }
 
   function fromFound(f: Found, domain: TasteDomain, where: string | null = null): TasteItem {
     const because = f.becauseOf.length ? f.becauseOf : (f.sent ?? []);

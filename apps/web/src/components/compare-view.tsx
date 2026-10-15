@@ -269,7 +269,11 @@ function Item({ item, era, generic }: { item: CompareItem; era: string; generic:
             Qloo evidence: {item.evidence} {item.evidence === 1 ? "call" : "calls"}
           </Badge>
         )}
-        {item.fromFavourites && <Badge tone="muted">One of their favourites</Badge>}
+        {item.fromFavourites ? (
+          <Badge tone="muted">One of their favourites</Badge>
+        ) : (
+          !generic && <Badge tone="good">New find</Badge>
+        )}
         {item.outsideYears && <Badge tone="warn">Outside {era}</Badge>}
         {item.avoided && <Badge tone="warn">On the things to avoid</Badge>}
         {item.sharedWith.length > 0 && (

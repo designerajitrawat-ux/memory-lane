@@ -23,10 +23,11 @@ export const TasteItemSchema = z.object({
   /** Why it is here, in aggregate wording ("People who enjoy X often also enjoy Y"). */
   caption: z.string(),
   /**
-   * "favourite" = confirmed by the caregiver; "qloo" = found by Qloo from the favourites; "learned" =
-   * found by Qloo from what landed well in a session (Stage 4).
+   * "favourite" = confirmed by the caregiver; "qloo" = found by Qloo from the favourites; "proposed" =
+   * an era name the AI suggested for a gap, which Qloo matched and ranked; "learned" = found by Qloo
+   * from what landed well in a session (Stage 4).
    */
-  source: z.enum(["favourite", "qloo", "learned"]),
+  source: z.enum(["favourite", "qloo", "proposed", "learned"]),
   /** Names of the favourites that led Qloo to it (Qloo's own explanation), if any. */
   becauseOf: z.array(z.string()),
   evidenceIds: z.array(z.string()).min(1),
