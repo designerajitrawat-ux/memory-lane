@@ -98,6 +98,12 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-15: **Qloo's pictures (demos v12, live).** Artist photos, posters and place pictures from
+  Qloo's own answers on the confirm screen, taste cards, plan, player (under the name), summary, demo
+  picker and a landing strip; dishes keep their icon; none on compare. One allow-list (agent, shared
+  schemas fail-soft, DB CHECK, UI); served through Vercel's image optimizer (tight config; variants are
+  cache hits). Security + UX reviews fixed. Live: a11y 100 (landing, demo, player), CLS 0.000 (player,
+  landing). 199 tests (agent 168, shared 17, web 14).
 - 2026-10-15: **AI hardening + fair compare (demos v11, live).** Security, judge and UX reviews fixed:
   prompts face the avoid-list and painful-topic filters and speak to the person; proposals filtered
   before naming; atomic daily cap with a seeding reserve, per-device/per-network allowances; compare
