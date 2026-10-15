@@ -52,7 +52,9 @@ Judges (and Qloo's kit) explicitly value responsible data handling. Treat this f
 10a. Item pictures: only Qloo's own image URLs (`https://images.qloo.com/i/…`, checked by one allow-list
    in the agent when reading Qloo's answer and again in the shared schemas and the UI). Vercel's image
    optimizer fetches and resizes them, so viewers' browsers never contact Qloo and no referrer reaches
-   it; we never store, re-host or commit the images (only their URLs, in our database).
+   it; they are resized and cached by Vercel's image optimizer for up to 31 days and served from our site; only the URL is stored in our database; never committed. The optimizer is kept tight (one host, files directly under /i/, no query, few
+   sizes, one format, no redirects). Vercel's request logs record which public pictures were loaded,
+   with the visitor's IP, as for any page.
 11. Map searches carry the place's town (Qloo's geocode, or the town-level region the caregiver typed),
    never the nickname or notes. Links are built in code and checked against https search paths per host (YouTube `/results`,
    Spotify `/search/`, Google Maps `/maps/search/`), so allowed hosts' redirect pages can't be used.

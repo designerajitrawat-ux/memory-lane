@@ -7,11 +7,23 @@ import { QlooImage } from "@/components/qloo-image";
 import { api } from "@/lib/api";
 
 const TILES = 6;
+const tile = "block aspect-square w-full rounded-xl bg-secondary";
+
+/** Up to six pictures, taking each demo profile's in turn (favourites first), each picture once. */
+function pick(demos: readonly DemoProfile[]): string[] {
+  const out: string[] = [];
+  for (let round = 0; out.length < TILES; round++) {
+    const next = demos.map((d) => d.preview[round]).filter((src): src is string => !!src);
+    if (next.length === 0) break;
+    for (const src of next) if (out.length < TILES && !out.includes(src)) out.push(src);
+  }
+  return out;
+}
 
 /**
- * The landing page's first picture: two of Qloo's images from each demo profile (favourites first), so
- * a visitor sees at a glance that three very different childhoods get their own music, films and
- * places. Space is kept while loading (no layout jump); if the demos can't be read, it goes away.
+ * The landing page's first pictures: Qloo's images from the three fictional demo profiles, so a visitor
+ * sees at a glance that very different childhoods get their own music, films and places. Space is kept
+ * while loading (no layout jump); if the demos can't be read, or have no pictures, it goes away.
  */
 export function DemoGlimpse() {
   const [demos, setDemos] = useState<DemoProfile[] | null>(null);
@@ -29,43 +41,44 @@ export function DemoGlimpse() {
     };
   }, []);
 
-  const perDemo = demos?.length ? Math.max(1, Math.floor(TILES / demos.length)) : 0;
-  const images = (demos ?? []).flatMap((d) => d.preview.slice(0, perDemo)).slice(0, TILES);
-  const names = (demos ?? []).map((d) => d.nickname).filter((n): n is string => !!n);
+  const images = demos ? pick(demos) : [];
   if (failed || (demos && images.length === 0)) return null;
+  const names = (demos ?? []).map((d) => d.nickname).filter((n): n is string => !!n);
+  const who =
+    names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}, our` : "our";
 
   return (
-    <figure className="space-y-2">
-      <div aria-hidden="true" className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {Array.from({ length: TILES }, (_, i) => {
-          const src = images[i];
-          return src ? (
-            <QlooImage
-              key={src}
-              src={src}
-              sizes="(min-width: 640px) 110px, 30vw"
-              className="aspect-square w-full rounded-xl"
-              eager
-            />
-          ) : (
-            <span key={i} className="block aspect-square w-full rounded-xl bg-secondary" />
-          );
-        })}
-      </div>
-      <figcaption className="text-base text-muted-foreground">
-        {names.length ? (
-          <>
-            From the demo profiles of {names.slice(0, -1).join(", ")}
-            {names.length > 1 ? " and " : ""}
-            {names.at(-1)}: Qloo&apos;s pictures from the years that mattered to each of them.{" "}
-            <Link href="/demo" className="font-bold text-foreground underline underline-offset-4">
-              See them
-            </Link>
-          </>
-        ) : (
-          <span>Loading pictures from the demo profiles…</span>
-        )}
-      </figcaption>
-    </figure>
+    <div className="space-y-2">
+      {/* The pictures open the demos too; keyboard and screen-reader users have the link below. */}
+      <Link
+        href="/demo"
+        tabIndex={-1}
+        aria-hidden="true"
+        className="grid grid-cols-3 gap-2 sm:grid-cols-6"
+      >
+        {demos
+          ? images.map((src) => (
+              <QlooImage
+                key={src}
+                src={src}
+                sizes="(min-width: 640px) 110px, 30vw"
+                className="aspect-square w-full rounded-xl"
+                fallback={<span className={tile} />}
+              />
+            ))
+          : Array.from({ length: TILES }, (_, i) => <span key={i} className={tile} />)}
+      </Link>
+      <p className="text-base text-muted-foreground">
+        {demos
+          ? `Pictures Qloo has for the music, films and places it found for ${who} fictional demo profiles.`
+          : "Loading pictures from the demo profiles…"}
+      </p>
+      <Link
+        href="/demo"
+        className="inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4"
+      >
+        See the demo profiles
+      </Link>
+    </div>
   );
 }

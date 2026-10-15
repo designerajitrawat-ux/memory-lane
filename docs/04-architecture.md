@@ -13,7 +13,7 @@ flowchart LR
 - Browser **never** talks to Qloo or the LLM directly. Keys live only in the agent container. Qloo's
   item pictures (`images.qloo.com/i/…`, allow-listed in `packages/shared/src/image.ts`) are loaded by the
   web app's image optimizer on Vercel and served from our own origin, so the browser doesn't contact Qloo
-  for them either; they are never stored by us.
+  for them either; they are resized and cached by Vercel's image optimizer for up to 31 days and served from our site; only the URL is stored in our database; never committed.
 - Frontend calls agent service via `NEXT_PUBLIC_AGENT_URL`; agent restricts CORS to the web origin.
 
 ## 2. Tech stack (use latest stable versions at scaffold time; pin in lockfile)
@@ -73,7 +73,7 @@ memory-lane/
 | `seeds` | id, profile_id, raw_text, domain (music/film/tv/food/place/other), qloo_entity_id, qloo_entity_type, display_name, year, description, image_url (Qloo's picture of the chosen match, allow-listed), status (pending/needs_input/confirmed/rejected/unresolved, CHECK), note (not_found/no_clear_match/personal_info/invalid/lookup_failed: why it wasn't matched, shown as fixed text), source (caregiver/learned), evidence_id (FK → qloo_calls; CHECK: confirmed ⇒ evidence_id + qloo_entity_id) |
 | `seed_candidates` | seed_id (cascade), position, entity_id, name, entity_type (raw Qloo type URN), year, description (one line from Qloo), image_url (Qloo's picture of the best match, allow-listed), evidence_id (not null, FK → qloo_calls): the matches Stage 1 found; confirm only accepts one of these, then the seed's candidates are deleted |
 | `avoid_items` | id, profile_id, text, qloo_entity_id nullable, reason, source (caregiver/learned) |
-| `taste_profiles` | id, profile_id (cascade), version (unique per profile; the newest is shown), era_from, era_to, partial, items jsonb (`TasteItemSchema`: domain, entityId, entityType URN, typeLabel, name, year, description, caption, source favourite/qloo, becauseOf[], evidenceIds[]), notes jsonb, created_at |
+| `taste_profiles` | id, profile_id (cascade), version (unique per profile; the newest is shown), era_from, era_to, partial, items jsonb (`TasteItemSchema`: domain, entityId, entityType URN, typeLabel, name, year, description, caption, source favourite/qloo/proposed/learned, becauseOf[], evidenceIds[], locality?, image? (Qloo's picture URL)), notes jsonb, created_at |
 | `sessions` | id, profile_id (cascade), number (unique per profile), status (planned/in_progress/done, CHECK), taste_profile_id (set null), what_changed jsonb, created_at |
 | `session_items` | id, session_id (cascade), position, kind (song/film/tv/food/place), domain, entity_id, entity_type, name, year, why, prompts text[], minutes, link jsonb, alt_link jsonb, evidence_ids text[] (CHECK non-empty), image_url (Qloo's picture, allow-listed), reaction (sang/engaged/neutral/distressed, CHECK), note (the caregiver's words; never sent to Qloo), reacted_at |
 | `qloo_calls` | id, profile_id nullable (cascade on profile delete), tool, args_checked jsonb (as sent, after the PII guard), status, summary, result_count, results_digest jsonb, cached bool, latency_ms, created_at |

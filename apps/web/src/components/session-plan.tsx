@@ -145,21 +145,27 @@ export function SessionPlan() {
           {session.items.map((item, i) => {
             const Icon = KIND_ICONS[item.kind];
             return (
-              <li key={item.id} className="print-plain flex gap-4 rounded-2xl border bg-card p-4">
-                {/* Qloo's picture (or the kind icon), from phone width up (px: rem grows with text). */}
-                <span className="hidden min-[340px]:block">
-                  <ItemThumb image={item.image} icon={Icon} eager />
-                </span>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <p className="text-base font-bold text-muted-foreground">
-                    {i + 1}. {slotLabel(item, i, session.items.length)} · {item.minutes} min
-                  </p>
-                  <h3 className="font-heading text-xl leading-snug break-words">
-                    {item.name}
-                    {item.year ? (
-                      <span className="text-muted-foreground"> ({item.year})</span>
-                    ) : null}
-                  </h3>
+              <li key={item.id} className="print-plain space-y-2 rounded-2xl border bg-card p-4">
+                {/* Qloo's picture (or the kind icon) beside the name only, so the text below keeps
+                    the card's full width; hidden when the screen is narrow for the text size (rem
+                    breakpoints grow with the user's text size; ux C2/W1). */}
+                <div className="flex items-center gap-4">
+                  <span className="hidden min-[21rem]:block">
+                    <ItemThumb image={item.image} icon={Icon} eager />
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="text-base font-bold text-muted-foreground">
+                      {i + 1}. {slotLabel(item, i, session.items.length)} · {item.minutes} min
+                    </p>
+                    <h3 className="font-heading text-xl leading-snug break-words">
+                      {item.name}
+                      {item.year ? (
+                        <span className="text-muted-foreground"> ({item.year})</span>
+                      ) : null}
+                    </h3>
+                  </div>
+                </div>
+                <div className="min-w-0 space-y-1">
                   <p className="text-base">{item.why}</p>
                   <p className="text-base text-muted-foreground">
                     <span className="font-bold">To start: </span>

@@ -15,6 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { api, type ApiFailureKind } from "@/lib/api";
 
+// The picture's frame: a share of the screen's height (not rem, which grows with text), within limits.
+const PLAYER_FRAME = "h-[clamp(160px,30svh,340px)] w-full rounded-xl";
+
 const bigLink =
   "inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-4 py-3 text-center text-lg font-bold text-primary-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto sm:px-6";
 const textLink =
@@ -423,14 +426,6 @@ export function SessionPlayer() {
           <Icon aria-hidden="true" className="size-6 shrink-0" />
           {slotLabel(item, step, total)} · {item.minutes} min
         </p>
-        {/* Something to look at together: Qloo's photo, poster or place, whole, in a fixed frame. */}
-        <QlooImage
-          key={item.id}
-          src={item.image}
-          sizes="(min-width: 640px) 560px, 90vw"
-          fit="contain"
-          className="h-64 w-full rounded-xl sm:h-80"
-        />
         <h1
           id="item-title"
           ref={titleRef}
@@ -443,6 +438,27 @@ export function SessionPlayer() {
           {item.name}
           {item.year ? <span className="text-muted-foreground"> ({item.year})</span> : null}
         </h1>
+        {/* Something to look at together: Qloo's photo, poster or place, whole, under the name (which
+            takes focus, so it is always on screen) and sized by the screen, not the text (ux C1). A
+            picture that fails keeps its frame, with the kind icon (ux W3). */}
+        {item.image && (
+          <QlooImage
+            key={item.id}
+            src={item.image}
+            sizes="(min-width: 640px) 560px, 90vw"
+            fit="contain"
+            eager
+            className={PLAYER_FRAME}
+            fallback={
+              <span
+                aria-hidden="true"
+                className={`flex items-center justify-center bg-secondary text-primary ${PLAYER_FRAME}`}
+              >
+                <Icon className="size-12" />
+              </span>
+            }
+          />
+        )}
 
         <div className="space-y-2">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">

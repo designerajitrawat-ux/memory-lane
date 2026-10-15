@@ -1,0 +1,3 @@
+ALTER TABLE "seed_candidates" ADD CONSTRAINT "seed_candidates_image_check" CHECK ("seed_candidates"."image_url" is null or "seed_candidates"."image_url" ~ '^https://images[.]qloo[.]com/i/[A-Za-z0-9][A-Za-z0-9._-]*$');--> statement-breakpoint
+ALTER TABLE "seeds" ADD CONSTRAINT "seeds_image_check" CHECK ("seeds"."image_url" is null or "seeds"."image_url" ~ '^https://images[.]qloo[.]com/i/[A-Za-z0-9][A-Za-z0-9._-]*$');--> statement-breakpoint
+ALTER TABLE "session_items" ADD CONSTRAINT "session_items_image_check" CHECK ("session_items"."image_url" is null or "session_items"."image_url" ~ '^https://images[.]qloo[.]com/i/[A-Za-z0-9][A-Za-z0-9._-]*$');

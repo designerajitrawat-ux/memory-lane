@@ -25,15 +25,16 @@ type Problem = { kind: ResolveProblem | "stopped"; message: string };
  * name · type · year (read as "name, type, year"), then Qloo's one-line description, which is what
  * tells same-name matches apart (two films called the same, a temple in another city).
  */
-function CandidateLabel({ c }: { c: Candidate }) {
+function CandidateLabel({ c, pictured }: { c: Candidate; pictured: boolean }) {
   const parts = [c.name, c.type, c.year === null ? null : String(c.year)].filter(
     (x): x is string => !!x,
   );
   return (
-    <span className="flex items-start gap-3">
-      {/* Qloo's picture of the best match helps a caregiver say "yes, that's him". */}
-      <QlooImage src={c.image} sizes="96px" className="size-14 rounded-lg" />
-      <span className="block min-w-0 flex-1">
+    <span className="flex flex-col gap-2 min-[24rem]:flex-row min-[24rem]:items-start min-[24rem]:gap-3">
+      {/* Qloo's picture helps a caregiver say "yes, that's him" — shown only when every match has one,
+          so a picture never makes one option look like the right one (ux W2). */}
+      {pictured && <QlooImage src={c.image} sizes="6rem" className="size-14 rounded-lg" />}
+      <span className="block min-w-0 flex-1 break-words">
         <span className="block">
           {parts.map((part, i) => (
             <span key={i} className={i === 0 ? "font-bold" : undefined}>
@@ -328,11 +329,14 @@ export function SeedConfirm() {
           </p>
           {choosing.map((r) => {
             const options: { value: string; label: ReactNode }[] = [
-              ...r.candidates.map((c) => ({ value: c.id, label: <CandidateLabel c={c} /> })),
+              ...r.candidates.map((c) => ({
+                value: c.id,
+                label: <CandidateLabel c={c} pictured={r.candidates.every((x) => !!x.image)} />,
+              })),
               { value: NONE, label: "None of these" },
             ];
             return (
-              <fieldset key={r.seedId} className="space-y-2 rounded-2xl border bg-card p-4">
+              <fieldset key={r.seedId} className="min-w-0 space-y-2 rounded-2xl border bg-card p-4">
                 <legend className="px-1 text-lg font-bold">
                   Which “{r.rawText}” did you mean?
                 </legend>

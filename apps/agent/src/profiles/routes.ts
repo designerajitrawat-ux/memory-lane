@@ -5,6 +5,7 @@ import { hashOwnerToken, mintOwnerToken, readOwnerToken } from "../auth/ownerTok
 import { ProfileLimitError, type ProfileStore } from "./store";
 
 const IdParams = z.object({ id: z.uuid() });
+const DEMO_LIST_MS = 60_000;
 
 const notFound = (reply: FastifyReply) =>
   reply
@@ -74,8 +75,16 @@ export async function profileRoutes(app: FastifyInstance, opts: { store: Profile
     }
   });
 
-  // The fictional demo personas: public and read-only (the judge path, docs/06 §1.6).
-  app.get("/api/demo-profiles", async () => ({ profiles: await store.listDemos() }));
+  // The fictional demo personas: public and read-only (the judge path, docs/06 §1.6). The landing page
+  // asks on every visit, so a ready list is kept for a minute (an empty one, while they're being built,
+  // is never kept; security review S7).
+  let demos: { at: number; profiles: Awaited<ReturnType<ProfileStore["listDemos"]>> } | null = null;
+  app.get("/api/demo-profiles", async () => {
+    if (demos && Date.now() - demos.at < DEMO_LIST_MS) return { profiles: demos.profiles };
+    const profiles = await store.listDemos();
+    demos = profiles.length ? { at: Date.now(), profiles } : null;
+    return { profiles };
+  });
 
   app.get("/api/profiles", async (req) => {
     const token = readOwnerToken(req);

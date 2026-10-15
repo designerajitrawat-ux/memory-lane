@@ -77,7 +77,10 @@ The project must stay available **free and unrestricted** for judges until the j
   links, and similar.
 - Submissions must be original work owned by the team and must not infringe IP. Do not embed copyrighted
   songs, film clips or lyrics. Pictures (artist photos, posters, places) appear only as Qloo's own image
-  URLs from its API, shown through the web app's image optimizer; we never store, re-host or commit them.
+  URLs from its API, shown through the web app's image optimizer (resized copies cached by Vercel for up
+  to 31 days); only the URL is stored in our database, and no image is committed. Basis: Qloo's API returns
+  these URLs for display, and its developer guide allows private server-side caching of response data
+  (docs/03 §1); to confirm with Qloo on Discord if asked.
 - Multiple submissions are allowed only if they are substantially different. We are making one.
 - Each project can win at most one prize.
 - Winners must complete identity and tax forms (W-8BEN for non-US residents).

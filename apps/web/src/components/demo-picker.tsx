@@ -165,6 +165,9 @@ export function DemoPicker() {
                       src={src}
                       sizes="(min-width: 640px) 96px, 22vw"
                       className="aspect-square w-full rounded-lg"
+                      fallback={
+                        <span className="block aspect-square w-full rounded-lg bg-secondary" />
+                      }
                     />
                   ))}
                 </div>

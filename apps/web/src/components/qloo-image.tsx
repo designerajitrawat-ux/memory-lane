@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * Qloo's own picture of an item (an artist's photo, a film poster, a place), shown through Next's image
- * optimizer: the browser loads it from this site, never from Qloo, and it is never stored by us. The
+ * optimizer: the browser loads it from this site, never from Qloo (Vercel caches resized copies; only
+ * the URL is in our database). The
  * item's name is always next to it, so the picture is decorative for screen readers (alt=""). Without a
  * picture (dishes), or if it fails to load, `fallback` is shown instead.
  */
@@ -37,7 +38,11 @@ export function QlooImage({
   return (
     <span
       aria-hidden="true"
-      className={cn("relative block shrink-0 overflow-hidden bg-secondary", className)}
+      className={cn(
+        // A hairline on top of the picture, so white-edged posters don't melt into the card.
+        "relative block shrink-0 overflow-hidden bg-secondary after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:ring-1 after:ring-black/5 after:ring-inset dark:after:ring-white/10",
+        className,
+      )}
     >
       <Image
         src={url}
@@ -78,6 +83,7 @@ export function ItemThumb({
       <Icon className={iconClassName} />
     </span>
   );
-  // Thumbnails are at most 96 CSS px: the optimizer sends a small file, not Qloo's 420px original.
-  return <QlooImage src={image} sizes="96px" className={className} fallback={tile} eager={eager} />;
+  // Thumbnails are at most 6rem wide (rem in `sizes` follows the user's text size): the optimizer
+  // sends a small file, not Qloo's 420px original.
+  return <QlooImage src={image} sizes="6rem" className={className} fallback={tile} eager={eager} />;
 }

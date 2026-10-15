@@ -466,8 +466,9 @@ function ItemCard({ item }: { item: TasteItem }) {
               : "Found by Qloo"}
         </span>
       )}
-      <div className="flex min-w-0 items-start gap-3">
-        {/* Qloo's picture (artist, poster, place) or the kind icon for a dish. */}
+      {/* Qloo's picture (artist, poster, place) or the kind icon for a dish: beside the name, or above
+          it when the card is narrow for the text size (rem breakpoint; ux C2). */}
+      <div className="flex min-w-0 flex-col gap-3 min-[22rem]:flex-row min-[22rem]:items-start">
         <ItemThumb
           image={item.image}
           icon={DOMAINS.find((d) => d.key === item.domain)?.icon ?? Music}

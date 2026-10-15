@@ -79,6 +79,8 @@ to like, not what this person remembers or will enjoy; no claim of clinical bene
   Compare tab. To test live agent: Create profile → add 2–3 favourites." Mention quota fallback.
 
 ## 4. Screenshots to capture (desktop + phone)
+Screenshots show the app as a visitor sees it, including Qloo's item pictures as the app displays them
+(like the item names and captions); no raw Qloo responses, URLs or image files are committed.
 hero/landing · demo picker · wizard step 3 · confirm matches (needs_input) · agent stream ·
 Life Taste Profile with evidence drawer open · session plan · player with reactions ·
 session summary "What I changed" · compare view · how it works.

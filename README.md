@@ -60,7 +60,8 @@ aid, not a treatment (evidence on agitation is mixed:
    ("Ramayan" 1987, 2008…), the agent picks the one from their years.
 4. **Session.** A 25-minute plan: opening song, a film or TV memory, food, a place, "your choice",
    closing song. At most two favourites open it as familiar anchors; the rest is what Qloo found.
-   Every item shows Qloo's own picture (the singer, the film poster, the place) to look at together.
+   Items show Qloo's own picture (the singer, the film poster, the place) to look at together; dishes
+   keep their icon.
    Gentle, item-specific prompts written by the AI from Qloo's description of each item and checked
    like everything else (spoken to the person, invite, never test; no memory words; the avoid-list).
    Links to YouTube, Spotify or Google Maps. Printable for a care-home folder.
@@ -181,8 +182,9 @@ full result lists are not stored in this public repo, per Qloo's developer guide
   same guard. The caregiver's notes never leave Memory Lane and refuse health or contact details.
 - **Aggregate wording.** Captions describe what groups enjoy, never what this person will like.
   Validators block claims about the person and any treatment wording; prompts are never memory tests.
-- **No media hosted.** Songs and films open as YouTube or Spotify searches, places as map searches;
-  pictures are Qloo's own image URLs, shown through the image optimizer and never stored or committed.
+- **No songs, films or lyrics hosted.** Songs and films open as YouTube or Spotify searches, places as
+  map searches. Pictures are Qloo's own image URLs, resized and cached by Vercel's image optimizer and
+  served from our site; only the URL is stored, and no image is committed.
 - **Honest states.** No Qloo key, quota or outage → the app says so (and points to the demos); it never
   invents items. A build that couldn't reach Qloo never replaces a good version.
 - **Data.** No login (an owner token on the device); "Delete this profile" removes the profile, its

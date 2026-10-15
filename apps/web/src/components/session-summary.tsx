@@ -130,7 +130,10 @@ export function SessionSummary() {
         {session.items.map((item) => {
           const Icon = KIND_ICONS[item.kind];
           return (
-            <li key={item.id} className="flex items-start gap-4 rounded-2xl border bg-card p-4">
+            <li
+              key={item.id}
+              className="flex flex-col gap-3 rounded-2xl border bg-card p-4 min-[20rem]:flex-row min-[20rem]:items-start min-[20rem]:gap-4"
+            >
               <ItemThumb
                 image={item.image}
                 icon={Icon}

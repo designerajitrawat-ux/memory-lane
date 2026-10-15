@@ -23,11 +23,20 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   transpilePackages: ["@memory-lane/shared"],
-  // Qloo's own pictures of items, resized and served from this site (img-src stays 'self'): the
-  // browser never contacts Qloo, and nothing is stored by us. Qloo's image files never change, so the
-  // optimizer keeps its copies for a month.
+  // Qloo's own pictures of items, resized by Vercel's image optimizer and served from this site
+  // (img-src stays 'self', so the browser never contacts Qloo). Only their URLs are in our database;
+  // the optimizer caches its resized copies for up to a month (Qloo's files never change). Kept tight
+  // so the public /_next/image endpoint can't be used for other files or many variants (security
+  // review W1): one host, files directly under /i/, no query, few sizes, one format, no redirects.
   images: {
-    remotePatterns: [new URL("https://images.qloo.com/i/**")],
+    remotePatterns: [
+      { protocol: "https", hostname: "images.qloo.com", port: "", pathname: "/i/*", search: "" },
+    ],
+    imageSizes: [96, 192],
+    deviceSizes: [384, 640, 828, 1080],
+    qualities: [75],
+    formats: ["image/webp"],
+    maximumRedirects: 0,
     minimumCacheTTL: 2_678_400,
   },
   turbopack: {

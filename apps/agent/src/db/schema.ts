@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   check,
@@ -44,6 +45,10 @@ export const qlooCalls = pgTable(
   },
   (t) => [index("qloo_calls_profile_idx").on(t.profileId)],
 );
+
+/** Only Qloo's own picture URLs (packages/shared/src/image.ts), in the database too. */
+const qlooImageOnly = (column: AnyPgColumn) =>
+  sql`${column} is null or ${column} ~ '^https://images[.]qloo[.]com/i/[A-Za-z0-9][A-Za-z0-9._-]*$'`;
 
 export const budget = pgTable("budget", {
   day: date("day").primaryKey(), // UTC day
@@ -117,6 +122,7 @@ export const seeds = pgTable(
       "seeds_note_check",
       sql`${t.note} is null or ${t.note} in ('not_found', 'no_clear_match', 'personal_info', 'invalid', 'lookup_failed')`,
     ),
+    check("seeds_image_check", qlooImageOnly(t.imageUrl)),
     // Rule 2 in the database too: a confirmed seed always points at its Qloo evidence.
     check(
       "seeds_confirmed_evidence_check",
@@ -160,7 +166,10 @@ export const seedCandidates = pgTable(
       .notNull()
       .references(() => qlooCalls.id),
   },
-  (t) => [index("seed_candidates_seed_idx").on(t.seedId)],
+  (t) => [
+    index("seed_candidates_seed_idx").on(t.seedId),
+    check("seed_candidates_image_check", qlooImageOnly(t.imageUrl)),
+  ],
 );
 
 /**
@@ -241,6 +250,7 @@ export const sessionItems = pgTable(
       sql`${t.reaction} is null or ${t.reaction} in ('sang', 'engaged', 'neutral', 'distressed')`,
     ),
     check("session_items_evidence_check", sql`cardinality(${t.evidenceIds}) > 0`),
+    check("session_items_image_check", qlooImageOnly(t.imageUrl)),
   ],
 );
 
