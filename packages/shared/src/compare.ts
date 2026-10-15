@@ -18,6 +18,8 @@ export const CompareItemSchema = z.object({
   avoided: z.boolean(),
   /** Other demo people whose plan of the same kind also has it ("greatest hits"). */
   sharedWith: z.array(z.string()),
+  /** One of the caregiver's own favourites or places, handed back rather than found. */
+  fromFavourites: z.boolean().default(false),
 });
 
 export const ComparePlanSchema = z.object({
@@ -26,6 +28,8 @@ export const ComparePlanSchema = z.object({
   outsideYears: z.number().int(),
   avoided: z.number().int(),
   shared: z.number().int(),
+  /** Items beyond what the caregiver typed: what each side actually found. */
+  beyondFavourites: z.number().int().default(0),
 });
 
 export const CompareResponseSchema = z.object({

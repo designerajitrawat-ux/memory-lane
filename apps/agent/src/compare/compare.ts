@@ -133,6 +133,19 @@ export async function buildCompare(
   const { facts, result } = mine;
   const era = eraFor(facts.ctx.birthYear);
   const isAvoided = avoidMatcher(facts.avoid);
+  // What the caregiver typed: their confirmed favourites and the places they lived. An item that is
+  // one of these was handed back, not found ("“Crazy” — Patsy Cline" counts as Patsy Cline).
+  const typed = [
+    ...facts.ctx.seeds.map((s) => s.name),
+    ...facts.ctx.regions.map((r) => r.split(",")[0] ?? r),
+    ...facts.ctx.regions,
+  ]
+    .map((t) => normalise(t).replace(/^the /, ""))
+    .filter((t) => t.length >= 3);
+  const fromFavourites = (name: string) => {
+    const n = normalise(name).replace(/^the /, "");
+    return typed.some((t) => n === t || n.includes(t) || (n.length >= 5 && t.includes(n)));
+  };
 
   // The other demo people, for the "shared" counts.
   const others = (await deps.profiles.listDemos()).filter((d) => d.id !== profileId);
@@ -161,6 +174,7 @@ export async function buildCompare(
     outsideYears: items.filter((i) => i.outsideYears).length,
     avoided: items.filter((i) => i.avoided).length,
     shared: items.filter((i) => i.sharedWith.length > 0).length,
+    beyondFavourites: items.filter((i) => !i.fromFavourites).length,
   });
 
   const generic =
@@ -175,6 +189,7 @@ export async function buildCompare(
             outsideYears: dated(i.kind, i.year),
             avoided: isAvoided(i.name, i.why),
             sharedWith: sharedIn(otherGeneric, i.kind, i.name),
+            fromFavourites: fromFavourites(i.name),
           })),
         )
       : null;
@@ -194,6 +209,7 @@ export async function buildCompare(
           outsideYears: dated(i.kind, i.year),
           avoided: isAvoided(i.name, i.why),
           sharedWith: sharedIn(otherSessions, i.kind, i.name),
+          fromFavourites: fromFavourites(i.name),
         })),
       )
     : null;

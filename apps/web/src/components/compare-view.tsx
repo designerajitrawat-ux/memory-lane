@@ -107,6 +107,12 @@ export function CompareView() {
           </h2>
           <ul role="list" className="grid gap-3 sm:grid-cols-2">
             <Metric
+              icon={Sparkles}
+              label="New beyond their favourites"
+              generic={`${data.generic.beyondFavourites} of ${data.generic.items.length}`}
+              ours={`${data.memoryLane.beyondFavourites} of ${data.memoryLane.items.length}`}
+            />
+            <Metric
               icon={ShieldCheck}
               label="With Qloo evidence"
               generic={`${data.generic.withEvidence} of ${data.generic.items.length}`}
@@ -155,9 +161,10 @@ export function CompareView() {
       </div>
 
       <p className="text-base text-muted-foreground">
-        A generic answer can still be a good idea for a session; what it can&apos;t show is why it
-        fits <em>this</em> person, or check it against their years and things to avoid. Memory
-        Lane&apos;s items each carry the Qloo calls behind them.
+        A generic answer can still make a fine session, but it mostly hands back what the caregiver
+        already typed, and it can&apos;t show why anything else fits <em>this</em> person. Memory
+        Lane finds what people with the same favourites enjoyed in those years, checks it against
+        their years and things to avoid, and each item carries the Qloo calls behind it.
       </p>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         {data.sessionId && (
@@ -262,6 +269,7 @@ function Item({ item, era, generic }: { item: CompareItem; era: string; generic:
             Qloo evidence: {item.evidence} {item.evidence === 1 ? "call" : "calls"}
           </Badge>
         )}
+        {item.fromFavourites && <Badge tone="muted">One of their favourites</Badge>}
         {item.outsideYears && <Badge tone="warn">Outside {era}</Badge>}
         {item.avoided && <Badge tone="warn">On the things to avoid</Badge>}
         {item.sharedWith.length > 0 && (

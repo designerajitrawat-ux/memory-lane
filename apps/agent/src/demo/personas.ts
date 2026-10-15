@@ -82,7 +82,7 @@ export const DEMO_PERSONAS: DemoPersona[] = [
  * Bump when the research or session logic changes what a persona should contain: the next start
  * builds the new version and removes the old one once the new one is complete.
  */
-export const DEMO_VERSION = 5;
+export const DEMO_VERSION = 6;
 
 /** Every version of a persona's owner hash starts with this. */
 export const demoOwnerPrefix = (key: string) => `demo:${key}`;
