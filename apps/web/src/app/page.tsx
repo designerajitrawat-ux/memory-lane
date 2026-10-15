@@ -30,11 +30,11 @@ export default function Home() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-14 px-4 py-8 sm:py-14">
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-14 px-4 py-8 sm:py-14">
         {/* Phones: one column. Wide screens: the words on the left, Qloo's pictures on the right. */}
         <section
           aria-labelledby="hero-heading"
-          className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-14"
+          className="grid gap-8 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:items-center lg:gap-12"
         >
           <div className="space-y-6">
             <p className="inline-flex items-center gap-2 text-base font-bold text-primary">

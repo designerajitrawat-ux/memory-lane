@@ -11,7 +11,7 @@ export default function SessionPlayerPage() {
   return (
     <>
       {/* At least a screen tall, so the footer doesn't jump down when the session arrives (CLS). */}
-      <main className="mx-auto min-h-svh w-full max-w-2xl flex-1 px-4 py-6 lg:max-w-6xl">
+      <main className="mx-auto min-h-svh w-full max-w-2xl flex-1 px-4 py-6 lg:max-w-5xl">
         <Suspense fallback={<Loading>Loading the session…</Loading>}>
           <SessionPlayer />
         </Suspense>

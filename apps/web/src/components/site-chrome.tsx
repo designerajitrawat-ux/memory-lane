@@ -7,7 +7,7 @@ export function SiteHeader() {
     <header className="border-b">
       <nav
         aria-label="Main"
-        className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 px-4 py-3"
+        className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 px-4 py-3"
       >
         <Link
           href="/"

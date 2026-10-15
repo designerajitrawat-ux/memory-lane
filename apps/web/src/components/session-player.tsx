@@ -643,7 +643,7 @@ function Reactions({
       <div
         role="group"
         aria-labelledby="reaction-heading"
-        className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-3"
+        className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-3 lg:grid-cols-4"
       >
         {REACTIONS.map(({ value, label, icon: Icon }) => {
           const on = item.reaction === value;
