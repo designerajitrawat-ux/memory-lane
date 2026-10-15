@@ -68,8 +68,8 @@ aid, not a treatment (evidence on agitation is mixed:
 |---|---|---|
 | ![Demo picker](docs/screenshots/demo-picker.png) | ![Life Taste Profile](docs/screenshots/taste-profile.png) | ![Session 2 plan with what changed](docs/screenshots/session-plan.png) |
 | Demo personas, ready to explore | Harjeet's Life Taste Profile, demo-first | Margaret's session 2: what it learned |
-| ![Evidence drawer](docs/screenshots/evidence-drawer.png) | ![Session player](docs/screenshots/player.png) | |
-| The evidence drawer: the Qloo calls behind an item | The player: one item at a time, one hand | |
+| ![Evidence drawer](docs/screenshots/evidence-drawer.png) | ![Session player](docs/screenshots/player.png) | ![Generic AI vs Memory Lane](docs/screenshots/compare.png) |
+| The evidence drawer: the Qloo calls behind an item | The player: one item at a time, one hand | The same AI without Qloo, counted in code |
 
 ## Why it needs Qloo
 
