@@ -5,15 +5,16 @@
 Qloo's taste graph, and Qloo decides what comes next.
 **Demo:** https://memory-lane-sable-rho.vercel.app (no login: "Try a demo profile")
 **Repo:** https://github.com/designerajitrawat-ux/memory-lane
-**Built with:** qloo, qloo-mcp, typescript, next.js, react, tailwindcss, fastify, node.js, postgresql,
-neon, drizzle-orm, zod, vercel, render, docker, vitest
+**Built with:** qloo, qloo-mcp, openai, typescript, next.js, react, tailwindcss, fastify, node.js,
+postgresql, neon, drizzle-orm, zod, vercel, render, docker, vitest
 
 ## Inspiration
 Reminiscence and personalised music are part of everyday dementia care, and the research shows small
 but real benefits for quality of life and communication. The hard part is never the idea; it is
 preparation: finding the songs, films, food and places of *this* person's youth, in *their* culture,
-every week. Generic playlists and generic AI answers drift to the same Western "greatest hits". We
-wanted an agent that does the preparation honestly, with evidence for every suggestion.
+every week. Generic playlists drift to the same Western "greatest hits", and a generic AI answer can't
+show why an item fits or check its years. We wanted an agent that does the preparation honestly, with
+evidence for every suggestion.
 
 ## What it does
 1. A caregiver adds a few public favourites (a singer, a film, a dish, a place), where the person grew
@@ -64,8 +65,9 @@ wanted an agent that does the preparation honestly, with evidence for every sugg
 - Every item on every screen is grounded: one tap shows the exact Qloo calls (what was asked, with the
   favourites by name, what Qloo answered, and where this item sat in that answer).
 - A real learning loop where Qloo, not our code, decides the order of the next session.
-- An honest comparison: the same AI without Qloo handed back the caregiver's own favourites (0 of 6
-  new items for every demo person); Memory Lane's sessions had 5 of 6 new, all with Qloo evidence.
+- An honest comparison: given the same facts, task and wording rules, the same AI without Qloo makes
+  a reasonable plan, but 0 of its 6 items can show why (Memory Lane: 6 of 6 with Qloo evidence), and
+  nothing checks its years (one song for Harjeet predates his years). Counted in code, on the page.
 - "Try the learning yourself": judges can copy a demo persona, react, and watch session 2 planned live.
 - Accessible, phone-first screens for older caregivers: large type, one-handed player, honest states.
 

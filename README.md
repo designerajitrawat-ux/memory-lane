@@ -23,8 +23,8 @@ treat any condition.
    gone.
 3. Tap any green **Qloo ·** chip: the exact Qloo calls behind that item (what was asked, with the
    favourites by name, what Qloo answered and where this item sat in the answer).
-4. Tap **Generic AI vs Memory Lane**: the same AI model asked for the same session without Qloo, with
-   the differences counted in code.
+4. Tap **Generic AI vs Memory Lane**: the same AI model given the same facts and task without Qloo,
+   next to Memory Lane's session 1, with the differences counted in code.
 5. Run the learning loop yourself: **Try the learning yourself** makes a private copy on your device.
    Play session 1, tap how each item lands, finish, then **Plan the next session** — the agent asks
    Qloo live and explains what it changed.
@@ -36,8 +36,8 @@ for quality of life and communication
 ([Cochrane review, 2018](https://www.cochranelibrary.com/cdsr/doi/10.1002/14651858.CD001120.pub3/information)).
 They are delivered inconsistently ([review](https://pmc.ncbi.nlm.nih.gov/articles/PMC8132012/)), and the
 biggest practical barrier is finding material that is truly personal: the songs, films and places of
-*this* person's youth, in *their* culture. Generic playlists and generic AI answers drift to
-Western-centric "greatest hits". Memory Lane removes that barrier, and is honest that it is an activity
+*this* person's youth, in *their* culture. Generic playlists drift to Western-centric "greatest
+hits", and a generic AI answer can't show why an item fits or check it. Memory Lane removes that barrier, and is honest that it is an activity
 aid, not a treatment (evidence on agitation is mixed:
 [trial](https://pmc.ncbi.nlm.nih.gov/articles/PMC9256757/)).
 
@@ -54,11 +54,14 @@ aid, not a treatment (evidence on agitation is mixed:
    shown as **How Memory Lane built this**, including what it left out and why; when too few films
    fit their years it asks Qloo again from the ones that do. When Qloo leaves a gap (no TV from their
    years), an AI model proposes era-typical names, Qloo matches and ranks them, and code checks their
-   years: for Harjeet, Qloo knows several "Ramayan"s, and the agent picks the 1987 one.
+   years: for Harjeet the AI suggested *Hum Log*, *Malgudi Days* and others, and Qloo matched and
+   ranked *Malgudi Days* (1986) and *Flop Show* (1989). When Qloo knows several shows by one name
+   ("Ramayan" 1987, 2008…), the agent picks the one from their years.
 4. **Session.** A 25-minute plan: opening song, a film or TV memory, food, a place, "your choice",
-   closing song. Gentle, item-specific prompts written by the AI from Qloo's description of each item
-   and checked like everything else (invite, never test; no memory words). Links to YouTube, Spotify or
-   Google Maps. Printable for a care-home folder.
+   closing song. At most two favourites open it as familiar anchors; the rest is what Qloo found.
+   Gentle, item-specific prompts written by the AI from Qloo's description of each item and checked
+   like everything else (spoken to the person, invite, never test; no memory words; the avoid-list).
+   Links to YouTube, Spotify or Google Maps. Printable for a care-home folder.
 5. **It learns, and Qloo decides what's next.** The caregiver taps how each item landed. Next time,
    Qloo is asked for more like what they sang along to, **`qloo_rank` orders everything still to play
    against it**, anything that upset them never returns and joins the avoid-list, and the plan says
@@ -80,19 +83,21 @@ favourite's first match, as a caregiver would) show it — open them for the ful
 
 | Persona | Confirmed favourites (caregiver input) | Found with Qloo | Session 2 |
 |---|---|---|---|
-| Harjeet, b. 1950, Amritsar → Delhi | Mohammed Rafi, Mughal-e-Azam, Sarson da saag, Sri Harmandir Sahib | 5 singers; 5 Hindi films from 1955–1995 (3 from the agent's second look, e.g. *Sholay*); 2 TV classics the AI proposed and Qloo matched (e.g. *Ramayan*, 1987); 2 dishes; 5 places (gurdwaras, a fort) | 2 films learned (e.g. *Padosan*); opens with Qloo's top-ranked singer |
-| Margaret, b. 1944, Liverpool → Manchester | Cilla Black, The Beatles, Coronation Street, Fish and chips, The Blackpool Tower | 4 singers (e.g. The Searchers); 5 British-led films and TV (e.g. *Brookside*); 5 places (e.g. The Cavern Club); no dishes (Qloo's Liverpool food tags were restaurant styles, and the profile says so) | 2 singers and 2 soaps learned; the TV slot is Qloo's top-ranked British soap; the upsetting place never returns |
-| Dorothy, b. 1946, Dayton → Columbus | Patsy Cline, The Sound of Music, Elvis Presley, I Love Lucy, Pot roast | 4 singers; 4 films and TV from 1951–1991; 3 Ohio dishes (e.g. Buckeye); 5 Dayton landmarks | 2 singers and 2 musicals learned; Qloo's ranking leads music and film |
+| Harjeet, b. 1950, Amritsar → Delhi | Mohammed Rafi, Mughal-e-Azam, Sarson da saag, Sri Harmandir Sahib | 5 singers; 5 Hindi films from 1955–1995 (3 from the agent's second look, e.g. *Sholay*); 2 TV classics the AI proposed and Qloo matched (*Malgudi Days*, 1986; *Flop Show*, 1989); 2 dishes; 5 places (gurdwaras, a fort) | 2 films learned (*Padosan*, *My Name Is Joker*); opens with Qloo's top-ranked singer (Lata Mangeshkar) |
+| Margaret, b. 1944, Liverpool → Manchester | Cilla Black, The Beatles, Coronation Street, Fish and chips, The Blackpool Tower | 4 singers (e.g. The Searchers); 5 British-led films and TV (e.g. *Brookside*); 5 places (e.g. The Cavern Club); no dishes (Qloo's Liverpool food tags were restaurant styles, and the profile says so) | 2 singers (Gerry & The Pacemakers, Gene Pitney) and 2 TV dramas learned (*EastEnders*, *The Bill*); the upsetting place never returns |
+| Dorothy, b. 1946, Dayton → Columbus | Patsy Cline, The Sound of Music, Elvis Presley, I Love Lucy, Pot roast | 4 singers; 4 films and TV from 1951–1991; 3 Ohio dishes (e.g. Buckeye); 5 Dayton landmarks | 2 singers (Eddie Cochran, Dion) and 2 musicals learned (*Mary Poppins*, *My Fair Lady*); the upsetting place never returns |
 
-**The same AI, without Qloo:** asked for the same session from the same facts, the model mostly hands
-back what the caregiver typed. For all three demo people its plan had **0 of 6 items beyond their own
-favourites and 0 with Qloo evidence**; Memory Lane's session 2 had **5 of 6 new items, all 6 with
-Qloo evidence**, inside their years and clear of the avoid-list (the counts are made in code, on the
-**Generic AI vs Memory Lane** page of every profile).
+**The same AI, without Qloo:** given the same facts, the same task (a favourite or two, then new
+things) and the same wording rules, the model makes a reasonable plan: 4–5 of 6 items beyond the
+favourites for the three demo people (Memory Lane's session 1: 3–4). What it can't do is show why:
+**0 of 6 items with Qloo evidence, against 6 of 6**, and nothing checks its years (one of its songs for
+Harjeet is from 1949, before his years). Every Memory Lane item is Qloo's answer for people with the
+same favourites, inside their years and checked against the avoid-list. The counts are made in code
+on the **Generic AI vs Memory Lane** page of each demo profile.
 
-**Specific to each person, not "greatest hits":** across the three personas the agent kept 73 items, 70
-of them distinct; only 3 appear for two people (all US/UK overlaps), and none is shared with the India
-persona. Asking each domain with its own favourites matters: with all of Margaret's favourites at once,
+**Specific to each person, not "greatest hits":** across the three personas the agent kept 73 items, 71
+of them distinct; only 2 appear for two people (Roy Orbison and the TV drama *Family*, both US/UK),
+and none is shared with the India persona. Asking each domain with its own favourites matters: with all of Margaret's favourites at once,
 Qloo suggested American dramas; with Coronation Street and Cilla Black it suggests British soaps, and
 her singers near Liverpool find the city's music landmarks. The avoid-list is absolute and reads Qloo's
 own descriptions, with related words for well-known painful topics (an entry "Partition" also covers
@@ -126,9 +131,10 @@ build steps show every step); the agentic part is what Qloo answers and how the 
 The AI model (OpenAI `gpt-6-luna` through any OpenAI-compatible API, server-side) never decides
 what's in a session: it proposes names for gaps (they count only once Qloo matches and ranks them and
 their years fit), writes prompts for items already chosen (each passes the same checks as the
-templates), and plays the "generic AI" in the comparison. It receives public facts only (birth year,
-town-level places, favourites' names, avoid topics), never the nickname or notes; answers are cached
-and capped per day. Without a key the app runs on Qloo and code alone, and says so.
+built-in ones, plus the avoid-list), and plays the "generic AI" in the comparison. It receives public
+facts only (their years, town-level places, favourites' names, avoid topics without reasons), never
+the nickname or notes; answers are cached, and live calls are capped per day, per device and per
+network. Without a key the app runs on Qloo and code alone, and says so.
 
 Code around Qloo (Phase 0 showed what Qloo can't do — [findings](docs/qloo-findings.md)): no year
 filter exists, so films/TV are kept to birth +5 … +45 by `release_year` and singers are ordered by the
@@ -160,9 +166,10 @@ full result lists are not stored in this public repo, per Qloo's developer guide
    only voices Qloo's descriptions date to his years (none new this time, so none were added; the films
    that landed brought two more films), then `qloo_rank {option_type: "artist", options: [<the singers
    still to play>], signals: [<what landed>]}` ordered the rest.
-5. **Session.** Session 2 opens with Qloo's top-ranked singer, with a YouTube search that adds the
-   decade they are remembered for and prompts such as *"Who would you have danced with to a song like
-   this?"* Its evidence drawer shows both the recommend and the rank calls.
+5. **Session.** Session 2 opens with Qloo's top-ranked singer, Lata Mangeshkar, with a YouTube search
+   that adds the decade she is remembered for and AI-written prompts such as *"Tell me about a singer
+   whose voice you liked hearing on the radio back then."* Its evidence drawer shows both the recommend
+   and the rank calls.
 
 ## Responsible by design
 

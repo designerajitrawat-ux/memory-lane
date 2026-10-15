@@ -41,14 +41,7 @@ interface MetricRow {
 /** The counts code made, each side; a card only where the two differ, the rest in one line. */
 function metricRows(data: CompareResponse, generic: ComparePlan, ours: ComparePlan, era: string) {
   const rows: MetricRow[] = [
-    {
-      icon: Sparkles,
-      label: "New beyond what the caregiver typed",
-      short: "new beyond what the caregiver typed",
-      generic: generic.beyondFavourites,
-      ours: ours.beyondFavourites,
-      outOf: true,
-    },
+    // What Qloo adds comes first: evidence, then the checks; then what each side found.
     {
       icon: ShieldCheck,
       label: "With Qloo evidence (a generic AI has none to show)",
@@ -63,6 +56,14 @@ function metricRows(data: CompareResponse, generic: ComparePlan, ours: ComparePl
       short: "dated outside their years",
       generic: generic.outsideYears,
       ours: ours.outsideYears,
+    },
+    {
+      icon: Sparkles,
+      label: "New beyond what the caregiver typed",
+      short: "new beyond what the caregiver typed",
+      generic: generic.beyondFavourites,
+      ours: ours.beyondFavourites,
+      outOf: true,
     },
     {
       icon: CircleSlash,
@@ -84,7 +85,7 @@ function metricRows(data: CompareResponse, generic: ComparePlan, ours: ComparePl
     rows.push({
       icon: Copy,
       label: `Also in ${others} plans`,
-      short: `also in ${others} plans`,
+      short: `shared with ${others} plans`,
       generic: generic.shared,
       ours: ours.shared,
       outOf: true,
@@ -96,16 +97,24 @@ function metricRows(data: CompareResponse, generic: ComparePlan, ours: ComparePl
 /** One line a judge can read in ten seconds, made from the counts (never a fixed verdict). */
 function verdict(generic: ComparePlan, ours: ComparePlan) {
   const of = (n: number, plan: ComparePlan) => `${n} of ${plan.items.length}`;
-  const extras = [
-    generic.outsideYears > 0 && `${generic.outsideYears} dated outside their years`,
-    generic.avoided > 0 && `${generic.avoided} on the avoid-list`,
-    generic.wordingBlocked > 0 &&
-      `${generic.wordingBlocked} with reasons Memory Lane wouldn't show`,
-  ].filter((e): e is string => !!e);
-  return {
-    ours: `${of(ours.beyondFavourites, ours)} new beyond what the caregiver typed, ${of(ours.withEvidence, ours)} with Qloo evidence${ours.avoided ? `, ${ours.avoided} on the avoid-list` : ""}.`,
-    generic: `${of(generic.beyondFavourites, generic)} new, none with evidence${extras.length ? `, ${join(extras, "and")}` : ""}.`,
-  };
+  const problems = (plan: ComparePlan) =>
+    [
+      plan.outsideYears > 0 && `${plan.outsideYears} dated outside their years`,
+      plan.avoided > 0 && `${plan.avoided} on the avoid-list`,
+      plan.wordingBlocked > 0 && `${plan.wordingBlocked} with reasons Memory Lane wouldn't show`,
+    ].filter((e): e is string => !!e);
+  const line = (plan: ComparePlan) =>
+    join(
+      [
+        plan.withEvidence
+          ? `${of(plan.withEvidence, plan)} with Qloo evidence`
+          : "none with Qloo evidence",
+        `${of(plan.beyondFavourites, plan)} new beyond what the caregiver typed`,
+        ...problems(plan),
+      ],
+      "and",
+    ) + ".";
+  return { ours: line(ours), generic: line(generic) };
 }
 
 /**

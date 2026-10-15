@@ -97,6 +97,13 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-15: **AI hardening + fair compare (demos v11, live).** Security, judge and UX reviews fixed:
+  prompts face the avoid-list and painful-topic filters and speak to the person; proposals filtered
+  before naming; atomic daily cap with a seeding reserve, per-device/per-network allowances; compare
+  against session 1 with a fair generic task and Memory Lane's wording rules; sessions open with at most
+  two favourites; "a sweet treat" no longer reads as a medical claim. Live: generic AI 4–5 of 6 new,
+  0 of 6 with evidence (Harjeet: one song from 1949); Memory Lane 3–4 of 6 new, 6 of 6 with evidence.
+  196 tests (agent 167, shared 15, web 14).
 - 2026-10-15: **LLM steps (Phase 7 compare + Phase 4/5 LLM parts).** `llm/client.ts` (OpenAI-compatible,
   structured outputs, guard, cache, daily cap), `/api/profiles/:id/compare` + screen 9, Stage 2 gap
   filling with `qloo_rank` on named options, warmer prompts with validators, demos' generic plans
