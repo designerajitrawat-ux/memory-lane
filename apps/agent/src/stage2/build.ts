@@ -491,15 +491,31 @@ export async function buildTasteProfile(
       step(
         `${optionType === "tv_show" ? "Qloo had no TV from their years for these favourites" : "Qloo placed few singers in their years"}; the AI suggested ${join(proposed.slice(0, 3))} and others, for Qloo to match and rank against ${join(names(against))}…`,
       );
-      const ranked = read(
-        await call("qloo_rank", {
-          options: proposed.slice(0, 10),
+      const rank = (options: string[]) =>
+        call("qloo_rank", {
+          options: options.slice(0, 10),
           option_type: optionType,
           signals: against.map((s) => s.entityId),
-        }),
-        readRecommend,
-      );
-      return { ranked, sent: names(against).slice(0, 2) };
+        });
+      let answer = await rank(proposed);
+      // Several Qloo entities share a proposed name ("Ramayan" 1987, 2002, 2008…): the agent picks the
+      // one from their years (or the first of the right kind) and asks again with Qloo's own ids.
+      if (answer && answer !== "refused" && answer.kind === "needs_input") {
+        const picks = eraCandidates(answer.envelope as Rec, optionType, era);
+        for (const p of picks) trustedIds.add(p.id.toLowerCase());
+        const ambiguous = new Set(picks.map((p) => p.input));
+        if (picks.length) {
+          step(
+            `Qloo knows several of ${join(picks.map((p) => p.name).slice(0, 3))}; the agent picked the ones from their years${picks.some((p) => p.year) ? ` (${join(picks.flatMap((p) => (p.year ? [String(p.year)] : [])).slice(0, 3))})` : ""}.`,
+          );
+        }
+        const rest = proposed.filter((n) => !ambiguous.has(n));
+        answer = await rank([...picks.map((p) => p.id), ...rest]);
+        if (answer && answer !== "refused" && answer.kind === "needs_input" && picks.length) {
+          answer = await rank(picks.map((p) => p.id));
+        }
+      }
+      return { ranked: read(answer, readRecommend), sent: names(against).slice(0, 2) };
     };
     if (proposal?.tvShows.length) {
       const { ranked, sent } = await rankProposals(proposal.tvShows, "tv_show", plan.tv);
@@ -772,6 +788,37 @@ export function readRecommend(envelope: Rec, evidenceId: string): Found[] {
         city: str(obj(props.geocode)?.city) ?? null,
       },
     ];
+  });
+}
+
+/**
+ * For a rank call that came back needs_input: per ambiguous name, the candidate of the right kind from
+ * the person's years (closest to the reminiscence bump), or the first of that kind when Qloo gives no
+ * year (artists).
+ */
+export function eraCandidates(
+  envelope: Rec,
+  optionType: string,
+  era: Era,
+): { input: string; id: string; name: string; year: number | null }[] {
+  const issues = list(obj(envelope.resolution)?.issues);
+  return issues.flatMap((issue) => {
+    const input = str(issue.input);
+    const options = list(issue.candidates)
+      .map((c) => ({
+        id: str(c.id ?? c.entity_id),
+        name: str(c.name),
+        type: str(c.type ?? c.subtype) ?? "",
+        year: yearOf(c.release_year ?? c.release_date),
+      }))
+      .filter((c): c is { id: string; name: string; type: string; year: number | null } =>
+        Boolean(c.id && c.name && c.type.endsWith(`:${optionType}`)),
+      );
+    const dated = options
+      .filter((c) => c.year !== null && yearFits(c.year, era))
+      .sort((a, b) => bumpDistance(a.year ?? 0, era) - bumpDistance(b.year ?? 0, era));
+    const pick = optionType === "artist" ? (dated[0] ?? options[0]) : dated[0];
+    return input && pick ? [{ input, id: pick.id, name: pick.name, year: pick.year }] : [];
   });
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TasteItem } from "@memory-lane/shared";
 import { avoidMatcher } from "./avoid";
-import { onlyPlaceWords, similarNames } from "./build";
+import { eraCandidates, onlyPlaceWords, similarNames } from "./build";
 import { bumpDistance, eraFor, eraPlacement, mentionedYears, yearFits } from "./era";
 import { captionAllowed, promptAllowed } from "./language";
 import { validateTasteItems } from "./validators";
@@ -189,5 +189,46 @@ describe("avoidMatcher precision", () => {
     expect(avoided("Example Singer", "Famous for Unchained Melody.")).toBe(true);
     expect(avoided("U2", null)).toBe(true); // two letters are enough (review W3a)
     expect(avoided("Ultravox", null)).toBe(false);
+  });
+});
+
+describe("eraCandidates", () => {
+  it("picks, per ambiguous proposed name, the entity from the person's years", () => {
+    // SYNTHETIC needs_input envelope shaped like qloo_rank's (ids and names are made up).
+    const envelope = {
+      status: "needs_input",
+      resolution: {
+        issues: [
+          {
+            input: "Example Epic",
+            candidates: [
+              {
+                id: "id-2008",
+                name: "Example Epic",
+                type: "urn:entity:tv_show",
+                release_year: 2008,
+              },
+              {
+                id: "id-1987",
+                name: "Example Epic",
+                type: "urn:entity:tv_show",
+                release_year: 1987,
+              },
+              { id: "id-film", name: "Example Epic", type: "urn:entity:movie", release_year: 1986 },
+            ],
+          },
+          {
+            input: "New Only",
+            candidates: [
+              { id: "id-2015", name: "New Only", type: "urn:entity:tv_show", release_year: 2015 },
+            ],
+          },
+        ],
+      },
+    };
+    const era = { from: 1955, to: 1995, bumpFrom: 1960, bumpTo: 1980 };
+    expect(eraCandidates(envelope, "tv_show", era)).toEqual([
+      { input: "Example Epic", id: "id-1987", name: "Example Epic", year: 1987 },
+    ]);
   });
 });

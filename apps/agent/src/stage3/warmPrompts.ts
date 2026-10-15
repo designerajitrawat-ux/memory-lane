@@ -35,7 +35,9 @@ const PROMPTS_JSON_SCHEMA = {
 };
 
 // docs/05 §4.2: warmth and dignity; invitations, never memory tests; nothing about the person.
-const SYSTEM = `You write conversation prompts for a reminiscence session with an older adult. A family member or carer reads them aloud. For each item, write three short, open invitations (under 20 words each) that help the person share their own memories and feelings, using what is known about the item: its kind, its year and the one line about it. Never test memory: no "Do you remember", no quiz questions, no asking for names, dates or facts. Never say what the person likes, felt or will feel. Never mention health, illness, memory loss or treatment. Use the item's name at most once. Do not invent facts about the item. Plain, warm English.`;
+const SYSTEM = `You write conversation prompts for a reminiscence session with an older adult living with memory loss. A family member or carer reads them aloud while the item plays or is shown. For each item, write three short, open invitations (under 20 words each) built on what is known about the item: its kind, its year and the one line about it. Invite feelings, the senses, people and places, and stories; put no pressure on memory. Never use the words memory, memories, remember, recall or forget. Never ask for names, dates or facts, and never quiz. Don't assume they saw, heard or ate it before. Never say what the person likes, felt or will feel. Never mention health, illness or treatment. Use the item's name at most once. Do not invent facts about the item. Plain, warm English.
+Good: "What does this tune make you want to do: sing, dance, or just listen?" / "Who would you have gone to see a film like this with?" / "What does the smell of fresh naan bring to mind?" / "Tell me about the busiest street in town back then."
+Not like this: "What memories do you have of this film?" / "Do you remember who sang it?" / "Which year did it come out?"`;
 
 /** A prompt the session may show: a gentle invitation that makes no claim about the person. */
 function usable(prompt: string): boolean {
@@ -44,7 +46,7 @@ function usable(prompt: string): boolean {
     promptAllowed(prompt) &&
     captionAllowed(prompt) &&
     // Stricter than the templates: no memory words at all from the model.
-    !/\b(remember|recall|forget|forgot|forgotten)\b/i.test(prompt) &&
+    !/\b(remember|recall|forget|forgot|forgotten|memory|memories)\b/i.test(prompt) &&
     !HEALTH.test(normalizeText(prompt))
   );
 }
