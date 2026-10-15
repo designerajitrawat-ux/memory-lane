@@ -58,7 +58,7 @@ const PRIVACY = [
   "Nothing personal reaches Qloo: a guard in front of every call refuses nicknames, contact details, addresses and health terms.",
   "Places stay at town level. Favourites are public cultural names. The nickname stays in Memory Lane.",
   "The AI (OpenAI) gets public facts only, behind the same guard as Qloo: their years, the town, the favourites, the things to avoid (never the reasons) and Qloo's one line about each item. Never the nickname or notes. Its answers are cached without the facts that produced them.",
-  'No login: profiles live on the device that made them. "Delete this profile" removes the profile, its sessions and its Qloo call records; Qloo answers shared by everyone stay cached for up to 8 days. Idle profiles go after 90 days.',
+  'No login: a profile is tied to the device that made it (it is kept on our server). "Delete this profile" removes the profile, its sessions and its Qloo call records; Qloo answers shared by everyone stay cached for up to 8 days. Idle profiles go after 90 days.',
 ];
 
 const LIMITS = [

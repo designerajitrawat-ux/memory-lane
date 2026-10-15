@@ -19,8 +19,8 @@ treat any condition.
    **Harjeet** (Amritsar) or **Dorothy** (Dayton). They are fictional; everything they show was found
    with Qloo for real.
 2. Tap **Open session 2: what it learned from session 1**. Read **What changed since last time**: Qloo
-   was asked for more like what landed, ranked what is still to play, and the item that upset them is
-   gone.
+   was asked for more like what landed and ranked what is still to play (for Margaret and Dorothy, the
+   item that upset them is gone).
 3. Tap any green **Qloo ·** chip: the exact Qloo calls behind that item (what was asked, with the
    favourites by name, what Qloo answered and where this item sat in the answer).
 4. Tap **Generic AI vs Memory Lane**: the same AI model given the same facts and task without Qloo,
@@ -59,7 +59,7 @@ aid, not a treatment (evidence on agitation is mixed:
    ranked *Malgudi Days* (1986) and *Flop Show* (1989). When Qloo knows several shows by one name
    ("Ramayan" 1987, 2008…), the agent picks the one from their years.
 4. **Session.** A 25-minute plan: opening song, a film or TV memory, food, a place, "your choice",
-   closing song. At most two favourites open it as familiar anchors; the rest is what Qloo found.
+   closing song. Familiar favourites come first; the rest is what Qloo found.
    Items show Qloo's own picture (the singer, the film poster, the place) to look at together; dishes
    keep their icon.
    Gentle, item-specific prompts written by the AI from Qloo's description of each item and checked
@@ -142,7 +142,7 @@ network. Without a key the app runs on Qloo and code alone, and says so.
 Code around Qloo (Phase 0 showed what Qloo can't do — [findings](docs/qloo-findings.md)): no year
 filter exists, so films/TV are kept to birth +5 … +45 by `release_year` and singers are ordered by the
 decades Qloo's descriptions mention; places are kept only when Qloo's description opens with a lasting
-landmark (not a hotel, bar or new venue) in the same country; dishes are named dishes only (restaurant
+landmark (not a hotel, bar or nightlife venue) in the same country; dishes are named dishes only (restaurant
 styles and "Punjabi"-style labels are left out, variants merged); the avoid-list reads Qloo's full
 descriptions; a gentle filter leaves out atrocities, suicide, abuse, hospital dramas and horror. Song
 searches add the decade they are remembered for; map searches add the town.
@@ -213,7 +213,7 @@ pnpm dev                                   # web on :3000, agent on :8787
 - **Without a Qloo key:** `pnpm --filter @memory-lane/agent dev:fixtures` uses synthetic Qloo answers
   ("Example Artist A"), so the whole flow can be clicked through. Both dev switches are refused in
   production.
-- Checks: `pnpm test` (Vitest on synthetic envelopes and a fake AI, no live calls; 187 tests) · `pnpm typecheck` ·
+- Checks: `pnpm test` (Vitest on synthetic envelopes and a fake AI, no live calls; 200+ tests) · `pnpm typecheck` ·
   `pnpm lint` · `pnpm build`.
 
 Deployed as: Next.js on Vercel (`apps/web`), the agent in a Docker container on Render (`apps/agent`,
@@ -236,11 +236,14 @@ Deployed as: Next.js on Vercel (`apps/web`), the agent in a Docker container on 
 - Food is lighter than music: dishes are tags in Qloo without years, and for some towns Qloo's food tags
   are restaurant styles only (the profile then says so and uses the favourite dishes).
 - Places near a town are mostly modern venues in Qloo; only lasting landmarks are kept, so some towns
-  get few places.
+  get few places. Places aren't dated, so a few kept landmarks are newer than the person's youth.
+- "Songs" are singers and bands: Qloo recommends artists, and the YouTube or Spotify link searches their
+  songs from the decade they're remembered for.
 - The AI-written prompts are only as good as Qloo's one-line description of each item; they are
   checked for tone, not for facts beyond that line, and an item keeps its template prompts when the
   model's don't pass. The comparison uses one model run per profile (cached), not an average.
-- Profiles live on one device (no accounts); favourites can't be edited after creating a profile.
+- No accounts: a profile is tied to the device that made it (it is stored on our server and deleted
+  on request or after 90 idle days); favourites can't be edited after creating a profile.
 
 ## Business model & what's next
 
