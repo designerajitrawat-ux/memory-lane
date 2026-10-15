@@ -53,8 +53,10 @@ Judges (and Qloo's kit) explicitly value responsible data handling. Treat this f
    in the agent when reading Qloo's answer and again in the shared schemas and the UI). Vercel's image
    optimizer fetches and resizes them, so viewers' browsers never contact Qloo and no referrer reaches
    it; they are resized and cached by Vercel's image optimizer for up to 31 days and served from our site; only the URL is stored in our database; never committed. The optimizer is kept tight (one host, files directly under /i/, no query, few
-   sizes, one format, no redirects), and a proxy in front of it (`apps/web/src/proxy.ts`) refuses any
-   URL that isn't exactly one of Qloo's, so it can't be fed endless variants of one picture. Vercel's request logs record which public pictures were loaded,
+   sizes, one format, no redirects), so it can't be fed other files. Variants of one picture (a fragment,
+   user info) don't cost new work on Vercel: its optimizer cache ignores them (checked live, 2026-10-15:
+   never-seen variants were cache hits); where Next serves images itself, a proxy
+   (`apps/web/src/proxy.ts`) refuses any URL that isn't exactly one of Qloo's. Vercel's request logs record which public pictures were loaded,
    with the visitor's IP, as for any page.
 11. Map searches carry the place's town (Qloo's geocode, or the town-level region the caregiver typed),
    never the nickname or notes. Links are built in code and checked against https search paths per host (YouTube `/results`,
