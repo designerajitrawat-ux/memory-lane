@@ -240,8 +240,8 @@ Reminiscence is part of everyday care, but preparing it person by person is the 
 - **Families:** free tier with a few sessions a month; paid tier for unlimited sessions and sharing with
   siblings or carers.
 - **Channels:** dementia-care associations, care-home groups, memory cafés.
-- **Next:** the LLM steps above (with the same validators), multilingual prompts, a coordinator
-  dashboard, accounts with device transfer, and pilots with care homes.
+- **Next:** multilingual prompts (Hindi and Punjabi for the India persona), a coordinator dashboard,
+  accounts with device transfer, and pilots with care homes.
 
 ## Notes for Qloo
 

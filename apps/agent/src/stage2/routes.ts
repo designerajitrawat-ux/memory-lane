@@ -95,6 +95,7 @@ export async function tasteRoutes(
             allowCall: () => allowance.take(ownerHash, client),
             budgetReserve: allowance.budgetReserve,
             ...(deps.llm ? { llm: deps.llm } : {}),
+            allowLlm: () => allowance.takeLlm(ownerHash, client),
           },
           send,
           sse.isAborted,

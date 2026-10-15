@@ -87,6 +87,7 @@ export async function sessionRoutes(
             ...(deps.gateway ? { gateway: deps.gateway } : {}),
             ...(deps.llm ? { llm: deps.llm } : {}),
             allowCall: () => allowance.take(owned.ownerHash, client),
+            allowLlm: () => allowance.takeLlm(owned.ownerHash, client),
             budgetReserve: allowance.budgetReserve,
           },
         );
@@ -145,9 +146,15 @@ export async function sessionRoutes(
       let result;
       try {
         const view = await deps.profiles.get(profileId, ownerHash);
+        const client = clientIp(req);
         result = await planNextSession(
           { profileId, nickname: view?.view.nickname ?? null },
-          { taste: deps.taste, sessions: deps.sessions, ...(deps.llm ? { llm: deps.llm } : {}) },
+          {
+            taste: deps.taste,
+            sessions: deps.sessions,
+            ...(deps.llm ? { llm: deps.llm } : {}),
+            allowLlm: () => allowance.takeLlm(ownerHash, client),
+          },
         );
       } catch (err) {
         await discard();

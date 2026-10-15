@@ -60,6 +60,7 @@ async function main() {
     model: env.LLM_MODEL,
     reasoningEffort: env.LLM_REASONING_EFFORT,
     dailyCalls: env.LLM_DAILY_CALLS,
+    reserve: env.LLM_RESERVE,
     store: db && !dbSetupFailed ? createPgLlmStore(db.drizzle) : createMemoryLlmStore(),
     log: { warn: (obj, msg) => app.log.warn(obj, msg) },
   });
@@ -108,6 +109,8 @@ async function main() {
     research: {
       lookupsPerOwnerPerDay: env.STAGE1_LOOKUPS_PER_OWNER_DAY,
       lookupsPerClientPerDay: env.STAGE1_LOOKUPS_PER_CLIENT_DAY,
+      llmCallsPerOwnerPerDay: env.LLM_CALLS_PER_OWNER_DAY,
+      llmCallsPerClientPerDay: env.LLM_CALLS_PER_CLIENT_DAY,
       budgetReserve: env.QLOO_BUDGET_RESERVE,
     },
     version: commit ? `${pkg.version}+${commit}` : pkg.version,

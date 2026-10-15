@@ -303,7 +303,8 @@ export function TasteProfileView() {
       {/* On a demo the sessions are the point, so they come first (ux review W13). */}
       {readOnly && <SessionsPanel profileId={id} readOnly />}
       {readOnly && <TryDemo profileId={id} name={nickname} />}
-      <CompareLink profileId={id} />
+      {/* On a caregiver's own profile it sits with the sessions, once one exists (ux review W9). */}
+      {readOnly && <CompareLink profileId={id} />}
       <div className="space-y-3">
         <h2
           ref={readyRef}
@@ -511,7 +512,7 @@ function CompareLink({ profileId }: { profileId: string }) {
       <span>
         <span className="block font-bold">Generic AI vs Memory Lane</span>
         <span className="text-muted-foreground">
-          The same AI asked without Qloo: what it suggests, and what code finds wrong with it.
+          The same AI asked without Qloo: what it suggests, and what code counts in each plan.
         </span>
       </span>
       <ArrowRight
@@ -658,6 +659,14 @@ function SessionsPanel({ profileId, readOnly }: { profileId: string; readOnly: b
             </li>
           ))}
         </ul>
+      )}
+      {!readOnly && any && (
+        <Link
+          href={`/profiles/${profileId}/compare`}
+          className="inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4"
+        >
+          Compare session 1 with a generic AI
+        </Link>
       )}
     </section>
   );

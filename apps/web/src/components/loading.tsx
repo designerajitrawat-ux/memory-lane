@@ -8,7 +8,14 @@ const SLOW_MS = 6_000;
  * A loading line that explains a slow start (the free host sleeps when quiet; ux review W17). The
  * request itself times out after 25 s and the page then offers a retry.
  */
-export function Loading({ children }: { children: string }) {
+export function Loading({
+  children,
+  slowHint = "Still loading: Memory Lane can take a few seconds to wake up after a quiet spell.",
+}: {
+  children: string;
+  /** Said once loading is slow, inside the same live region (ux review W8). */
+  slowHint?: string;
+}) {
   const [slow, setSlow] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => setSlow(true), SLOW_MS);
@@ -17,11 +24,7 @@ export function Loading({ children }: { children: string }) {
   return (
     <p role="status" className="text-lg text-muted-foreground">
       {children}
-      {slow && (
-        <span className="mt-1 block text-base">
-          Still loading: Memory Lane can take a few seconds to wake up after a quiet spell.
-        </span>
-      )}
+      {slow && <span className="mt-1 block text-base">{slowHint}</span>}
     </p>
   );
 }

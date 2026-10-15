@@ -219,7 +219,7 @@ export function SessionPlan() {
           Print this plan
         </Button>
         <Link href={`/profiles/${session.profileId}/compare`} className={textLink}>
-          Compare with a generic AI
+          Compare session 1 with a generic AI
         </Link>
         <Link href={`/profiles/${session.profileId}/taste`} className={textLink}>
           Back to the Life Taste Profile

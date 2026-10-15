@@ -9,6 +9,10 @@ export interface ResearchLimits {
   lookupsPerClientPerDay?: number;
   /** Daily budget units user research must leave for demo personas (gateway `reserve`). */
   budgetReserve?: number;
+  /** Live LLM calls per device token in 24 h (cached answers are free). */
+  llmCallsPerOwnerPerDay?: number;
+  /** Live LLM calls per client IP in 24 h. */
+  llmCallsPerClientPerDay?: number;
 }
 
 /**
@@ -22,10 +26,22 @@ export function createResearchAllowance(limits: ResearchLimits = {}) {
     max: limits.lookupsPerClientPerDay ?? 100,
     windowMs: DAY_MS,
   });
+  // The LLM's daily cap is shared too: one device or network can't spend it (security review W3).
+  const llmPerOwner = createRateLimiter({
+    max: limits.llmCallsPerOwnerPerDay ?? 15,
+    windowMs: DAY_MS,
+  });
+  const llmPerClient = createRateLimiter({
+    max: limits.llmCallsPerClientPerDay ?? 30,
+    windowMs: DAY_MS,
+  });
   return {
     budgetReserve: limits.budgetReserve ?? 0,
     take: (ownerHash: string, client: string) =>
       perOwner.tryTake(ownerHash) && perClient.tryTake(client),
+    /** One live LLM call; a visitor on a demo (no device token) counts by network only. */
+    takeLlm: (ownerHash: string | null, client: string) =>
+      (ownerHash === null || llmPerOwner.tryTake(ownerHash)) && llmPerClient.tryTake(client),
   };
 }
 

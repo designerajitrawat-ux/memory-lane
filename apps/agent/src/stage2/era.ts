@@ -85,5 +85,7 @@ export function eraPlacement(text: string | null, era: Era): EraPlacement {
   const mentions = scan(text).map((m) => (m.decade ? m.year + 5 : m.year));
   if (mentions.length === 0) return "unknown";
   const centre = mentions.reduce((a, b) => a + b, 0) / mentions.length;
-  return centre > era.bumpTo + 5 ? "later" : "fits";
+  // A voice centred five or more years after the bump is mostly later (live check: "since the
+  // 1980s" was let in at exactly the boundary for a 1950-born persona).
+  return centre >= era.bumpTo + 5 ? "later" : "fits";
 }

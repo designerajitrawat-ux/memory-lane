@@ -49,6 +49,8 @@ export const budget = pgTable("budget", {
   day: date("day").primaryKey(), // UTC day
   qlooCalls: integer("qloo_calls").notNull().default(0),
   llmTokens: bigint("llm_tokens", { mode: "number" }).notNull().default(0),
+  // Live LLM calls started today (attempts, counted before the call: failures cost money too).
+  llmCalls: integer("llm_calls").notNull().default(0),
   profilesCreated: integer("profiles_created").notNull().default(0), // global daily cap on new profiles
 });
 

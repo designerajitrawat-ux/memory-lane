@@ -66,6 +66,11 @@ const EnvSchema = z
     LLM_REASONING_EFFORT: z.enum(["none", "low", "medium", "high"]).default("low"),
     // LLM calls per UTC day across everyone (cache hits don't count): keeps spend bounded.
     LLM_DAILY_CALLS: z.coerce.number().int().min(0).default(400),
+    // Live LLM calls a day that only demo seeding may use (visitors can't use the demos' share).
+    LLM_RESERVE: z.coerce.number().int().min(0).default(60),
+    // Live LLM calls per device token and per client IP (/64) a day (cache hits are free).
+    LLM_CALLS_PER_OWNER_DAY: z.coerce.number().int().min(1).default(15),
+    LLM_CALLS_PER_CLIENT_DAY: z.coerce.number().int().min(1).default(30),
     // Seed the three fictional demo personas at startup (default: on in production, off elsewhere).
     SEED_DEMOS: z.enum(["0", "1"]).optional(),
     // SQL migrations applied at startup (relative to the working directory).

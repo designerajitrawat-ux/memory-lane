@@ -1,5 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { CompareResponseSchema, SessionResponseSchema } from "@memory-lane/shared";
+import {
+  CompareResponseSchema,
+  SessionResponseSchema,
+  TryDemoResponseSchema,
+} from "@memory-lane/shared";
 import describeFixture from "../../test/fixtures/synthetic/qloo_describe.json";
 import findTagsFixture from "../../test/fixtures/synthetic/qloo_find_tags.json";
 import recommendFixture from "../../test/fixtures/synthetic/qloo_recommend.json";
@@ -26,7 +30,10 @@ const fakeQloo: QlooMcpClient = {
   async close() {},
 };
 
-/** A fake LLM: the same "greatest hits" for everyone, and prompts with one memory test mixed in. */
+/**
+ * A fake LLM: the same "greatest hits" for everyone (one a favourite singer's song, one the town
+ * Dorothy lived in, with a reason Memory Lane wouldn't show), and prompts with one memory test.
+ */
 const sent: { task: string; input: Record<string, unknown> }[] = [];
 const fakeLlm: LlmClient = {
   configured: true,
@@ -37,10 +44,15 @@ const fakeLlm: LlmClient = {
       req.task === "compare"
         ? {
             items: [
-              { kind: "song", name: "Famous Crooner", year: 1956, why: "A classic of the era." },
+              {
+                kind: "song",
+                name: "Crazy — Example Artist A",
+                year: 1961,
+                why: "A classic of the era.",
+              },
               { kind: "film", name: "Blockbuster Musical", year: 1965, why: "Loved by many." },
               { kind: "food", name: "Apple Pie", year: null, why: "Comforting." },
-              { kind: "place", name: "City Park", year: null, why: "A day out." },
+              { kind: "place", name: "Dayton", year: null, why: "She will love a day out." },
               { kind: "film", name: "Unchained Melody", year: 1997, why: "A love story." },
               { kind: "song", name: "Famous Band", year: 1964, why: "Everyone sang along." },
             ],
@@ -122,7 +134,11 @@ describe("with vs without Qloo (compare) and the LLM's prompts", () => {
       const asked = sent.slice(before).filter((s) => s.task === "compare");
       expect(asked.every((s) => seeded.has(JSON.stringify(s.input)))).toBe(true);
       expect(compare.state).toBe("ready");
+      expect(compare.demo).toBe(true);
       expect(compare.comparedWith).toEqual(["Harjeet", "Margaret"]);
+      // Memory Lane's side is session 1 (the same facts, before any reactions), not the newest.
+      expect(compare.sessionNumber).toBe(1);
+      expect(compare.sessionId).not.toBe(dorothy.latestSessionId);
       const generic = compare.generic;
       const ours = compare.memoryLane;
       if (!generic || !ours) throw new Error("missing plan");
@@ -132,6 +148,25 @@ describe("with vs without Qloo (compare) and the LLM's prompts", () => {
       expect(generic.avoided).toBe(1); // "Unchained Melody" is on Dorothy's avoid-list
       expect(generic.shared).toBe(generic.items.length); // the same "greatest hits" for everyone
       expect(ours.avoided).toBe(0);
+      // Favourites: the generic plan's by name (a favourite singer's song, a town they lived in);
+      // Memory Lane's by Qloo id only.
+      expect(generic.items.map((i) => i.matched)).toEqual([
+        "By Example Artist A, one of their favourites",
+        null,
+        null,
+        "Where they lived",
+        null,
+        null,
+      ]);
+      expect(generic.beyondFavourites).toBe(4);
+      expect(ours.beyondFavourites).toBe(ours.items.filter((i) => !i.fromFavourites).length);
+      expect(
+        ours.items.every((i) => (i.matched === "One of their favourites") === i.fromFavourites),
+      ).toBe(true);
+      // A reason that speaks for the person is counted and never shown.
+      expect(generic.wordingBlocked).toBe(1);
+      expect(generic.items[3]).toMatchObject({ why: "", wordingBlocked: true });
+      expect(JSON.stringify(compare)).not.toContain("She will love");
 
       // Session prompts came from the LLM, minus the memory test.
       const session = SessionResponseSchema.parse(
@@ -145,6 +180,37 @@ describe("with vs without Qloo (compare) and the LLM's prompts", () => {
       await a.close();
     }
   }, 60_000);
+
+  it("keeps a private copy to its owner, and never compares it with its own original", async () => {
+    const a = await app(fakeLlm);
+    try {
+      const demos = (await a.inject({ method: "GET", url: "/api/demo-profiles" })).json()
+        .profiles as { id: string; nickname: string }[];
+      const harjeet = demos.find((d) => d.nickname === "Harjeet");
+      const tried = await a.inject({
+        method: "POST",
+        url: `/api/demo-profiles/${harjeet?.id}/try`,
+        headers: { "x-forwarded-for": "192.0.2.91" },
+      });
+      expect(tried.statusCode).toBe(201);
+      const body = TryDemoResponseSchema.parse(tried.json());
+      const url = `/api/profiles/${body.session.profileId}/compare`;
+      expect((await a.inject({ method: "GET", url })).statusCode).toBe(404);
+      const res = await a.inject({
+        method: "GET",
+        url,
+        headers: { authorization: `Bearer ${body.ownerToken}` },
+      });
+      expect(res.statusCode).toBe(200);
+      const compare = CompareResponseSchema.parse(res.json());
+      expect(compare.demo).toBe(false);
+      expect(compare.comparedWith).toEqual([]);
+      expect(compare.memoryLane?.shared).toBe(0);
+      expect(compare.generic?.shared).toBe(0);
+    } finally {
+      await a.close();
+    }
+  });
 
   it("says honestly when the AI side is switched off", async () => {
     const a = await app(NO_LLM);

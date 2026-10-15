@@ -77,7 +77,7 @@ const ANSWERS: Record<string, Record<string, unknown>> = {
   ]),
 };
 
-function fakes() {
+function fakes(avoid: string[] = []) {
   const calls: { tool: string; args: Record<string, unknown> }[] = [];
   const evidence = new Map<string, EvidenceRow>();
   const gateway: Pick<QlooGateway, "call"> = {
@@ -114,7 +114,7 @@ function fakes() {
       seed("tv", SHOW, "Example Show", "urn:entity:tv_show"),
       seed("place", LANDMARK, "Example Tower", "urn:entity:place"),
     ],
-    avoid: [],
+    avoid,
   };
   let saved: TasteProfile | null = null;
   const store: TasteStore = {
@@ -235,6 +235,45 @@ describe("Stage 2 gap filling with the LLM", () => {
     expect(music).toContain("Proposed Voice");
     expect(music).not.toContain("Modern Star");
     expect(profile.steps.join(" ")).toMatch(/the AI suggested Proposed Voice and Modern Star/);
+    // Said plainly, with Qloo's rank.
+    expect(profile.items.find((i) => i.name === "Proposed Voice")).toMatchObject({
+      source: "proposed",
+      caption: expect.stringMatching(
+        /^Suggested for their years by the AI; Qloo matched it and ranked it 1st of 2/,
+      ),
+    });
+    delete ANSWERS["rank:artist"];
+  });
+
+  it("never names or sends to Qloo a proposal on the avoid-list or about a painful subject (security review W1)", async () => {
+    ANSWERS["rank:artist"] = recommend([
+      entity(40, "Proposed Voice", "urn:entity:artist", { description: "A star of 1960s radio." }),
+    ]);
+    const { calls, gateway, store } = fakes(["Avoided Crooner", "Medication times"]);
+    const asked: Record<string, unknown>[] = [];
+    const llm: LlmClient = {
+      configured: true,
+      model: "test-model",
+      async json(req) {
+        asked.push(req.input);
+        const data = {
+          tvShows: [],
+          singers: ["Proposed Voice", "Avoided Crooner", "Songs of the Holocaust"],
+        };
+        return { kind: "ok", data: req.schema.parse(data), cached: false };
+      },
+    };
+    const profile = await buildTasteProfile(
+      { profileId: "p", nickname: null },
+      { gateway, store, llm },
+      () => {},
+    );
+    if (!profile) throw new Error("not built");
+    // The model is told what to avoid (never health topics) and gets the era, not a birth year.
+    expect(asked[0]?.thingsToAvoid).toEqual(["Avoided Crooner"]);
+    expect(asked[0]).not.toHaveProperty("bornIn");
+    expect(calls.find((c) => c.tool === "qloo_rank")?.args.options).toEqual(["Proposed Voice"]);
+    expect(profile.steps.join(" ")).not.toMatch(/Avoided Crooner|Holocaust/);
     delete ANSWERS["rank:artist"];
   });
 });

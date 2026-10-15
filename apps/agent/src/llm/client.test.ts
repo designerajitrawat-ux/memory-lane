@@ -89,4 +89,37 @@ describe("LLM client", () => {
       reason: "provider",
     });
   });
+
+  it("counts failed attempts and retries toward the cap, keeping the reserve for seeding", async () => {
+    // Every attempt costs money: a 500 and its retry use both of today's 2 user calls.
+    const failing = fakeFetch([{ status: 500 }]);
+    const llm = client(failing.impl, { dailyCalls: 4, reserve: 2 });
+    expect((await llm.json(req({ x: 1 }))).kind).toBe("failed");
+    expect(failing.calls).toHaveLength(2);
+    expect(await llm.json(req({ x: 2 }))).toEqual({ kind: "budget" });
+    // The demos' seeding may still use the reserved part.
+    expect((await llm.json({ ...req({ x: 3 }), seeding: true })).kind).toBe("failed");
+    expect(failing.calls).toHaveLength(4);
+  });
+
+  it("answers cache-only requests from the cache, asks the allowance only for live calls, and shares one call per input", async () => {
+    const f = fakeFetch([{ status: 200, content: '{"names":["A"]}' }]);
+    const llm = client(f.impl);
+    expect(await llm.json({ ...req({ y: 1 }), cacheOnly: true })).toEqual({ kind: "miss" });
+    let asked = 0;
+    const allow = () => (asked++, false);
+    expect(await llm.json({ ...req({ y: 1 }), allow })).toEqual({ kind: "limit" });
+    expect(f.calls).toHaveLength(0);
+
+    const [a, b] = await Promise.all([llm.json(req({ y: 1 })), llm.json(req({ y: 1 }))]);
+    expect(a.kind).toBe("ok");
+    expect(b.kind).toBe("ok");
+    expect(f.calls).toHaveLength(1);
+    // Cached now: free for everyone, and the allowance isn't asked.
+    expect(await llm.json({ ...req({ y: 1 }), allow, cacheOnly: true })).toMatchObject({
+      kind: "ok",
+      cached: true,
+    });
+    expect(asked).toBe(1);
+  });
 });

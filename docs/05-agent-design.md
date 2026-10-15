@@ -90,8 +90,8 @@ Captions use Qloo's own explanation: "People who enjoy X and Y often also enjoy 
 domain; favourites first. Every step message is also saved with the version (`steps`) and shown as
 "How Memory Lane built this", including what was left out and why (later singers, films from other
 years, hotels and venues — never naming what touched the avoid-list or a painful subject).
-**With the Claude key (next):** `propose_candidates` adds era-typical names per domain, which only
-survive through `qloo_rank` / `qloo_describe` with evidence (Phase 0: rank pushes modern names down).
+With an LLM key, gap filling (below) adds era-typical names, which only survive through `qloo_rank`
+with evidence (Phase 0: rank pushes modern names down).
 
 ### The LLM steps (built: `apps/agent/src/llm/`, `stage2/propose.ts`, `stage3/warmPrompts.ts`, `compare/`)
 Any OpenAI-compatible API (default OpenAI `gpt-6-luna`, structured outputs, reasoning effort low),
@@ -99,21 +99,35 @@ server-side, same privacy guard as Qloo, cached by input hash, capped per day; o
 1. **Gap filling (Stage 2):** when Qloo's recommendations leave no TV from their years, or fewer than two
    singers it places in their era, the LLM proposes up to 8 era-typical names; `qloo_rank` with named
    options matches and orders them against the favourites; code keeps ≤2 whose years fit (and that pass
-   the avoid-list and gentle filters). The rank call is their evidence; the log names what was asked
-   and kept.
+   the avoid-list and gentle filters). The model is told the avoid topics (never reasons or health
+   words) and gets the era years, not a birth year; a proposal on the avoid-list or about a painful
+   subject is dropped before it is named or sent to Qloo. The rank call is their evidence; the caption
+   says "Suggested for their years by the AI; Qloo matched it and ranked it Nth of M"; the log names
+   what was asked and kept.
 2. **Warmer prompts (Stage 3):** one call per planned session writes 3 item-specific prompts from each
-   item's kind, year and Qloo description; each must pass the prompt and caption checks (and no memory
-   words at all); an item keeps its template prompts unless two pass.
-3. **Compare (screen 9):** the same model, no tools, asked for the same session from the same public
-   facts (§4.3); code counts Qloo evidence, items outside their years, items touching the avoid-list
-   and items shared with the other demo people's plans, next to Memory Lane's newest session.
+   item's kind, year and Qloo description, with the decades and town they were young in and the avoid
+   topics (caregiver's and learned). Each prompt must pass the prompt and caption checks, no memory
+   words, no health words, the avoid-list and painful-topic filters, speak to the person (you, we, tell
+   me) and not ask what something "means to people"; at most one "What might…"; an item keeps its
+   template prompts unless two pass.
+3. **Compare (screen 9):** the same model, no tools, given the same public facts and the same task as
+   Memory Lane's first session (a favourite or two, then new things they're likely to enjoy; §4.3),
+   next to Memory Lane's session 1 (same facts, before any reactions). Code counts items beyond what
+   the caregiver typed (Memory Lane's by Qloo id; the generic plan's by a favourite's name in the item
+   or a town they lived in), Qloo evidence, items outside their years, items on the avoid-list, reasons
+   Memory Lane wouldn't show (replaced with fixed text), and, among the demo profiles only, items
+   shared with the other demo people's plans. Other profiles' plans are read from the cache only.
+4. **Spend:** a daily cap counted atomically before each live call (failures and retries count), a
+   reserve only the demo seeding may use, per-device and per-network daily allowances for live calls,
+   one in-flight call per input; cached answers are free and deleted after the profile retention
+   period.
 
 ### Stage 3 — Compose session (built: `apps/agent/src/stage3/`)
 - Code fills the template from the newest taste profile (`compose.ts`): favourites open, items from the
   last session rotate out, an empty domain becomes another song; Stage 4 weights (reactions) and the
   best-landing domain ("your choice") plug in here. Prompts come from gentle templates (`prompts.ts`),
-  links from `links.ts`. With the Claude key the LLM writes warmer, item-specific prompts — still only
-  for taste-profile items, and through the same validators.
+  links from `links.ts`. With an LLM key the model writes warmer, item-specific prompts — still only
+  for taste-profile items, and through the same validators (see "The LLM steps").
 - Validators (`validate.ts`): the item must be a taste-profile item carrying that item's evidence (an
   invented or re-badged entity is dropped), avoid-list (name + Qloo descriptions), language policy on
   `why`, links only to YouTube/Spotify/Google Maps search pages; memory-test prompts are replaced.

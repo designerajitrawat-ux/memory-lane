@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { LlmClient } from "../llm/client";
+import { DATA_NOT_INSTRUCTIONS } from "../llm/topics";
 
 const ProposalSchema = z.object({
   tvShows: z.array(z.string().trim().min(1).max(100)).max(10),
@@ -17,7 +18,8 @@ const PROPOSAL_JSON_SCHEMA = {
   },
 };
 
-const SYSTEM = `You know popular culture across countries and decades. Suggest well-known names that many people who grew up where and when described here watched or listened to. Only real, widely known names, written as they are commonly titled (original-language titles are fine). TV shows: first shown within the given years, in that country. Singers or bands: popular there in those years. Give up to 8 for each list that is asked for, and an empty list for anything not asked. Leave out anything already listed under alreadyHave. No explanations.`;
+const SYSTEM = `You know popular culture across countries and decades. Suggest well-known names that many people who grew up where and when described here watched or listened to. Only real, widely known names, written as they are commonly titled (original-language titles are fine). TV shows: first shown within the given years, in that country. Singers or bands: popular there in those years. Give up to 8 for each list that is asked for, and an empty list for anything not asked. Leave out anything already listed under alreadyHave, and anything about war, violence, loss or the topics in thingsToAvoid. No explanations.
+${DATA_NOT_INSTRUCTIONS}`;
 
 /**
  * Stage 2 gap filling (docs/05: "propose_candidates"): when Qloo's recommendations leave a gap (no TV
@@ -32,21 +34,24 @@ export async function proposeNames(
     years: { from: number; to: number };
     favourites: string[];
     alreadyHave: string[];
+    thingsToAvoid: string[];
     need: { tvShows: boolean; singers: boolean };
   },
   llm: LlmClient,
   nickname: string | null,
+  opts: { seeding?: boolean; allow?: () => boolean } = {},
 ): Promise<Proposal | null> {
   const result = await llm.json<Proposal>({
     task: "propose",
     system: SYSTEM,
+    // The era, not a birth year: the model needs the years, not the person (review S7).
     input: {
-      bornIn: facts.birthYear,
       grewUpIn: facts.grewUpIn,
       languages: facts.languages,
       years: facts.years,
       favourites: facts.favourites,
       alreadyHave: facts.alreadyHave,
+      thingsToAvoid: facts.thingsToAvoid,
       asked: [facts.need.tvShows ? "tvShows" : null, facts.need.singers ? "singers" : null].filter(
         Boolean,
       ),
@@ -55,6 +60,8 @@ export async function proposeNames(
     jsonSchema: PROPOSAL_JSON_SCHEMA,
     nickname,
     maxTokens: 2000,
+    ...(opts.seeding ? { seeding: true } : {}),
+    ...(opts.allow ? { allow: opts.allow } : {}),
   });
   if (result.kind !== "ok") return null;
   const clean = (names: string[], wanted: boolean) =>

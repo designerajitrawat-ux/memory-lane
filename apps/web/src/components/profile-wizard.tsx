@@ -528,7 +528,8 @@ export function ProfileWizard() {
           <Hint id="avoid-hint">
             Is there anything to steer clear of? Some memories can be painful, such as a war,
             Partition or migration, or a song tied to a loss. Memory Lane checks every suggestion
-            against this list and leaves out anything that matches. You can skip this step.
+            against this list and leaves out anything that matches. The topics (never the reasons)
+            also go to the AI that writes prompts, so it steers clear too. You can skip this step.
           </Hint>
           {avoid.fields.map((field, i) => (
             <fieldset key={field.id} className="space-y-3 rounded-2xl border bg-card p-4">

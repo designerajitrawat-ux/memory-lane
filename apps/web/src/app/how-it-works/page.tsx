@@ -37,7 +37,7 @@ const FLOW: { icon: LucideIcon; title: string; who: string; text: string }[] = [
   {
     icon: ListMusic,
     title: "3 · Plan a session",
-    who: "Code composes from the profile only",
+    who: "Code composes from the profile; the AI words the prompts",
     text: "Six items for about 25 minutes: an opening song, a film or TV memory, food, a place, a choice, a closing song. Gentle prompts that invite, never test. Links to YouTube, Spotify or a map, built in code.",
   },
   {
@@ -57,6 +57,7 @@ const RULES = [
 const PRIVACY = [
   "Nothing personal reaches Qloo: a guard in front of every call refuses nicknames, contact details, addresses and health terms.",
   "Places stay at town level. Favourites are public cultural names. The nickname stays in Memory Lane.",
+  "The AI (OpenAI) gets the same public facts as Qloo, behind the same guard: the years, the town, the favourites and the things to avoid, never the reasons or the nickname. Its answers are cached without the facts that produced them.",
   'No login: profiles live on the device that made them. "Delete this profile" removes the profile, its sessions and its Qloo call records; Qloo answers shared by everyone stay cached for up to 8 days. Idle profiles go after 90 days.',
 ];
 
@@ -154,15 +155,30 @@ export default function HowItWorksPage() {
         <Section id="ai-heading" title="Where the AI fits">
           <p className="flex gap-3 text-base">
             <BrainCircuit aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
-            <span>
-              The design is &ldquo;the AI proposes, Qloo decides, code verifies&rdquo;. When Qloo
-              leaves a gap (say, no TV from their years), a language model suggests era-typical
-              names, and they count only once Qloo has matched and ranked them and their years fit.
-              The model also writes warmer prompts for items already in a session, and each one
-              passes the same checks as the templates. Without an AI key the app runs on Qloo and
-              code alone. The &ldquo;Generic AI vs Memory Lane&rdquo; page on every profile shows
-              the same model asked without Qloo, and what code finds wrong with its plan.
-            </span>
+            <span>The design is &ldquo;the AI proposes, Qloo decides, code verifies&rdquo;.</span>
+          </p>
+          <ul role="list" className="list-disc space-y-2 pl-14 text-base">
+            <li>
+              <span className="font-bold">Fills gaps, then Qloo checks.</span> When Qloo leaves a
+              gap (say, no TV from their years), a language model suggests era-typical names. They
+              count only once Qloo has matched and ranked them and their years fit.
+            </li>
+            <li>
+              <span className="font-bold">Words the prompts, then code checks.</span> It writes
+              warmer prompts for items already in a session; each passes the same checks as the
+              built-in ones, and the avoid-list.
+            </li>
+            <li>
+              <span className="font-bold">Plays the generic AI.</span> On{" "}
+              <Link href="/demo" className="font-bold underline underline-offset-4">
+                every demo profile
+              </Link>
+              , &ldquo;Generic AI vs Memory Lane&rdquo; shows the same model asked without Qloo, and
+              what code counts in each plan.
+            </li>
+          </ul>
+          <p className="text-base text-muted-foreground">
+            If the AI is switched off, the app runs on Qloo and code alone, and says so.
           </p>
         </Section>
 

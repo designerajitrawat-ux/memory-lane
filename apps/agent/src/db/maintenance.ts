@@ -1,5 +1,5 @@
 import { and, eq, isNotNull, isNull, lt, sql } from "drizzle-orm";
-import { profiles, qlooCache, qlooCalls } from "./schema";
+import { llmCalls, profiles, qlooCache, qlooCalls } from "./schema";
 import type { AppDb } from "./types";
 
 /** Qloo call records not made for any profile are kept this long, then removed. */
@@ -9,7 +9,8 @@ const ORPHAN_EVIDENCE_DAYS = 30;
  * Data retention (docs/07 §2.8): profiles nobody has opened for `profileRetentionDays` are deleted
  * (seeds, avoid items, taste profiles, sessions and their Qloo call records cascade), and expired Qloo
  * cache rows are removed. Demo profiles stay. Qloo call records made for no profile (none are today;
- * a safety net for scripts and future routes) go after 30 days.
+ * a safety net for scripts and future routes) go after 30 days. Cached LLM answers (no inputs, only
+ * outputs keyed by a hash) go once they are as old as an idle profile (security review W5).
  */
 export async function purgeStaleData(
   db: AppDb,
@@ -37,9 +38,14 @@ export async function purgeStaleData(
       ),
     )
     .returning({ id: qlooCalls.id });
+  const oldLlmAnswers = await db
+    .delete(llmCalls)
+    .where(lt(llmCalls.createdAt, sql`now() - make_interval(days => ${profileRetentionDays})`))
+    .returning({ id: llmCalls.id });
   return {
     profiles: idleProfiles.length,
     cacheRows: expiredCache.length,
     evidenceRows: orphanEvidence.length,
+    llmRows: oldLlmAnswers.length,
   };
 }

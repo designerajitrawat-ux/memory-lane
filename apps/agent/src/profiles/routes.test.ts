@@ -11,7 +11,7 @@ import { createTestDb } from "../../test/pglite";
 import { buildApp } from "../app";
 import { hashOwnerToken } from "../auth/ownerToken";
 import { purgeStaleData } from "../db/maintenance";
-import { avoidItems, profiles, seeds } from "../db/schema";
+import { avoidItems, llmCalls, profiles, seeds } from "../db/schema";
 import type { AppDb } from "../db/types";
 import { createProfileStore, type ProfileStore } from "./store";
 
@@ -310,8 +310,16 @@ describe("profile routes", () => {
       isDemo: true,
     });
     await db.update(profiles).set({ lastSeenAt: sql`now() - interval '100 days'` });
+    // Cached LLM answers go after the same period.
+    const answer = { task: "prompts", model: "m", output: {}, inputTokens: 0, outputTokens: 0 };
+    await db.insert(llmCalls).values([
+      { ...answer, inputHash: "old", createdAt: sql`now() - interval '100 days'` },
+      { ...answer, inputHash: "new" },
+    ]);
     const purged = await purgeStaleData(db, { profileRetentionDays: 90 });
     expect(purged.profiles).toBeGreaterThan(0);
+    expect(purged.llmRows).toBe(1);
+    expect((await db.select().from(llmCalls)).map((r) => r.inputHash)).toEqual(["new"]);
     expect(await store.get(id, hashOwnerToken(body?.ownerToken ?? ""))).toBeNull();
     expect(await store.get(demo.id, null)).not.toBeNull();
   });

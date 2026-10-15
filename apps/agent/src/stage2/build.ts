@@ -10,6 +10,7 @@ import { typeLabel } from "../stage1/labels";
 import { normalise, short, str, yearOf } from "../stage1/mapDescribe";
 import type { LlmClient } from "../llm/client";
 import { avoidMatcher } from "./avoid";
+import { llmSafeTopics } from "../llm/topics";
 import { proposeNames } from "./propose";
 import { bumpDistance, eraFor, eraPlacement, yearFits, type Era, type EraPlacement } from "./era";
 import type { ConfirmedSeed, TasteStore } from "./store";
@@ -31,6 +32,8 @@ export interface TasteDeps {
   persistent?: boolean;
   /** Proposes era-typical names for gaps Qloo left; Qloo ranks them. Off without a key. */
   llm?: LlmClient;
+  /** Per-device/per-client allowance for live LLM calls. */
+  allowLlm?: () => boolean;
 }
 
 const PER_DOMAIN = 6;
@@ -470,7 +473,7 @@ export async function buildTasteProfile(
   const needSingers =
     hasSignals && singersKept.filter((s) => s.place === PLACEMENT_ORDER.fits).length < 2;
   if (deps.llm?.configured && (needTv || needSingers) && !isAborted()) {
-    const proposal = await proposeNames(
+    const asked = await proposeNames(
       {
         birthYear: ctx.birthYear,
         grewUpIn: youth,
@@ -478,11 +481,23 @@ export async function buildTasteProfile(
         years: { from: era.from, to: era.to },
         favourites: entitySeeds.map((s) => s.name),
         alreadyHave: [...music, ...filmTv].map((i) => i.name),
+        thingsToAvoid: llmSafeTopics(ctx.avoid),
         need: { tvShows: needTv, singers: needSingers },
       },
       deps.llm,
       input.nickname,
+      {
+        ...(deps.persistent ? { seeding: true } : {}),
+        ...(deps.allowLlm ? { allow: deps.allowLlm } : {}),
+      },
     );
+    // A proposal that touches the avoid-list or a painful subject is never named, nor sent to Qloo
+    // (security review W1).
+    const safe = (n: string) => !isAvoided(n, null) && !HEAVY.test(n) && !HEAVY_SCREEN.test(n);
+    const proposal = asked && {
+      tvShows: asked.tvShows.filter(safe),
+      singers: asked.singers.filter(safe),
+    };
     const rankProposals = async (
       proposed: string[],
       optionType: "tv_show" | "artist",
@@ -501,7 +516,10 @@ export async function buildTasteProfile(
       // Several Qloo entities share a proposed name ("Ramayan" 1987, 2002, 2008…): the agent picks the
       // one from their years (or the first of the right kind) and asks again with Qloo's own ids.
       if (answer && answer !== "refused" && answer.kind === "needs_input") {
-        const picks = eraCandidates(answer.envelope as Rec, optionType, era);
+        const picks = eraCandidates(answer.envelope as Rec, optionType, era).filter(
+          (p) => UUID_ID.test(p.id) && !isAvoided(p.name, null),
+        );
+        // Qloo's own ids for the picks: the guard lets them through as ids (security review S1).
         for (const p of picks) trustedIds.add(p.id.toLowerCase());
         const ambiguous = new Set(picks.map((p) => p.input));
         if (picks.length) {
@@ -526,7 +544,7 @@ export async function buildTasteProfile(
         .filter(gentleScreen)
         .filter(fresh(filmTv))
         .slice(0, MAX_PROPOSED);
-      filmTv.push(...shows.map((f) => proposed(fromFound(f, "film_tv"))));
+      filmTv.push(...shows.map((f) => proposed(fromFound(f, "film_tv"), ranked, f.entityId)));
       step(
         ranked.kind === "found"
           ? shows.length
@@ -543,7 +561,7 @@ export async function buildTasteProfile(
         .filter(keep)
         .filter(fresh(music))
         .slice(0, MAX_PROPOSED);
-      music.push(...voices.map((f) => proposed(fromFound(f, "music"))));
+      music.push(...voices.map((f) => proposed(fromFound(f, "music"), ranked, f.entityId)));
       step(
         ranked.kind === "found"
           ? voices.length
@@ -671,12 +689,14 @@ export async function buildTasteProfile(
   return profile;
 
   /** An AI-proposed name Qloo ranked: said plainly on the card, in the caption and in the session. */
-  function proposed(item: TasteItem): TasteItem {
+  function proposed(item: TasteItem, ranked: Outcome, entityId: string): TasteItem {
+    const all = found(ranked);
+    const place = all.findIndex((f) => f.entityId === entityId) + 1;
     const by = item.becauseOf.length ? ` for people who enjoy ${join(item.becauseOf)}` : "";
     return {
       ...item,
       source: "proposed",
-      caption: `Suggested for their years by the AI; Qloo ranks ${item.name} highly${by}.`,
+      caption: `Suggested for their years by the AI; Qloo matched it and ranked it ${ordinal(place)} of ${all.length}${by}.`,
     };
   }
 
@@ -1021,5 +1041,13 @@ export const join = (names: readonly string[]) =>
     : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+const ordinal = (n: number) => {
+  const tens = n % 100;
+  const suffix = tens >= 11 && tens <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
+  return `${n}${n % 10 > 3 ? "th" : suffix}`;
+};
+
+const UUID_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type { Era };

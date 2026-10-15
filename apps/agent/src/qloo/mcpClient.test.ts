@@ -8,7 +8,7 @@ describe("harnessEnv", () => {
       QLOO_BASE_URL: "https://hackathon.api.qloo.com",
       QLOO_TRUSTED_BASE_URL: "https://hackathon.api.qloo.com",
       DATABASE_URL: "postgres://user:pw@host/db",
-      ANTHROPIC_API_KEY: "sk-ant-secret",
+      LLM_API_KEY: "sk-llm-secret",
       PATH: "/usr/bin",
     });
     expect(env).toEqual({

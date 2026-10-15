@@ -12,7 +12,7 @@ export interface QlooMcpClient {
 }
 
 // Only what the harness needs. The MCP SDK adds a safe default set (PATH, HOME/USERPROFILE, …);
-// DATABASE_URL, ANTHROPIC_API_KEY and any other secret must never reach this third-party process.
+// DATABASE_URL, LLM_API_KEY and any other secret must never reach this third-party process.
 const HARNESS_ENV_KEYS = [
   "QLOO_API_KEY",
   "QLOO_HOME",

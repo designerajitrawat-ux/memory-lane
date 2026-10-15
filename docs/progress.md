@@ -9,20 +9,20 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
   envelopes; no Qloo data committed.
 - **Phase 3 — done**: wizard → Stage 1 confirm with real Qloo (describe for singers/films/TV/places,
   find_tags for food/other; needs_input choices; one option per place listing).
-- **Phase 4 — Qloo pipeline done, LLM step pending the Anthropic key**: Stage 2 builds a Life Taste Profile
+- **Phase 4 — done**: Stage 2 builds a Life Taste Profile
   from confirmed seed IDs (music, films/TV in era, places, food) with evidence on every item, avoid-list +
-  gentle filters, validators; screen 5 with evidence drawer. Checked live on all three personas.
-- **Phase 5 — done (code templates; LLM prompts pending the key)**: Stage 3 composer + validators, sessions
+  gentle filters, validators; screen 5 with evidence drawer; LLM gap filling ranked by `qloo_rank`.
+  Checked live on all three personas.
+- **Phase 5 — done (templates plus LLM-written prompts, both through the validators)**: Stage 3 composer + validators, sessions
   and reactions API, plan / player / summary screens. Checked locally end to end with real Qloo data.
 - **Phase 6 — done**: Stage 4 learning loop (weights, learned neighbours from Qloo, learned avoid-list,
   "what changed"); gate test passes; live check (UK persona): two era-fitting singers learned from the favourite that landed.
-- **Phase 7 — how-it-works done**; compare view waits for the Anthropic key (baseline = same model, no tools).
+- **Phase 7 — done**: how-it-works, and the compare view (screen 9: the same model with no tools, the
+  same facts and task, next to session 1; counted in code).
 - **Phase 8 — demo personas + landing done**: three fictional personas seeded through the real pipeline at
   startup (public, read-only), `/demo` picker, new landing, demo banners and read-only screens. Live check
   (local, real Qloo): e.g. the India persona's session 2 learned two era singers and two 1960s–70s films.
-- Next: Phase 7–9. **Blocking for the LLM steps (proposing
-  era candidates, session prompts, "what changed" text, compare view): an Anthropic API key** — the
-  developer creates it in the Anthropic Console (billing) and pastes it on Render (ANTHROPIC_API_KEY).
+- LLM: OpenAI `gpt-6-luna` via `LLM_API_KEY` on Render (restricted key: Chat completions only).
 - Live URLs: web: https://memory-lane-sable-rho.vercel.app · agent: https://memory-lane-agent.onrender.com
 - Repo: https://github.com/designerajitrawat-ux/memory-lane (public; secret scanning + push protection on)
 - Hosting: Vercel project `memory-lane` (root `apps/web`), Render Blueprint `memory-lane` → service
@@ -34,9 +34,7 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 
 ## Next steps
 1. Submit on Devpost by Oct 29 IST (text ready in docs/devpost.md; screenshots in docs/screenshots/).
-2. Developer adds `LLM_API_KEY` (OpenAI) on Render; then bump `DEMO_VERSION` so the demos are rebuilt
-   with the LLM's prompts and gap filling (the compare view's generic plans warm by themselves).
-3. Keep the app live and free through Nov 17 (UptimeRobot monitors on); re-run the reviewers after
+2. Keep the app live and free through Nov 17 (UptimeRobot monitors on); re-run the reviewers after
    any larger change; bump `DEMO_VERSION` when research or session logic changes.
 
 ## Decisions (ADR-lite)
@@ -91,6 +89,7 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-14 | "Try it yourself": private copy of a demo persona (first taste profile + copied evidence rows), session 1 ready | Lets judges run the learning loop live without building a profile | 04, 06, 07 |
 | 2026-10-14 | Demo personas versioned (`DEMO_VERSION`), complete-only listing, stale half-built rebuild, unique demo index; older versions removed after the new one is complete | Security review W2/UX W15: restarts and overlapping deploys left broken or duplicate demos | 04, 07 |
 | 2026-10-15 | LLM steps on any OpenAI-compatible API (default OpenAI `gpt-6-luna`), not the Anthropic SDK: compare view, Stage 2 gap filling (LLM proposes, `qloo_rank` decides, code checks years), warmer Stage 3 prompts; cached by input hash, daily cap, off without a key | The developer has OpenAI API credit; the hackathon allows any model; gpt-6-luna is cheap ($0.10/$0.50 per 1M) with structured outputs | 04, 05, 07, CLAUDE.md |
+| 2026-10-15 | LLM hardening: prompts face the avoid-list (caregiver's + learned) and painful-topic filters and must speak to the person; proposals filtered before naming/sending; atomic daily cap counted before each call (reserve for seeding), per-device/per-network allowances, cache-only reads for other profiles, in-flight dedupe; cached answers purged after the retention period. Compare: fair generic task (favourites + new ideas), session 1, favourites matched by Qloo id / name / town, blocked reasons hidden and counted, "shared" only among demos | Security review C1/W1–W6, judge review (matcher and fairness), UX review C1–C3/W1–W11 | 05, 06, 07 |
 | 2026-10-14 | Qloo's rank alone orders ranked items; each domain ranked against its own hits; Stage 2 asks again when <3 films fit; the log names what was left out | Judge re-score 7.9: the "what changed" text must match the plan; show the agent adapting and its reasons | 05 |
 | 2026-10-14 | Player saves one at a time per item with the merged wanted state; a reaction never erases a note (server keeps the note when none is sent) | UX re-review C1: note lost on a natural flow; out-of-order writes could undo "Seemed upset" | 04, 06 |
 | 2026-10-14 | An untouched newest session is returned instead of planning again; ≤50 sessions per profile; notes refuse personal/health details | Security review W1/W3 | 04, 07 |
@@ -175,7 +174,7 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 ## Open questions / risks
 - Does Qloo support decade/age signals well enough for era fit? (Phase 0)
 - Coverage of older Indian content? (Phase 0)
-- Anthropic API budget for live app.
+- LLM spend: OpenAI credit ($5); daily cap 400 calls (≈ cents a day at gpt-6-luna prices), reserve 60 for demos.
 - Before/with Phase 4 routes (security review W6, S4, S6; S7 evidence cascade and S10 fixed text done in 3b): per-IP + per-owner-token limits on every
   route that reaches the gateway and a cap on profile creation; per-stage call caps (docs/05); reuse one
   evidence id per (session, cacheKey) instead of a row per cache hit; `persistent` set server-side only;

@@ -71,6 +71,13 @@
       "when": 1792017532797,
       "tag": "0009_llm_calls",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792037253387,
+      "tag": "0010_budget_llm_calls",
+      "breakpoints": true
     }
   ]
 }

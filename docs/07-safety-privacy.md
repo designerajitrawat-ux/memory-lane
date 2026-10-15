@@ -49,16 +49,24 @@ Judges (and Qloo's kit) explicitly value responsible data handling. Treat this f
    (with copies of its Qloo call records, never the harness summary) under the same profile limits and
    rate bucket as creating a profile, one per device while untouched; a copy that can't be planned is
    removed again, so no unreachable profile is left behind.
-12. The LLM (server-side only, `llm/client.ts`) receives public facts only: birth year, town-level
-   regions, languages, confirmed favourites' names, the caregiver's avoid topics (without reasons),
-   era years and Qloo's one-line descriptions of items. Never the nickname, notes, reasons or anything
-   personal: the same guard as for Qloo refuses the call otherwise, and avoid entries with health words
-   are left out. Inputs are not stored (only a hash, for the cache); outputs are cultural names and
-   prompt text. OpenAI's API doesn't train on API data by default; a free-tier provider may, which is
-   why only public facts are sent.
 11. Map searches carry the place's town (Qloo's geocode, or the town-level region the caregiver typed),
    never the nickname or notes. Links are built in code and checked against https search paths per host (YouTube `/results`,
    Spotify `/search/`, Google Maps `/maps/search/`), so allowed hosts' redirect pages can't be used.
+12. The LLM (server-side only, `llm/client.ts`) receives public facts only: birth year (the compare
+   view's generic plan; the other steps get era years or decades instead), town-level regions,
+   languages, confirmed favourites' names, the caregiver's avoid topics (without reasons; learned topics
+   too for prompts) and Qloo's one-line descriptions of items. Never the nickname, notes, reasons or
+   anything personal: the same guard as for Qloo refuses the call otherwise, and avoid entries with
+   health or personal words are left out. Inputs are not stored (only a hash, for the cache); outputs
+   are cultural names, short reasons and prompt text, which may restate those public facts (e.g. a
+   town). Cached outputs are deleted after the profile retention period. OpenAI's API doesn't train on
+   API data by default; a free-tier provider may, which is why only public facts are sent.
+13. LLM spend is capped: a daily cap counted atomically before each live call (failures count too),
+   part of it reserved for building the demos; per-device and per-network daily allowances for live
+   calls (cache hits are free); one in-flight call per input; other profiles' plans on a compare page
+   are read from the cache only. Every reason or prompt it writes passes the language policy, the
+   memory-word filter, the health filter, the avoid-list and the painful-topic filters before it is
+   shown; a generic-plan reason that fails is replaced with fixed text and counted.
 
 ## 3. Content safety
 - Avoid-list is absolute (validator).

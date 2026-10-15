@@ -1,0 +1,1 @@
+ALTER TABLE "budget" ADD COLUMN "llm_calls" integer DEFAULT 0 NOT NULL;

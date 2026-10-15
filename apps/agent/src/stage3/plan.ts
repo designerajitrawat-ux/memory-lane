@@ -15,6 +15,8 @@ export interface PlanDeps {
   /** Stage 4 asks Qloo for more like what landed; without it, sessions adapt by weights only. */
   gateway?: Pick<QlooGateway, "call">;
   allowCall?: () => boolean;
+  /** Per-device/per-client allowance for live LLM calls (cache hits are free). */
+  allowLlm?: () => boolean;
   budgetReserve?: number;
   /** Demo personas: Qloo answers are cached without expiry. Server-side only. */
   persistent?: boolean;
@@ -114,15 +116,27 @@ export async function planNextSession(
     recent,
     ...(learned ? { weights: learned.weights, favouriteDomain: learned.favouriteDomain } : {}),
   });
-  const { kept } = validateSessionItems(
-    composed,
-    profile.items,
-    avoidMatcher([...(ctx?.avoid ?? []), ...(learned?.learnedAvoid.map((a) => a.text) ?? [])]),
-    sessionNumber,
-  );
+  const avoid = [...(ctx?.avoid ?? []), ...(learned?.learnedAvoid.map((a) => a.text) ?? [])];
+  const isAvoided = avoidMatcher(avoid);
+  const { kept } = validateSessionItems(composed, profile.items, isAvoided, sessionNumber);
   if (kept.length === 0) return { kind: "nothing_to_plan" };
+  // The model's prompts face the same avoid-list (caregiver's and learned) as the items.
   const warmed =
-    deps.llm && ctx ? (await warmPrompts(kept, ctx, input.nickname, deps.llm)).items : kept;
+    deps.llm && ctx
+      ? (
+          await warmPrompts(
+            kept,
+            { era: profile.era, regions: ctx.regions, avoid },
+            input.nickname,
+            deps.llm,
+            isAvoided,
+            {
+              ...(deps.allowLlm ? { allow: deps.allowLlm } : {}),
+              ...(deps.persistent ? { seeding: true } : {}),
+            },
+          )
+        ).items
+      : kept;
   const session = await deps.sessions.create(
     profileId,
     profile.id,
