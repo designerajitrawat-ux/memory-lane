@@ -99,6 +99,11 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-15: **Wide-screen layouts + colour button (live).** Landing hero in two columns with Qloo's
+  pictures and a real-session preview; demo personas side by side; taste profile and plan with side
+  columns (sticky only when they fit); player with the picture beside the text; header colour button
+  (Auto / Light / Dark, no flash, print always light). UX review: 1 critical + 8 warnings fixed. 201
+  tests (agent 168, shared 17, web 16).
 - 2026-10-15: **Qloo's pictures (demos v12, live).** Artist photos, posters and place pictures from
   Qloo's own answers on the confirm screen, taste cards, plan, player (under the name), summary, demo
   picker and a landing strip; dishes keep their icon; none on compare. One allow-list (agent, shared
