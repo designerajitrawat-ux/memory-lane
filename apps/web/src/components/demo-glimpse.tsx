@@ -54,14 +54,14 @@ export function DemoGlimpse() {
         href="/demo"
         tabIndex={-1}
         aria-hidden="true"
-        className="grid grid-cols-3 gap-2 sm:grid-cols-6"
+        className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-3 lg:gap-3"
       >
         {demos
           ? images.map((src) => (
               <QlooImage
                 key={src}
                 src={src}
-                sizes="(min-width: 640px) 110px, 30vw"
+                sizes="(min-width: 1024px) 200px, (min-width: 640px) 110px, 30vw"
                 className="aspect-square w-full rounded-xl"
                 fallback={<span className={tile} />}
               />

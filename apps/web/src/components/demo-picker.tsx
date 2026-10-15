@@ -111,7 +111,8 @@ export function DemoPicker() {
       <p role="status" className="sr-only">
         {waited ? "The demo profiles are ready." : ""}
       </p>
-      <ul role="list" className="space-y-4">
+      {/* One column on phones; side by side on wider screens. */}
+      <ul role="list" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {demos.map((d) => {
           const name = d.nickname ?? "Demo profile";
           return (

@@ -23,7 +23,16 @@
   frame with the icon); the confirm screen shows pictures only when every match has one; the landing
   strip and demo picker show only the pictures there are. Beside text, pictures stack above it or hide
   when the screen is narrow for the text size (rem breakpoints). No pictures on the compare page.
-- Support light & dark mode; respect `prefers-reduced-motion`.
+- Light & dark: the device's setting by default; a colour button in the header (Same as device → Light
+  → Dark, kept on this device, announced, applied before the page paints) lets someone whose phone is
+  dark read on a light page — many older eyes read dark text on light more easily. Respect
+  `prefers-reduced-motion`.
+- Layout: phone-first, one column. From `lg` (1024px) the wide screens use the space: landing hero in
+  two columns (words | Qloo's pictures) and a "real session" preview; demo personas side by side (2
+  columns from `md`, 3 from `xl`); Life Taste Profile with the sessions in a side panel that stays in view
+  (DOM order = phone order); session plan with the title and actions in a sticky left column; player with
+  the picture on the left (sticky) and the name, links, prompts and reactions beside it. Forms (wizard,
+  confirm), reading pages and the summary stay one narrow column.
 
 ## 3. Screens
 | # | Screen | Key elements |

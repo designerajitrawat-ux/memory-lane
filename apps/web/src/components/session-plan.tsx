@@ -98,6 +98,24 @@ export function SessionPlan() {
           : "Start the session"}
     </Link>
   );
+  const others = (
+    <>
+      <Button
+        variant="outline"
+        className="h-auto min-h-12 gap-2 px-5 text-base"
+        onClick={() => window.print()}
+      >
+        <Printer aria-hidden="true" className="size-5" />
+        Print this plan
+      </Button>
+      <Link href={`/profiles/${session.profileId}/compare`} className={textLink}>
+        Compare session 1 with a generic AI
+      </Link>
+      <Link href={`/profiles/${session.profileId}/taste`} className={textLink}>
+        Back to the Life Taste Profile
+      </Link>
+    </>
+  );
   return (
     <div className="space-y-8">
       {readOnly && (
@@ -105,130 +123,128 @@ export function SessionPlan() {
           <DemoBanner />
         </div>
       )}
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <h1 className="font-heading text-4xl leading-tight">Session {session.number}</h1>
-          <p className="flex items-center gap-2 text-lg text-muted-foreground">
-            <Clock aria-hidden="true" className="size-5" />
-            About {session.totalMinutes} minutes · {session.items.length} things to share
+      {/* Phones: one column. Wide screens: the session's title and actions stay in view on the left,
+          the plan on the right. */}
+      <div className="space-y-8 lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-10 lg:space-y-0">
+        <div className="space-y-4 lg:sticky lg:top-6">
+          <div className="space-y-2">
+            <h1 className="font-heading text-4xl leading-tight">Session {session.number}</h1>
+            <p className="flex items-center gap-2 text-lg text-muted-foreground">
+              <Clock aria-hidden="true" className="size-5" />
+              About {session.totalMinutes} minutes · {session.items.length} things to share
+            </p>
+          </div>
+          <p className="text-base text-muted-foreground">
+            Sit together somewhere comfortable. Play each one, talk if it feels right, and move on
+            whenever you like. There are no right answers.
           </p>
+          {/* Start sits near the top too: the timeline is two or three screens on a phone (ux S8). */}
+          <div className="no-print">{start}</div>
+          {/* Wide screens: the other actions sit here too, instead of at the end of the plan. */}
+          <div className="no-print hidden flex-col items-start gap-1 lg:flex">{others}</div>
         </div>
-        <p className="text-base text-muted-foreground">
-          Sit together somewhere comfortable. Play each one, talk if it feels right, and move on
-          whenever you like. There are no right answers.
-        </p>
-        {/* Start sits near the top too: the timeline is two or three screens on a phone (ux S8). */}
-        <div className="no-print">{start}</div>
-      </div>
 
-      {session.whatChanged.length > 0 && (
-        <section
-          aria-labelledby="changed-heading"
-          className="print-plain space-y-2 rounded-2xl border-2 border-evidence bg-card p-4"
-        >
-          <h2 id="changed-heading" className="text-xl font-bold">
-            What changed since last time
-          </h2>
-          <ul role="list" className="list-disc space-y-1 pl-5 text-base">
-            {session.whatChanged.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        </section>
-      )}
+        <div className="min-w-0 space-y-8">
+          {session.whatChanged.length > 0 && (
+            <section
+              aria-labelledby="changed-heading"
+              className="print-plain space-y-2 rounded-2xl border-2 border-evidence bg-card p-4"
+            >
+              <h2 id="changed-heading" className="text-xl font-bold">
+                What changed since last time
+              </h2>
+              <ul role="list" className="list-disc space-y-1 pl-5 text-base">
+                {session.whatChanged.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-      <section aria-labelledby="plan-heading" className="space-y-3">
-        <h2 id="plan-heading" className="sr-only">
-          The plan
-        </h2>
-        <ol role="list" className="space-y-3">
-          {session.items.map((item, i) => {
-            const Icon = KIND_ICONS[item.kind];
-            return (
-              <li key={item.id} className="print-plain space-y-2 rounded-2xl border bg-card p-4">
-                {/* Qloo's picture (or the kind icon) beside the name only, so the text below keeps
+          <section aria-labelledby="plan-heading" className="space-y-3">
+            <h2 id="plan-heading" className="sr-only">
+              The plan
+            </h2>
+            <ol role="list" className="space-y-3">
+              {session.items.map((item, i) => {
+                const Icon = KIND_ICONS[item.kind];
+                return (
+                  <li
+                    key={item.id}
+                    className="print-plain space-y-2 rounded-2xl border bg-card p-4"
+                  >
+                    {/* Qloo's picture (or the kind icon) beside the name only, so the text below keeps
                     the card's full width; hidden when the screen is narrow for the text size (rem
                     breakpoints grow with the user's text size; ux C2/W1). */}
-                <div className="flex items-center gap-4">
-                  <span className="hidden min-[21rem]:block">
-                    <ItemThumb image={item.image} icon={Icon} eager />
-                  </span>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p className="text-base font-bold text-muted-foreground">
-                      {i + 1}. {slotLabel(item, i, session.items.length)} · {item.minutes} min
-                    </p>
-                    <h3 className="font-heading text-xl leading-snug break-words">
-                      {item.name}
-                      {item.year ? (
-                        <span className="text-muted-foreground"> ({item.year})</span>
-                      ) : null}
-                    </h3>
-                  </div>
-                </div>
-                <div className="min-w-0 space-y-1">
-                  <p className="text-base">{item.why}</p>
-                  <p className="text-base text-muted-foreground">
-                    <span className="font-bold">To start: </span>
-                    {item.prompts[0]}
-                  </p>
-                  {/* On paper: the other prompts, and what to search for (links don't work there). */}
-                  <ul className="hidden list-disc pl-5 text-base print:block">
-                    {item.prompts.slice(1).map((p, n) => (
-                      <li key={n}>{p}</li>
-                    ))}
-                  </ul>
-                  <p className="hidden text-base print:block">
-                    <span className="font-bold">Search: </span>
-                    {searchWords(item.link.url)}
-                  </p>
-                  {item.reaction && (
-                    <p className="text-base font-bold text-evidence">
-                      <span className="sr-only">How it landed: </span>
-                      {REACTION_LABEL[item.reaction]}
-                    </p>
-                  )}
-                  <div className="no-print">
-                    <EvidenceDrawer
-                      subject={{
-                        name: item.name,
-                        caption: item.why,
-                        entityId: item.entityId,
-                        entityType: item.entityType,
-                        evidenceIds: item.evidenceIds,
-                        ...(isFavouriteItem(item) ? { source: "favourite" as const } : {}),
-                      }}
-                    />
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+                    <div className="flex items-center gap-4">
+                      <span className="hidden min-[21rem]:block">
+                        <ItemThumb image={item.image} icon={Icon} eager />
+                      </span>
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p className="text-base font-bold text-muted-foreground">
+                          {i + 1}. {slotLabel(item, i, session.items.length)} · {item.minutes} min
+                        </p>
+                        <h3 className="font-heading text-xl leading-snug break-words">
+                          {item.name}
+                          {item.year ? (
+                            <span className="text-muted-foreground"> ({item.year})</span>
+                          ) : null}
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-base">{item.why}</p>
+                      <p className="text-base text-muted-foreground">
+                        <span className="font-bold">To start: </span>
+                        {item.prompts[0]}
+                      </p>
+                      {/* On paper: the other prompts, and what to search for (links don't work there). */}
+                      <ul className="hidden list-disc pl-5 text-base print:block">
+                        {item.prompts.slice(1).map((p, n) => (
+                          <li key={n}>{p}</li>
+                        ))}
+                      </ul>
+                      <p className="hidden text-base print:block">
+                        <span className="font-bold">Search: </span>
+                        {searchWords(item.link.url)}
+                      </p>
+                      {item.reaction && (
+                        <p className="text-base font-bold text-evidence">
+                          <span className="sr-only">How it landed: </span>
+                          {REACTION_LABEL[item.reaction]}
+                        </p>
+                      )}
+                      <div className="no-print">
+                        <EvidenceDrawer
+                          subject={{
+                            name: item.name,
+                            caption: item.why,
+                            entityId: item.entityId,
+                            entityType: item.entityType,
+                            evidenceIds: item.evidenceIds,
+                            ...(isFavouriteItem(item) ? { source: "favourite" as const } : {}),
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
 
-      {readOnly && <TryDemo profileId={session.profileId} name={null} />}
+          {readOnly && <TryDemo profileId={session.profileId} name={null} />}
 
-      <p className="hidden text-base print:block">
-        Memory Lane supports reminiscence activities. It is not a medical device and does not
-        diagnose or treat any condition.
-      </p>
+          <p className="hidden text-base print:block">
+            Memory Lane supports reminiscence activities. It is not a medical device and does not
+            diagnose or treat any condition.
+          </p>
 
-      <div className="no-print flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        {start}
-        <Button
-          variant="outline"
-          className="h-auto min-h-12 gap-2 px-5 text-base"
-          onClick={() => window.print()}
-        >
-          <Printer aria-hidden="true" className="size-5" />
-          Print this plan
-        </Button>
-        <Link href={`/profiles/${session.profileId}/compare`} className={textLink}>
-          Compare session 1 with a generic AI
-        </Link>
-        <Link href={`/profiles/${session.profileId}/taste`} className={textLink}>
-          Back to the Life Taste Profile
-        </Link>
+          <div className="no-print flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:hidden">
+            {start}
+            {others}
+          </div>
+        </div>
       </div>
     </div>
   );

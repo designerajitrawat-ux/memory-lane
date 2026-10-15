@@ -11,7 +11,7 @@ export default function TastePage() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-10">
+      <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-10">
         <Suspense fallback={<Loading>Loading the profile…</Loading>}>
           <TasteProfileView />
         </Suspense>

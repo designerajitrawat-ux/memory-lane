@@ -16,7 +16,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { api, type ApiFailureKind } from "@/lib/api";
 
 // The picture's frame: a share of the screen's height (not rem, which grows with text), within limits.
-const PLAYER_FRAME = "h-[clamp(140px,24svh,320px)] w-full rounded-xl";
+// Wide screens: the picture is the left column's whole height, staying in view while the prompts scroll.
+const PLAYER_FRAME =
+  "h-[clamp(140px,24svh,320px)] w-full rounded-xl lg:sticky lg:top-6 lg:h-[min(70svh,36rem)] lg:self-start";
 
 const bigLink =
   "inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-4 py-3 text-center text-lg font-bold text-primary-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto sm:px-6";
@@ -418,11 +420,17 @@ export function SessionPlayer() {
         />
       </div>
 
+      {/* Phones: label, name, picture, then the rest. Wide screens with a picture: the picture on the
+          left, everything else beside it (grid areas keep one DOM order for both). */}
       <article
         aria-labelledby="item-title"
-        className="space-y-6 rounded-2xl border bg-card p-5 sm:p-8"
+        className={`grid gap-6 rounded-2xl border bg-card p-5 sm:p-8 ${
+          item.image
+            ? "[grid-template-areas:'label'_'title'_'pic'_'rest'] lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-[auto_auto_1fr] lg:gap-x-10 lg:[grid-template-areas:'pic_label'_'pic_title'_'pic_rest']"
+            : "[grid-template-areas:'label'_'title'_'rest']"
+        }`}
       >
-        <p className="flex items-center gap-2 text-lg font-bold text-primary">
+        <p className="flex items-center gap-2 text-lg font-bold text-primary [grid-area:label]">
           <Icon aria-hidden="true" className="size-6 shrink-0" />
           {slotLabel(item, step, total)} · {item.minutes} min
         </p>
@@ -430,7 +438,7 @@ export function SessionPlayer() {
           id="item-title"
           ref={titleRef}
           tabIndex={-1}
-          className="font-heading text-4xl leading-tight break-words outline-none sm:text-5xl"
+          className="font-heading text-4xl leading-tight break-words outline-none [grid-area:title] sm:text-5xl"
         >
           <span className="sr-only">
             Item {step + 1} of {total}:{" "}
@@ -445,14 +453,14 @@ export function SessionPlayer() {
           <QlooImage
             key={item.id}
             src={item.image}
-            sizes="(min-width: 640px) 560px, 90vw"
+            sizes="(min-width: 1024px) 460px, (min-width: 640px) 560px, 90vw"
             fit="contain"
             eager
-            className={PLAYER_FRAME}
+            className={`${PLAYER_FRAME} [grid-area:pic]`}
             fallback={
               <span
                 aria-hidden="true"
-                className={`flex items-center justify-center bg-secondary text-primary ${PLAYER_FRAME}`}
+                className={`flex items-center justify-center bg-secondary text-primary [grid-area:pic] ${PLAYER_FRAME}`}
               >
                 <Icon className="size-12" />
               </span>
@@ -460,73 +468,75 @@ export function SessionPlayer() {
           />
         )}
 
-        <div className="space-y-2">
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <a href={item.link.url} target="_blank" rel="noopener noreferrer" className={bigLink}>
-              <LinkIcon aria-hidden="true" className="size-6 shrink-0" />
-              <span className="min-w-0">{item.link.label}</span>
-              <ExternalLink
-                aria-hidden="true"
-                className="hidden size-5 shrink-0 opacity-80 min-[360px]:inline"
-              />
-              <span className="sr-only"> (opens in a new tab)</span>
-            </a>
-            {item.altLink && (
-              <a
-                href={item.altLink.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-field-border px-4 py-3 text-center text-lg font-bold outline-hidden hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:px-6"
-              >
-                <span className="min-w-0">{item.altLink.label}</span>
-                <ExternalLink aria-hidden="true" className="size-5 shrink-0" />
+        <div className="min-w-0 space-y-6 [grid-area:rest]">
+          <div className="space-y-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <a href={item.link.url} target="_blank" rel="noopener noreferrer" className={bigLink}>
+                <LinkIcon aria-hidden="true" className="size-6 shrink-0" />
+                <span className="min-w-0">{item.link.label}</span>
+                <ExternalLink
+                  aria-hidden="true"
+                  className="hidden size-5 shrink-0 opacity-80 min-[360px]:inline"
+                />
                 <span className="sr-only"> (opens in a new tab)</span>
               </a>
-            )}
+              {item.altLink && (
+                <a
+                  href={item.altLink.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-field-border px-4 py-3 text-center text-lg font-bold outline-hidden hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:px-6"
+                >
+                  <span className="min-w-0">{item.altLink.label}</span>
+                  <ExternalLink aria-hidden="true" className="size-5 shrink-0" />
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </a>
+              )}
+            </div>
+            <p className="text-base text-muted-foreground">
+              {item.altLink ? "Links open" : `Opens ${destination}`} in a new tab. Come back to this
+              tab when you&apos;re ready.
+            </p>
           </div>
-          <p className="text-base text-muted-foreground">
-            {item.altLink ? "Links open" : `Opens ${destination}`} in a new tab. Come back to this
-            tab when you&apos;re ready.
-          </p>
-        </div>
 
-        <section aria-labelledby="prompts-heading" className="space-y-3">
-          <h2 id="prompts-heading" className="text-xl font-bold">
-            Things to talk about
-          </h2>
-          <ul role="list" className="space-y-3">
-            {item.prompts.map((p, i) => (
-              <li key={i} className="rounded-xl bg-secondary px-4 py-3 text-2xl leading-snug">
-                {p}
-              </li>
-            ))}
-          </ul>
-        </section>
+          <section aria-labelledby="prompts-heading" className="space-y-3">
+            <h2 id="prompts-heading" className="text-xl font-bold">
+              Things to talk about
+            </h2>
+            <ul role="list" className="space-y-3">
+              {item.prompts.map((p, i) => (
+                <li key={i} className="rounded-xl bg-secondary px-4 py-3 text-2xl leading-snug">
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </section>
 
-        <div className="space-y-1">
-          <p className="text-base text-muted-foreground">{item.why}</p>
-          <EvidenceDrawer
-            subject={{
-              name: item.name,
-              caption: item.why,
-              entityId: item.entityId,
-              entityType: item.entityType,
-              evidenceIds: item.evidenceIds,
-              ...(isFavouriteItem(item) ? { source: "favourite" as const } : {}),
-            }}
+          <div className="space-y-1">
+            <p className="text-base text-muted-foreground">{item.why}</p>
+            <EvidenceDrawer
+              subject={{
+                name: item.name,
+                caption: item.why,
+                entityId: item.entityId,
+                entityType: item.entityType,
+                evidenceIds: item.evidenceIds,
+                ...(isFavouriteItem(item) ? { source: "favourite" as const } : {}),
+              }}
+            />
+          </div>
+
+          <Reactions
+            key={item.id}
+            item={item}
+            readOnly={readOnly}
+            draftFor={draftFor}
+            status={statusLine}
+            onReact={react}
+            onDraft={(text) => drafts.current.set(item.id, text)}
+            onSaveNote={saveNote}
           />
         </div>
-
-        <Reactions
-          key={item.id}
-          item={item}
-          readOnly={readOnly}
-          draftFor={draftFor}
-          status={statusLine}
-          onReact={react}
-          onDraft={(text) => drafts.current.set(item.id, text)}
-          onSaveNote={saveNote}
-        />
       </article>
 
       <nav aria-label="Session" className="player-nav space-y-3">

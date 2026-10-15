@@ -182,7 +182,7 @@ export function TasteProfileView() {
 
   if (loadError) {
     return (
-      <div className="space-y-6">
+      <div className="max-w-2xl space-y-6">
         {title}
         <div className="space-y-4 rounded-2xl border bg-card p-5">
           <p role="alert" className="text-lg">
@@ -230,7 +230,7 @@ export function TasteProfileView() {
 
   if (!profile && readOnly) {
     return (
-      <div className="space-y-4">
+      <div className="max-w-2xl space-y-4">
         {title}
         <p className="rounded-2xl border bg-card p-5 text-lg">
           This demo profile is still being prepared with Qloo. Please come back in a few minutes.
@@ -243,7 +243,7 @@ export function TasteProfileView() {
   if (!profile) {
     const nothingConfirmed = seeds !== null && seeds.confirmed === 0;
     return (
-      <div className="space-y-8">
+      <div className="max-w-2xl space-y-8">
         {title}
         <section aria-labelledby="build-heading" className="space-y-4">
           <h2 id="build-heading" className="text-xl font-bold">
@@ -295,18 +295,26 @@ export function TasteProfileView() {
   const learned = profile.items.filter((i) => i.source === "learned").length;
   const found = profile.items.length - favourites - learned;
   const built = new Date(profile.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" });
+  // Phones: one column. Wide screens: the profile on the left, the sessions in a side panel that
+  // stays in view. The DOM order stays the phone order (demo: sessions first, ux W13; a caregiver's own:
+  // after the summary).
+  const aside =
+    "space-y-6 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-2 lg:self-start";
   return (
-    <div className="space-y-10">
-      <div className="space-y-4">
+    <div className="space-y-10 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-x-10 lg:gap-y-10 lg:space-y-0">
+      <div className="space-y-4 lg:col-span-2">
         {title}
         {readOnly && <DemoBanner />}
       </div>
-      {/* On a demo the sessions are the point, so they come first (ux review W13). */}
-      {readOnly && <SessionsPanel profileId={id} readOnly />}
-      {readOnly && <TryDemo profileId={id} name={nickname} />}
-      {/* On a caregiver's own profile it sits with the sessions, once one exists (ux review W9). */}
-      {readOnly && <CompareLink profileId={id} />}
-      <div className="space-y-3">
+      {readOnly && (
+        <aside aria-label="Sessions" className={aside}>
+          <SessionsPanel profileId={id} readOnly />
+          <TryDemo profileId={id} name={nickname} />
+          {/* On a caregiver's own profile it sits with the sessions, once one exists (ux W9). */}
+          <CompareLink profileId={id} />
+        </aside>
+      )}
+      <div className="min-w-0 space-y-3 lg:col-start-1 lg:row-start-2">
         <h2
           ref={readyRef}
           tabIndex={-1}
@@ -350,98 +358,104 @@ export function TasteProfileView() {
         </nav>
       </div>
 
-      {!readOnly && <SessionsPanel profileId={id} readOnly={false} />}
-
-      {DOMAINS.map(({ key, title, icon: Icon }) => {
-        const items = profile.items.filter((i) => i.domain === key);
-        return (
-          <section key={key} aria-labelledby={`domain-${key}`} className="space-y-3">
-            <h2
-              id={`domain-${key}`}
-              tabIndex={-1}
-              className="flex scroll-mt-6 items-center gap-2 text-xl font-bold outline-none"
-            >
-              <Icon aria-hidden="true" className="size-6 text-primary" />
-              {title}
-            </h2>
-            {items.length === 0 ? (
-              <p className="text-base text-muted-foreground">
-                Nothing here this time. The notes below say what Qloo returned and what was left
-                out.
-              </p>
-            ) : (
-              <ul role="list" className="grid gap-3 sm:grid-cols-2">
-                {items.map((item) => (
-                  <ItemCard key={`${key}-${item.entityId}`} item={item} />
-                ))}
-              </ul>
-            )}
-          </section>
-        );
-      })}
-
-      {profile.steps.length > 0 && (
-        <section aria-labelledby="built-heading" className="space-y-3">
-          <h2 id="built-heading" className="flex items-center gap-2 text-xl font-bold">
-            <ListChecks aria-hidden="true" className="size-6 text-primary" />
-            How Memory Lane built this
-          </h2>
-          <details className="rounded-xl border bg-card p-4">
-            <summary className="flex min-h-12 cursor-pointer items-center text-base font-bold">
-              The agent&apos;s {profile.steps.length} steps, as it worked
-            </summary>
-            <ol className="mt-3 list-decimal space-y-2 pl-6 text-base">
-              {profile.steps.map((step, i) => (
-                <li key={i}>{step}</li>
-              ))}
-            </ol>
-            <p className="mt-3 text-base text-muted-foreground">
-              Each &ldquo;Qloo&rdquo; chip above opens the exact call behind that item.
-            </p>
-          </details>
-        </section>
-      )}
-
-      {profile.notes.length > 0 && (
-        <section aria-labelledby="notes-heading" className="space-y-3">
-          <h2
-            id="notes-heading"
-            tabIndex={-1}
-            className="scroll-mt-6 text-xl font-bold outline-none"
-          >
-            Notes on this version
-          </h2>
-          <ul role="list" className="space-y-2 rounded-xl border bg-card p-4 text-base">
-            {profile.notes.map((n, i) => (
-              <li key={i}>{n}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {!readOnly && (
-        <section aria-labelledby="rebuild-heading" className="space-y-3 border-t pt-6">
-          <h2 id="rebuild-heading" className="text-xl font-bold">
-            Build a fresh version
-          </h2>
-          <p className="text-base text-muted-foreground">
-            Useful after a partly built version, or a few days later. Version {profile.version}{" "}
-            stays unless the new one is ready.
-          </p>
-          <Button
-            variant="outline"
-            className={actionButton}
-            disabled={running}
-            focusableWhenDisabled
-            onClick={build}
-          >
-            {running ? "Building…" : "Build again"}
-          </Button>
-          {progress}
-        </section>
+        <aside aria-label="Sessions" className={aside}>
+          <SessionsPanel profileId={id} readOnly={false} />
+        </aside>
       )}
 
-      <BackLink id={id} />
+      <div className="min-w-0 space-y-10 lg:col-start-1 lg:row-start-3">
+        {DOMAINS.map(({ key, title, icon: Icon }) => {
+          const items = profile.items.filter((i) => i.domain === key);
+          return (
+            <section key={key} aria-labelledby={`domain-${key}`} className="space-y-3">
+              <h2
+                id={`domain-${key}`}
+                tabIndex={-1}
+                className="flex scroll-mt-6 items-center gap-2 text-xl font-bold outline-none"
+              >
+                <Icon aria-hidden="true" className="size-6 text-primary" />
+                {title}
+              </h2>
+              {items.length === 0 ? (
+                <p className="text-base text-muted-foreground">
+                  Nothing here this time. The notes below say what Qloo returned and what was left
+                  out.
+                </p>
+              ) : (
+                <ul role="list" className="grid gap-3 sm:grid-cols-2">
+                  {items.map((item) => (
+                    <ItemCard key={`${key}-${item.entityId}`} item={item} />
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
+
+        {profile.steps.length > 0 && (
+          <section aria-labelledby="built-heading" className="space-y-3">
+            <h2 id="built-heading" className="flex items-center gap-2 text-xl font-bold">
+              <ListChecks aria-hidden="true" className="size-6 text-primary" />
+              How Memory Lane built this
+            </h2>
+            <details className="rounded-xl border bg-card p-4">
+              <summary className="flex min-h-12 cursor-pointer items-center text-base font-bold">
+                The agent&apos;s {profile.steps.length} steps, as it worked
+              </summary>
+              <ol className="mt-3 list-decimal space-y-2 pl-6 text-base">
+                {profile.steps.map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ol>
+              <p className="mt-3 text-base text-muted-foreground">
+                Each &ldquo;Qloo&rdquo; chip above opens the exact call behind that item.
+              </p>
+            </details>
+          </section>
+        )}
+
+        {profile.notes.length > 0 && (
+          <section aria-labelledby="notes-heading" className="space-y-3">
+            <h2
+              id="notes-heading"
+              tabIndex={-1}
+              className="scroll-mt-6 text-xl font-bold outline-none"
+            >
+              Notes on this version
+            </h2>
+            <ul role="list" className="space-y-2 rounded-xl border bg-card p-4 text-base">
+              {profile.notes.map((n, i) => (
+                <li key={i}>{n}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {!readOnly && (
+          <section aria-labelledby="rebuild-heading" className="space-y-3 border-t pt-6">
+            <h2 id="rebuild-heading" className="text-xl font-bold">
+              Build a fresh version
+            </h2>
+            <p className="text-base text-muted-foreground">
+              Useful after a partly built version, or a few days later. Version {profile.version}{" "}
+              stays unless the new one is ready.
+            </p>
+            <Button
+              variant="outline"
+              className={actionButton}
+              disabled={running}
+              focusableWhenDisabled
+              onClick={build}
+            >
+              {running ? "Building…" : "Build again"}
+            </Button>
+            {progress}
+          </section>
+        )}
+
+        <BackLink id={id} />
+      </div>
     </div>
   );
 }

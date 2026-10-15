@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SiteHeader() {
   return (
     <header className="border-b">
       <nav
         aria-label="Main"
-        className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-4 py-3"
+        className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 px-4 py-3"
       >
         <Link
           href="/"
@@ -14,12 +15,15 @@ export function SiteHeader() {
         >
           Memory Lane
         </Link>
-        <Link
-          href="/profiles"
-          className="inline-flex min-h-12 items-center text-base font-bold underline-offset-4 hover:underline"
-        >
-          Your profiles
-        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link
+            href="/profiles"
+            className="inline-flex min-h-12 items-center px-1 text-base font-bold underline-offset-4 hover:underline"
+          >
+            Your profiles
+          </Link>
+        </div>
       </nav>
     </header>
   );
