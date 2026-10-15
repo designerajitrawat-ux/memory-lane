@@ -10,7 +10,8 @@ export const metadata: Metadata = { title: "Session · Memory Lane" };
 export default function SessionPlayerPage() {
   return (
     <>
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">
+      {/* At least a screen tall, so the footer doesn't jump down when the session arrives (CLS). */}
+      <main className="mx-auto min-h-svh w-full max-w-2xl flex-1 px-4 py-6">
         <Suspense fallback={<Loading>Loading the session…</Loading>}>
           <SessionPlayer />
         </Suspense>
