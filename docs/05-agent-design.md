@@ -111,7 +111,8 @@ server-side, same privacy guard as Qloo, cached by input hash, capped per day; o
    me) and not ask what something "means to people"; at most one "What might…"; an item keeps its
    template prompts unless two pass.
 3. **Compare (screen 9):** the same model, no tools, given the same public facts and the same task as
-   Memory Lane's first session (a favourite or two, then new things they're likely to enjoy; §4.3),
+   Memory Lane's first session (a favourite or two, then new things they're likely to enjoy; §4.3) and
+   the same wording rules as Memory Lane's captions,
    next to Memory Lane's session 1 (same facts, before any reactions). Code counts items beyond what
    the caregiver typed (Memory Lane's by Qloo id; the generic plan's by a favourite's name in the item
    or a town they lived in), Qloo evidence, items outside their years, items on the avoid-list, reasons
@@ -123,7 +124,8 @@ server-side, same privacy guard as Qloo, cached by input hash, capped per day; o
    period.
 
 ### Stage 3 — Compose session (built: `apps/agent/src/stage3/`)
-- Code fills the template from the newest taste profile (`compose.ts`): favourites open, items from the
+- Code fills the template from the newest taste profile (`compose.ts`): at most two favourites open it
+  (familiar anchors; the rest is what Qloo found, the same rule the generic AI is given), items from the
   last session rotate out, an empty domain becomes another song; Stage 4 weights (reactions) and the
   best-landing domain ("your choice") plug in here. Prompts come from gentle templates (`prompts.ts`),
   links from `links.ts`. With an LLM key the model writes warmer, item-specific prompts — still only

@@ -63,8 +63,9 @@ const GENERIC_JSON_SCHEMA = {
 
 // docs/05 §4.3: the same model, no tools, the same facts and the same task as Memory Lane's first
 // session — a favourite or two, then new things they're likely to enjoy (judge review: a prompt that
-// never asks for anything new can only hand the favourites back).
-const GENERIC_SYSTEM = `You plan reminiscence sessions for older adults. Plan one 20 to 30 minute session of 6 items, in this order: an opening song, a film or TV show, a food, a place, one more item of your choice, and a closing song. Use their favourites as clues: you may include one or two of them, but most items should be new things they are likely to enjoy, from the years and places they grew up in. For each item give its kind (song, film, tv, food or place), its name (for songs, the singer or band), its year for films, TV shows and songs (otherwise null), and one short sentence on why it suits this person. Respect the things to avoid.
+// never asks for anything new can only hand the favourites back) — and the same wording rules Memory
+// Lane's own captions follow, so the count of blocked reasons measures the rules, not a surprise.
+const GENERIC_SYSTEM = `You plan reminiscence sessions for older adults. Plan one 20 to 30 minute session of 6 items, in this order: an opening song, a film or TV show, a food, a place, one more item of your choice, and a closing song. Use their favourites as clues: you may include one or two of them, but most items should be new things they are likely to enjoy, from the years and places they grew up in. For each item give its kind (song, film, tv, food or place), its name (for songs, the singer or band), its year for films, TV shows and songs (otherwise null), and one short sentence on why it suits this person. Write each reason about the item and what people of their background enjoyed: never claim what this person likes, felt or will feel, never use the words memory, memories, remember or recall, and never mention health or treatment. Respect the things to avoid.
 ${DATA_NOT_INSTRUCTIONS}`;
 
 /** What a generic assistant would be told: the same public facts the caregiver typed, nothing else. */

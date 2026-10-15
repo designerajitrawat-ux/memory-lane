@@ -84,6 +84,23 @@ describe("composeSession", () => {
     expect(items.find((i) => i.kind === "place")?.link.url).toMatch(/google\.com\/maps/);
   });
 
+  it("opens with at most two favourites; the rest is what Qloo found", () => {
+    const favourite = (entityId: string, name: string, domain: TasteItem["domain"]) =>
+      item({ entityId, name, domain, source: "favourite" });
+    const items = composeSession({
+      profile: profileOf([
+        favourite("fav-a", "Favourite Singer", "music"),
+        favourite("fav-b", "Favourite Film", "film_tv"),
+        favourite("fav-c", "Favourite Dish", "food"),
+        favourite("fav-d", "Favourite Place", "places"),
+        ...ITEMS.filter((i) => i.source !== "favourite"),
+      ]),
+      sessionNumber: 1,
+    });
+    expect(items.slice(0, 2).map((i) => i.entityId)).toEqual(["fav-a", "fav-b"]);
+    expect(items.filter((i) => i.entityId.startsWith("fav-"))).toEqual(items.slice(0, 2));
+  });
+
   it("fills empty domains with songs and rotates last session's items out", () => {
     const musicOnly = ITEMS.filter((i) => i.domain === "music");
     const first = composeSession({ profile: profileOf(musicOnly), sessionNumber: 1 });

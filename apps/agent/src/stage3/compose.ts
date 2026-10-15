@@ -35,6 +35,7 @@ export interface ComposeInput {
 
 const MINUTES: Record<SessionItemKind, number> = { song: 4, film: 5, tv: 4, food: 5, place: 5 };
 const FAVOURITE_WHY = "Added as a favourite; Qloo confirmed the match.";
+const MAX_FAVOURITES = 2;
 
 /**
  * Stage 3 (docs/05 §2): the session template (20–30 min) — an opening song, a film or TV memory,
@@ -47,7 +48,12 @@ export function composeSession(input: ComposeInput): ComposedItem[] {
   const recent = input.recent ?? new Set<string>();
   const weights = input.weights ?? new Map<string, number>();
   const used = new Set<string>();
+  let favourites = 0;
 
+  // Familiar anchors first, but at most two favourites a session: the rest is what Qloo found, so a
+  // session is never just the caregiver's own list handed back.
+  const favouriteFirst = (item: TasteItem) =>
+    item.source === "favourite" ? (favourites < MAX_FAVOURITES ? 1 : -1) : 0;
   const pool = (domain: TasteDomain) =>
     profile.items
       .filter((i) => i.domain === domain && !used.has(i.entityId))
@@ -57,14 +63,17 @@ export function composeSession(input: ComposeInput): ComposedItem[] {
         (a, b) =>
           Number(recent.has(a.item.entityId)) - Number(recent.has(b.item.entityId)) ||
           (weights.get(b.item.entityId) ?? 0) - (weights.get(a.item.entityId) ?? 0) ||
-          Number(b.item.source === "favourite") - Number(a.item.source === "favourite") ||
+          favouriteFirst(b.item) - favouriteFirst(a.item) ||
           a.order - b.order,
       )
       .map((x) => x.item);
 
   const take = (domain: TasteDomain): TasteItem | null => {
     const next = pool(domain)[0] ?? null;
-    if (next) used.add(next.entityId);
+    if (next) {
+      used.add(next.entityId);
+      if (next.source === "favourite") favourites++;
+    }
     return next;
   };
 
