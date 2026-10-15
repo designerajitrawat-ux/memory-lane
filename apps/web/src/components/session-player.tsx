@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api, type ApiFailureKind } from "@/lib/api";
 
 // The picture's frame: a share of the screen's height (not rem, which grows with text), within limits.
-const PLAYER_FRAME = "h-[clamp(160px,30svh,340px)] w-full rounded-xl";
+const PLAYER_FRAME = "h-[clamp(140px,24svh,320px)] w-full rounded-xl";
 
 const bigLink =
   "inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-4 py-3 text-center text-lg font-bold text-primary-foreground outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto sm:px-6";

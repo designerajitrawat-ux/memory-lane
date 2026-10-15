@@ -19,7 +19,7 @@
 - Imagery: no stock photos of sad elderly people. The pictures are the items themselves: Qloo's own
   photo, poster or place image for each item (from its API, through the image optimizer), decorative for
   screen readers (alt="", the name is always next to it). Thumbnails (plan, taste, summary) fall back to
-  the kind icon on a warm tile; the player shows a picture only when there is one (a failed load keeps the
+  the kind icon on a warm tile; the player shows a picture only when there is one, in a frame about a quarter of the screen high (a failed load keeps the
   frame with the icon); the confirm screen shows pictures only when every match has one; the landing
   strip and demo picker show only the pictures there are. Beside text, pictures stack above it or hide
   when the screen is narrow for the text size (rem breakpoints). No pictures on the compare page.
