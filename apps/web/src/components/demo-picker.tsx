@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, MapPin } from "lucide-react";
 import type { DemoProfile } from "@memory-lane/shared";
 import { Loading } from "@/components/loading";
+import { QlooImage } from "@/components/qloo-image";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 
@@ -152,6 +153,22 @@ export function DemoPicker() {
                   ))}
                 </span>
               </p>
+              {d.preview.length > 0 && (
+                // A glimpse of their profile: Qloo's pictures, favourites first (decorative).
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none grid max-w-sm grid-cols-4 gap-2"
+                >
+                  {d.preview.slice(0, 4).map((src) => (
+                    <QlooImage
+                      key={src}
+                      src={src}
+                      sizes="(min-width: 640px) 96px, 22vw"
+                      className="aspect-square w-full rounded-lg"
+                    />
+                  ))}
+                </div>
+              )}
               {d.favourites.length > 0 && (
                 <p className="text-base">
                   <span className="font-bold">Favourites: </span>

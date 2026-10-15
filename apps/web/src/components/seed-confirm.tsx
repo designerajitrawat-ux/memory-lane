@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { Candidate, ResolveProblem, SeedResolution } from "@memory-lane/shared";
 import { AgentLog, ProblemBanner } from "@/components/agent-run";
+import { QlooImage } from "@/components/qloo-image";
 import { Button } from "@/components/ui/button";
 import { api, type ApiFailureKind } from "@/lib/api";
 
@@ -29,23 +30,27 @@ function CandidateLabel({ c }: { c: Candidate }) {
     (x): x is string => !!x,
   );
   return (
-    <span className="block">
-      <span className="block">
-        {parts.map((part, i) => (
-          <span key={i} className={i === 0 ? "font-bold" : undefined}>
-            {i > 0 && (
-              <>
-                <span aria-hidden="true"> · </span>
-                <span className="sr-only">, </span>
-              </>
-            )}
-            {part}
-          </span>
-        ))}
+    <span className="flex items-start gap-3">
+      {/* Qloo's picture of the best match helps a caregiver say "yes, that's him". */}
+      <QlooImage src={c.image} sizes="96px" className="size-14 rounded-lg" />
+      <span className="block min-w-0 flex-1">
+        <span className="block">
+          {parts.map((part, i) => (
+            <span key={i} className={i === 0 ? "font-bold" : undefined}>
+              {i > 0 && (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  <span className="sr-only">, </span>
+                </>
+              )}
+              {part}
+            </span>
+          ))}
+        </span>
+        {c.description && (
+          <span className="mt-0.5 block text-base text-muted-foreground">{c.description}</span>
+        )}
       </span>
-      {c.description && (
-        <span className="mt-0.5 block text-base text-muted-foreground">{c.description}</span>
-      )}
     </span>
   );
 }

@@ -101,6 +101,7 @@ export const seeds = pgTable(
     displayName: text("display_name"),
     year: integer("year"), // from the chosen Qloo match (films, TV)
     description: text("description"), // Qloo's one line about the chosen match
+    imageUrl: text("image_url"), // Qloo's picture of the chosen match (images.qloo.com only)
     status: text("status").notNull().default("pending"), // pending | needs_input | confirmed | rejected | unresolved
     note: text("note"), // SeedNote: why it wasn't matched / couldn't be checked; fixed text in the UI
     source: text("source").notNull().default("caregiver"), // caregiver | learned
@@ -154,6 +155,7 @@ export const seedCandidates = pgTable(
     entityType: text("entity_type"), // raw Qloo type URN: urn:entity:artist, urn:tag:cuisine:qloo, …
     year: integer("year"),
     description: text("description"), // one line from Qloo to tell same-name matches apart
+    imageUrl: text("image_url"), // Qloo's picture (the best match only; images.qloo.com only)
     evidenceId: uuid("evidence_id")
       .notNull()
       .references(() => qlooCalls.id),
@@ -227,6 +229,7 @@ export const sessionItems = pgTable(
     link: jsonb("link").notNull(),
     altLink: jsonb("alt_link"),
     evidenceIds: text("evidence_ids").array().notNull(),
+    imageUrl: text("image_url"), // Qloo's picture, to look at together (images.qloo.com only)
     reaction: text("reaction"), // sang | engaged | neutral | distressed
     note: text("note"), // the caregiver's own words; never sent to Qloo
     reactedAt: timestamp("reacted_at", { withTimezone: true }),

@@ -76,7 +76,8 @@ The project must stay available **free and unrestricted** for judges until the j
 - Third-party APIs, SDKs, and data must be used within their licences. This applies to the Claude API, music
   links, and similar.
 - Submissions must be original work owned by the team and must not infringe IP. Do not embed copyrighted
-  songs, film clips, lyrics, or posters.
+  songs, film clips or lyrics. Pictures (artist photos, posters, places) appear only as Qloo's own image
+  URLs from its API, shown through the web app's image optimizer; we never store, re-host or commit them.
 - Multiple submissions are allowed only if they are substantially different. We are making one.
 - Each project can win at most one prize.
 - Winners must complete identity and tax forms (W-8BEN for non-US residents).

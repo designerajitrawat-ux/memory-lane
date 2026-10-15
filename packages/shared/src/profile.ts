@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { QlooImageSchema } from "./image";
 import {
   DIGIT,
   EMAIL,
@@ -182,6 +183,8 @@ export const DemoProfileSchema = z.object({
   regions: z.array(z.string()),
   /** A few confirmed favourites, as hints on the demo picker. */
   favourites: z.array(z.string()),
+  /** Up to six of Qloo's pictures from their Life Taste Profile, favourites first. */
+  preview: z.array(QlooImageSchema).default([]),
   /** The newest session (the one Stage 4 learned), for a direct link. */
   latestSessionId: z.string().nullable().default(null),
 });

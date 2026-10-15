@@ -1,4 +1,5 @@
 import type { Domain, QlooEnvelope } from "@memory-lane/shared";
+import { imageFrom } from "../qloo/image";
 
 export interface MappedCandidate {
   entityId: string;
@@ -8,6 +9,8 @@ export interface MappedCandidate {
   year: number | null;
   /** One line from Qloo that helps tell same-name matches apart (shown, never sent anywhere). */
   description: string | null;
+  /** Qloo's picture, when its full record is in the answer (the selected match). */
+  image?: string | null;
 }
 
 export const MAX_CANDIDATES = 5;
@@ -42,13 +45,15 @@ export function mapDescribe(envelope: QlooEnvelope): MappedCandidate[] {
       : null;
   if (!selected) return fromResults(results);
 
-  // The selected entity's full record (year, description) is in `results`.
+  // The selected entity's full record (year, description, picture) is in `results`.
   const detail = results.find((r) => str(r.entity_id ?? r.id) === selected.entityId);
   if (detail) {
     const props = obj(detail.properties) ?? {};
     selected.year = yearOf(props.release_year ?? props.year ?? props.release_date) ?? selected.year;
     selected.description ??=
       short(str(props.short_description ?? props.description)) ?? addressLine(props.address);
+    const image = imageFrom(props);
+    if (image) selected.image = image;
   }
 
   const isPlace = PLACE_TYPES.has(selected.entityType ?? "");
@@ -124,6 +129,8 @@ function fromResults(results: Rec[]): MappedCandidate[] {
       yearOf(props.release_year ?? r.release_year ?? props.release_date ?? r.release_date),
       short(str(props.short_description ?? props.description)),
     );
+    const image = imageFrom(props);
+    if (c && image) c.image = image;
     if (c) out.push(c);
     if (out.length >= MAX_CANDIDATES) break;
   }

@@ -20,6 +20,8 @@ export interface ComposedItem {
   link: Link;
   altLink: Link | null;
   evidenceIds: string[];
+  /** Qloo's picture of it, to look at together; dishes have none. */
+  image?: string | null;
 }
 
 export interface ComposeInput {
@@ -122,6 +124,7 @@ export function composeSession(input: ComposeInput): ComposedItem[] {
       link,
       altLink,
       evidenceIds: item.evidenceIds,
+      image: item.image ?? null,
     };
   });
 }

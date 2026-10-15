@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import {
+  qlooImageOrNull,
   SEED_NOTE_MESSAGES,
   type ConfirmRequest,
   type SeedNote,
@@ -59,6 +60,7 @@ export function createResolutionStore(db: AppDb): ResolutionStore {
             entityType: c.entityType,
             year: c.year,
             description: c.description,
+            imageUrl: qlooImageOrNull(c.image),
             evidenceId,
           })),
         );
@@ -109,6 +111,7 @@ export function createResolutionStore(db: AppDb): ResolutionStore {
                     type: typeLabel(c.entityType),
                     year: c.year,
                     description: c.description,
+                    image: qlooImageOrNull(c.imageUrl),
                   }))
               : [],
           note,
@@ -147,6 +150,7 @@ export function createResolutionStore(db: AppDb): ResolutionStore {
               displayName: c.name,
               year: c.year,
               description: c.description,
+              imageUrl: qlooImageOrNull(c.imageUrl),
               evidenceId: c.evidenceId,
             })
             .where(eq(seeds.id, seed.id));

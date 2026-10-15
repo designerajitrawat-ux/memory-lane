@@ -25,6 +25,7 @@ import { AgentLog, ProblemBanner } from "@/components/agent-run";
 import { DemoBanner } from "@/components/demo-banner";
 import { EvidenceDrawer } from "@/components/evidence-drawer";
 import { Loading, useAfter } from "@/components/loading";
+import { ItemThumb } from "@/components/qloo-image";
 import { TryDemo } from "@/components/try-demo";
 import { Button } from "@/components/ui/button";
 import { api, type ApiFailureKind } from "@/lib/api";
@@ -465,23 +466,32 @@ function ItemCard({ item }: { item: TasteItem }) {
               : "Found by Qloo"}
         </span>
       )}
-      <div className="min-w-0">
-        <h3 className="font-heading text-xl leading-snug break-words">{item.name}</h3>
-        {meta.length > 0 && (
-          <p className="text-base text-muted-foreground">
-            {meta.map((m, i) => (
-              <span key={i}>
-                {i > 0 && (
-                  <>
-                    <span aria-hidden="true"> · </span>
-                    <span className="sr-only">, </span>
-                  </>
-                )}
-                {m}
-              </span>
-            ))}
-          </p>
-        )}
+      <div className="flex min-w-0 items-start gap-3">
+        {/* Qloo's picture (artist, poster, place) or the kind icon for a dish. */}
+        <ItemThumb
+          image={item.image}
+          icon={DOMAINS.find((d) => d.key === item.domain)?.icon ?? Music}
+          className="size-20 rounded-xl"
+          iconClassName="size-8"
+        />
+        <div className="min-w-0 flex-1">
+          <h3 className="font-heading text-xl leading-snug break-words">{item.name}</h3>
+          {meta.length > 0 && (
+            <p className="text-base text-muted-foreground">
+              {meta.map((m, i) => (
+                <span key={i}>
+                  {i > 0 && (
+                    <>
+                      <span aria-hidden="true"> · </span>
+                      <span className="sr-only">, </span>
+                    </>
+                  )}
+                  {m}
+                </span>
+              ))}
+            </p>
+          )}
+        </div>
       </div>
       {/* A favourite's badge says why it is here; Qloo's one line says more than repeating that. */}
       <p className="flex-1 text-base break-words">

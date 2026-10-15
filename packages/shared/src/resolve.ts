@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { QlooImageSchema } from "./image";
 import { SeedNoteSchema, SeedStatusSchema, type SeedNote } from "./profile";
 
 /**
@@ -14,6 +15,8 @@ export const CandidateSchema = z.object({
   year: z.number().int().nullable(),
   /** One line from Qloo that helps tell same-name matches apart. */
   description: z.string().nullable(),
+  /** Qloo's picture of it, when Qloo has one (the best match only). */
+  image: QlooImageSchema.nullable().optional(),
 });
 
 export const SeedResolutionSchema = z.object({

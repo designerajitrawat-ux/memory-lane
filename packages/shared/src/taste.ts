@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { QlooImageSchema } from "./image";
 import { ResolveProblemSchema } from "./resolve";
 
 /**
@@ -33,6 +34,8 @@ export const TasteItemSchema = z.object({
   evidenceIds: z.array(z.string()).min(1),
   /** Places Qloo found near a town: that town, so map searches find the right one. */
   locality: z.string().nullable().optional(),
+  /** Qloo's picture of it (artist photo, poster, place); dishes have none. */
+  image: QlooImageSchema.nullable().optional(),
 });
 
 export const TasteProfileSchema = z.object({

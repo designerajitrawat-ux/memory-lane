@@ -1,10 +1,11 @@
 import { and, asc, count, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
-import type {
-  DemoProfile,
-  ProfileInputParsed,
-  ProfileSummary,
-  ProfileView,
-  TasteItem,
+import {
+  qlooImageOrNull,
+  type DemoProfile,
+  type ProfileInputParsed,
+  type ProfileSummary,
+  type ProfileView,
+  type TasteItem,
 } from "@memory-lane/shared";
 import {
   avoidItems,
@@ -243,6 +244,12 @@ export function createProfileStore(
           .where(eq(sessions.profileId, p.id))
           .orderBy(desc(sessions.number))
           .limit(1);
+        const [taste] = await db
+          .select({ items: tasteProfiles.items })
+          .from(tasteProfiles)
+          .where(eq(tasteProfiles.profileId, p.id))
+          .orderBy(desc(tasteProfiles.version))
+          .limit(1);
         out.push({
           id: p.id,
           nickname: p.nickname,
@@ -252,6 +259,7 @@ export function createProfileStore(
             .filter((s) => s.status === "confirmed")
             .slice(0, 8)
             .map((s) => s.displayName ?? s.rawText),
+          preview: previewImages((taste?.items as TasteItem[] | undefined) ?? []),
           latestSessionId: latest?.id ?? null,
         });
       }
@@ -370,6 +378,7 @@ export function createProfileStore(
                   displayName: seed.displayName,
                   year: seed.year,
                   description: seed.description,
+                  imageUrl: seed.imageUrl,
                   status: seed.status,
                   source: seed.source,
                   evidenceId,
@@ -422,4 +431,13 @@ export function createProfileStore(
       return rows.length > 0;
     },
   };
+}
+
+/** Up to six of Qloo's pictures from a Life Taste Profile for the demo picker, favourites first. */
+export function previewImages(items: readonly TasteItem[]): string[] {
+  const images = [...items]
+    .sort((a, b) => Number(b.source === "favourite") - Number(a.source === "favourite"))
+    .map((i) => qlooImageOrNull(i.image))
+    .filter((url): url is string => url !== null);
+  return [...new Set(images)].slice(0, 6);
 }

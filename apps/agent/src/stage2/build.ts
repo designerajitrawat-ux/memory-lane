@@ -15,6 +15,7 @@ import { llmSafeTopics } from "../llm/topics";
 import { proposeNames } from "./propose";
 import { bumpDistance, eraFor, eraPlacement, yearFits, type Era, type EraPlacement } from "./era";
 import type { ConfirmedSeed, TasteStore } from "./store";
+import { imageFrom } from "../qloo/image";
 import { captionAllowed } from "./language";
 import { validateTasteItems } from "./validators";
 
@@ -125,6 +126,8 @@ export interface Found {
   city?: string | null;
   /** The favourites sent in the call that found it, for captions when Qloo names none. */
   sent?: string[];
+  /** Qloo's picture of it (images.qloo.com only); food tags have none. */
+  image?: string | null;
 }
 
 type FailCause = "device" | "profile" | "daily" | "outage" | "rejected";
@@ -729,6 +732,7 @@ export async function buildTasteProfile(
       becauseOf: because,
       evidenceIds: [f.evidenceId],
       ...(domain === "places" && where ? { locality: where } : {}),
+      ...(f.image ? { image: f.image } : {}),
     };
   }
 }
@@ -746,6 +750,7 @@ function fromSeed(s: ConfirmedSeed): TasteItem {
     source: "favourite",
     becauseOf: [],
     evidenceIds: [s.evidenceId],
+    ...(s.image ? { image: s.image } : {}),
   };
 }
 
@@ -824,6 +829,7 @@ export function readRecommend(envelope: Rec, evidenceId: string): Found[] {
         evidenceId,
         countryCode: str(obj(props.geocode)?.country_code)?.toUpperCase() ?? null,
         city: str(obj(props.geocode)?.city) ?? null,
+        image: imageFrom(props),
       },
     ];
   });

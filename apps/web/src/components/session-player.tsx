@@ -8,6 +8,7 @@ import type { Reaction, Session, SessionItem } from "@memory-lane/shared";
 import { DemoBanner } from "@/components/demo-banner";
 import { EvidenceDrawer } from "@/components/evidence-drawer";
 import { Loading } from "@/components/loading";
+import { QlooImage } from "@/components/qloo-image";
 import { TryDemo } from "@/components/try-demo";
 import { KIND_ICONS, REACTIONS, isFavouriteItem, slotLabel } from "@/components/session-labels";
 import { Button } from "@/components/ui/button";
@@ -422,6 +423,14 @@ export function SessionPlayer() {
           <Icon aria-hidden="true" className="size-6 shrink-0" />
           {slotLabel(item, step, total)} · {item.minutes} min
         </p>
+        {/* Something to look at together: Qloo's photo, poster or place, whole, in a fixed frame. */}
+        <QlooImage
+          key={item.id}
+          src={item.image}
+          sizes="(min-width: 640px) 560px, 90vw"
+          fit="contain"
+          className="h-64 w-full rounded-xl sm:h-80"
+        />
         <h1
           id="item-title"
           ref={titleRef}

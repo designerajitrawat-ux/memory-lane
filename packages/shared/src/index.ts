@@ -1,4 +1,5 @@
 export * from "./health";
+export * from "./image";
 export * from "./pii";
 export * from "./profile";
 export * from "./qloo";

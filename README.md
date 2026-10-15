@@ -46,7 +46,8 @@ aid, not a treatment (evidence on agitation is mixed:
 1. **Favourites.** A caregiver adds a few public favourites (a singer, a film, a dish, a place), where
    the person grew up (town level) and anything to avoid. No personal details.
 2. **Match them in Qloo.** Each favourite is looked up in Qloo; when there are several matches, the
-   caregiver picks one. Nothing unconfirmed is used.
+   caregiver picks one (with Qloo's picture of the best match: "yes, that's him"). Nothing unconfirmed
+   is used.
 3. **Life Taste Profile.** From the confirmed Qloo IDs the agent asks Qloo, domain by domain, what people
    with the same favourites also enjoy: singers from the singers they love, films and TV from their
    films and shows, places in and around where they grew up, dishes from Qloo's food tags. Code keeps
@@ -59,6 +60,7 @@ aid, not a treatment (evidence on agitation is mixed:
    ("Ramayan" 1987, 2008…), the agent picks the one from their years.
 4. **Session.** A 25-minute plan: opening song, a film or TV memory, food, a place, "your choice",
    closing song. At most two favourites open it as familiar anchors; the rest is what Qloo found.
+   Every item shows Qloo's own picture (the singer, the film poster, the place) to look at together.
    Gentle, item-specific prompts written by the AI from Qloo's description of each item and checked
    like everything else (spoken to the person, invite, never test; no memory words; the avoid-list).
    Links to YouTube, Spotify or Google Maps. Printable for a care-home folder.
@@ -179,6 +181,8 @@ full result lists are not stored in this public repo, per Qloo's developer guide
   same guard. The caregiver's notes never leave Memory Lane and refuse health or contact details.
 - **Aggregate wording.** Captions describe what groups enjoy, never what this person will like.
   Validators block claims about the person and any treatment wording; prompts are never memory tests.
+- **No media hosted.** Songs and films open as YouTube or Spotify searches, places as map searches;
+  pictures are Qloo's own image URLs, shown through the image optimizer and never stored or committed.
 - **Honest states.** No Qloo key, quota or outage → the app says so (and points to the demos); it never
   invents items. A build that couldn't reach Qloo never replaces a good version.
 - **Data.** No login (an owner token on the device); "Delete this profile" removes the profile, its

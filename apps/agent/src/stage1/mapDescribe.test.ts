@@ -19,6 +19,8 @@ describe("mapDescribe", () => {
         entityType: "urn:entity:artist",
         year: null,
         description: "Example singer known for example songs.",
+        // Qloo's picture comes with the selected match's full record; alternatives have none.
+        image: "https://images.qloo.com/i/00000000-0000-4000-8000-00000000000a-420x-auto.jpg",
       },
       {
         entityId: "00000000-0000-4000-8000-00000000000b",

@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, lte, max } from "drizzle-orm";
-import type { TasteItem, TasteProfile } from "@memory-lane/shared";
+import { qlooImageOrNull, type TasteItem, type TasteProfile } from "@memory-lane/shared";
 import { avoidItems, profiles, qlooCalls, seeds, tasteProfiles } from "../db/schema";
 import type { AppDb } from "../db/types";
 import type { DigestItem } from "../qloo/evidence";
@@ -12,6 +12,8 @@ export interface ConfirmedSeed {
   entityType: string | null;
   year: number | null;
   description: string | null;
+  /** Qloo's picture of the chosen match, if it has one. */
+  image?: string | null;
   evidenceId: string;
 }
 
@@ -92,6 +94,7 @@ export function createTasteStore(db: AppDb): TasteStore {
                   entityType: s.qlooEntityType,
                   year: s.year,
                   description: s.description,
+                  image: qlooImageOrNull(s.imageUrl),
                   evidenceId: s.evidenceId,
                 },
               ]

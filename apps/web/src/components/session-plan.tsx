@@ -8,6 +8,7 @@ import type { Session } from "@memory-lane/shared";
 import { DemoBanner } from "@/components/demo-banner";
 import { EvidenceDrawer } from "@/components/evidence-drawer";
 import { Loading } from "@/components/loading";
+import { ItemThumb } from "@/components/qloo-image";
 import {
   KIND_ICONS,
   REACTION_LABEL,
@@ -145,11 +146,9 @@ export function SessionPlan() {
             const Icon = KIND_ICONS[item.kind];
             return (
               <li key={item.id} className="print-plain flex gap-4 rounded-2xl border bg-card p-4">
-                <span
-                  aria-hidden="true"
-                  className="hidden size-12 shrink-0 items-center justify-center rounded-full bg-secondary text-primary min-[24rem]:flex"
-                >
-                  <Icon className="size-6" />
+                {/* Qloo's picture (or the kind icon), from phone width up (px: rem grows with text). */}
+                <span className="hidden min-[340px]:block">
+                  <ItemThumb image={item.image} icon={Icon} eager />
                 </span>
                 <div className="min-w-0 flex-1 space-y-1">
                   <p className="text-base font-bold text-muted-foreground">

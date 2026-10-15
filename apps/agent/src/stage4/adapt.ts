@@ -361,5 +361,6 @@ function learnedItem(f: Found, domain: TasteDomain, from: string[]): TasteItem {
     source: "learned",
     becauseOf: because,
     evidenceIds: [f.evidenceId],
+    ...(f.image ? { image: f.image } : {}),
   };
 }

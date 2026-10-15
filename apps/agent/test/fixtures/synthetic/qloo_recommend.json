@@ -31,7 +31,8 @@
         },
         "properties": {
           "release_year": 1962,
-          "description": "Example Film One (1962) is an example drama."
+          "description": "Example Film One (1962) is an example drama.",
+          "image": { "url": "https://images.qloo.com/i/00000000-0000-4000-8000-000000000101-420x-auto.jpg" }
         }
       },
       {
@@ -41,7 +42,8 @@
         "subtype": "urn:entity:movie",
         "properties": {
           "release_year": 1971,
-          "description": "Example Film Two (1971) is an example musical."
+          "description": "Example Film Two (1971) is an example musical.",
+          "image": { "url": "https://elsewhere.example/i/not-a-qloo-image.jpg" }
         }
       },
       {

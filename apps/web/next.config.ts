@@ -23,6 +23,13 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   transpilePackages: ["@memory-lane/shared"],
+  // Qloo's own pictures of items, resized and served from this site (img-src stays 'self'): the
+  // browser never contacts Qloo, and nothing is stored by us. Qloo's image files never change, so the
+  // optimizer keeps its copies for a month.
+  images: {
+    remotePatterns: [new URL("https://images.qloo.com/i/**")],
+    minimumCacheTTL: 2_678_400,
+  },
   turbopack: {
     rules: {
       "*.css": {

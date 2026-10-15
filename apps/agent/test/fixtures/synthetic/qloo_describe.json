@@ -53,7 +53,10 @@
       {
         "entity_id": "00000000-0000-4000-8000-00000000000a",
         "name": "Example Artist A",
-        "properties": { "short_description": "Example singer known for example songs." }
+        "properties": {
+          "short_description": "Example singer known for example songs.",
+          "image": { "url": "https://images.qloo.com/i/00000000-0000-4000-8000-00000000000a-420x-auto.jpg" }
+        }
       }
     ],
     "result_count": 1,

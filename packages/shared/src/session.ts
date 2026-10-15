@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { QlooImageSchema } from "./image";
 import { personalDetailProblem } from "./pii";
 import { TasteDomainSchema } from "./taste";
 
@@ -38,6 +39,8 @@ export const SessionItemSchema = z.object({
   link: SessionLinkSchema,
   altLink: SessionLinkSchema.nullable(),
   evidenceIds: z.array(z.string()).min(1),
+  /** Qloo's picture of it, to look at together; dishes have none. */
+  image: QlooImageSchema.nullable().optional(),
   reaction: ReactionSchema.nullable(),
   /** The caregiver's own note; stays in Memory Lane (never sent to Qloo). */
   note: z.string().nullable(),

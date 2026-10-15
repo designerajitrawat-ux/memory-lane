@@ -1,10 +1,11 @@
 import { and, asc, count, desc, eq, inArray, isNotNull, lte, max, sql } from "drizzle-orm";
-import type {
-  Reaction,
-  Session,
-  SessionItem,
-  SessionLinkSchema,
-  SessionSummary,
+import {
+  qlooImageOrNull,
+  type Reaction,
+  type Session,
+  type SessionItem,
+  type SessionLinkSchema,
+  type SessionSummary,
 } from "@memory-lane/shared";
 import type { z } from "zod";
 import { avoidItems, profiles, sessionItems, sessions } from "../db/schema";
@@ -87,6 +88,7 @@ export function createSessionStore(db: AppDb): SessionStore {
     link: r.link as Link,
     altLink: (r.altLink as Link | null) ?? null,
     evidenceIds: r.evidenceIds,
+    image: qlooImageOrNull(r.imageUrl),
     reaction: (r.reaction as Reaction | null) ?? null,
     note: r.note,
   });
@@ -168,6 +170,7 @@ export function createSessionStore(db: AppDb): SessionStore {
               link: i.link,
               altLink: i.altLink,
               evidenceIds: i.evidenceIds,
+              imageUrl: qlooImageOrNull(i.image),
             })),
           );
         }

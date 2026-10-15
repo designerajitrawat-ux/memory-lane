@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HeartHandshake, ListChecks, Music, ShieldCheck } from "lucide-react";
+import { DemoGlimpse } from "@/components/demo-glimpse";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { SystemStatus } from "@/components/system-status";
 
@@ -68,6 +69,7 @@ export default function Home() {
               How it works
             </Link>
           </div>
+          <DemoGlimpse />
         </section>
 
         <section aria-labelledby="steps-heading" className="space-y-4">

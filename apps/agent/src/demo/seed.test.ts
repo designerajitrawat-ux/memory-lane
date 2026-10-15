@@ -3,6 +3,7 @@ import {
   DemoProfilesResponseSchema,
   ProfileInputSchema,
   SessionResponseSchema,
+  TasteProfileSchema,
   TryDemoResponseSchema,
 } from "@memory-lane/shared";
 import describeFixture from "../../test/fixtures/synthetic/qloo_describe.json";
@@ -24,6 +25,10 @@ import { DEMO_PERSONAS, demoOwnerHash, demoOwnerPrefix } from "./personas";
 import { STALE_SEED_MS, ensureDemoProfiles } from "./seed";
 
 // SYNTHETIC answers (not Qloo data): every describe matches, every recommend returns era films.
+// SYNTHETIC image URLs from the fixtures (not Qloo data).
+const QLOO_A = "https://images.qloo.com/i/00000000-0000-4000-8000-00000000000a-420x-auto.jpg";
+const QLOO_FILM = "https://images.qloo.com/i/00000000-0000-4000-8000-000000000101-420x-auto.jpg";
+
 const fake: QlooMcpClient = {
   async callTool(name: string): Promise<McpToolResult> {
     if (name === "qloo_describe") return { structuredContent: describeFixture.structuredContent };
@@ -103,6 +108,13 @@ describe("demo personas (the judge path)", () => {
       expect(Array.isArray(evidence.json().results)).toBe(true);
       // The build's own log is kept for "How Memory Lane built this".
       expect(taste.json().tasteProfile.steps.length).toBeGreaterThan(2);
+      // Qloo's pictures travel with the items (the favourite's photo from Stage 1, a recommended
+      // film's poster), never a picture from anywhere else, and the demo picker previews them.
+      const tasteItems = TasteProfileSchema.parse(taste.json().tasteProfile).items;
+      expect(tasteItems.find((i) => i.source === "favourite")?.image).toBe(QLOO_A);
+      expect(tasteItems.find((i) => i.name === "Example Film One")?.image).toBe(QLOO_FILM);
+      expect(tasteItems.find((i) => i.name === "Example Film Two")?.image ?? null).toBeNull();
+      expect(list.profiles[0]?.preview[0]).toBe(QLOO_A);
       const sessions = (
         await app.inject({ method: "GET", url: `/api/profiles/${id}/sessions` })
       ).json().sessions as { id: string; number: number; status: string }[];
@@ -152,6 +164,12 @@ describe("demo personas (the judge path)", () => {
       const triedBody = TryDemoResponseSchema.parse(tried.json());
       expect(triedBody.ownerToken).toBeTruthy();
       expect(triedBody.session.number).toBe(1);
+      // The copy's session shows the same pictures (copied seeds and taste profile).
+      const copyImages = triedBody.session.items.map((i) => i.image ?? null);
+      expect(copyImages.some((url) => url === QLOO_A || url === QLOO_FILM)).toBe(true);
+      expect(
+        copyImages.every((url) => url === null || url.startsWith("https://images.qloo.com/i/")),
+      ).toBe(true);
       expect(triedBody.session.profileId).not.toBe(id);
       const mine = { authorization: `Bearer ${triedBody.ownerToken}` };
       const copyTaste = (

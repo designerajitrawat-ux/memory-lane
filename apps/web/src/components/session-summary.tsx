@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import type { Session } from "@memory-lane/shared";
 import { DemoBanner } from "@/components/demo-banner";
 import { Loading, useAfter } from "@/components/loading";
+import { ItemThumb } from "@/components/qloo-image";
 import { KIND_ICONS, REACTION_LABEL } from "@/components/session-labels";
 import { Button } from "@/components/ui/button";
 import { api, type ApiFailureKind } from "@/lib/api";
@@ -130,7 +131,12 @@ export function SessionSummary() {
           const Icon = KIND_ICONS[item.kind];
           return (
             <li key={item.id} className="flex items-start gap-4 rounded-2xl border bg-card p-4">
-              <Icon aria-hidden="true" className="mt-1 size-6 shrink-0 text-primary" />
+              <ItemThumb
+                image={item.image}
+                icon={Icon}
+                className="size-14 rounded-xl"
+                iconClassName="size-6"
+              />
               <div className="min-w-0 flex-1">
                 <p className="font-heading text-xl leading-snug break-words">{item.name}</p>
                 <p
