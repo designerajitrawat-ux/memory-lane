@@ -5,6 +5,7 @@ import type {
   TasteItem,
   TasteProfile,
 } from "@memory-lane/shared";
+import { HEALTH, normalizeText, personalDetailProblem } from "@memory-lane/shared";
 import type { GatewayResult, QlooGateway } from "../qloo/gateway";
 import { typeLabel } from "../stage1/labels";
 import { normalise, short, str, yearOf } from "../stage1/mapDescribe";
@@ -14,6 +15,7 @@ import { llmSafeTopics } from "../llm/topics";
 import { proposeNames } from "./propose";
 import { bumpDistance, eraFor, eraPlacement, yearFits, type Era, type EraPlacement } from "./era";
 import type { ConfirmedSeed, TasteStore } from "./store";
+import { captionAllowed } from "./language";
 import { validateTasteItems } from "./validators";
 
 export interface TasteInput {
@@ -481,7 +483,7 @@ export async function buildTasteProfile(
         years: { from: era.from, to: era.to },
         favourites: entitySeeds.map((s) => s.name),
         alreadyHave: [...music, ...filmTv].map((i) => i.name),
-        thingsToAvoid: llmSafeTopics(ctx.avoid),
+        thingsToAvoid: llmSafeTopics(ctx.avoid, input.nickname),
         need: { tvShows: needTv, singers: needSingers },
       },
       deps.llm,
@@ -491,9 +493,15 @@ export async function buildTasteProfile(
         ...(deps.allowLlm ? { allow: deps.allowLlm } : {}),
       },
     );
-    // A proposal that touches the avoid-list or a painful subject is never named, nor sent to Qloo
-    // (security review W1).
-    const safe = (n: string) => !isAvoided(n, null) && !HEAVY.test(n) && !HEAVY_SCREEN.test(n);
+    // A proposal that touches the avoid-list, a painful subject, health or personal details is never
+    // named, nor sent to Qloo (security review W1, S2).
+    const safe = (n: string) =>
+      !isAvoided(n, null) &&
+      !HEAVY.test(n) &&
+      !HEAVY_SCREEN.test(n) &&
+      !HEALTH.test(normalizeText(n)) &&
+      personalDetailProblem(n) === null &&
+      captionAllowed(n);
     const proposal = asked && {
       tvShows: asked.tvShows.filter(safe),
       singers: asked.singers.filter(safe),

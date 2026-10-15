@@ -16,6 +16,7 @@ import { DATA_NOT_INSTRUCTIONS, llmSafeTopics } from "../llm/topics";
 import type { ProfileStore } from "../profiles/store";
 import { normalise } from "../stage1/mapDescribe";
 import { avoidMatcher } from "../stage2/avoid";
+import { HEAVY, HEAVY_SCREEN } from "../stage2/build";
 import { eraFor, yearFits } from "../stage2/era";
 import { captionAllowed } from "../stage2/language";
 import type { TasteStore } from "../stage2/store";
@@ -67,22 +68,22 @@ const GENERIC_SYSTEM = `You plan reminiscence sessions for older adults. Plan on
 ${DATA_NOT_INSTRUCTIONS}`;
 
 /** What a generic assistant would be told: the same public facts the caregiver typed, nothing else. */
-async function genericInput(profileId: string, deps: CompareDeps) {
+async function genericInput(profileId: string, nickname: string | null, deps: CompareDeps) {
   const ctx = await deps.taste.context(profileId);
   if (!ctx) return null;
-  // The caregiver's own avoid-list (not what sessions learned later); anything personal stays out.
-  const avoid = llmSafeTopics(
-    (
-      await deps.db
-        .select({ text: avoidItems.text })
-        .from(avoidItems)
-        .where(and(eq(avoidItems.profileId, profileId), eq(avoidItems.source, "caregiver")))
-        .orderBy(asc(avoidItems.position))
-    ).map((a) => a.text),
-  );
+  // The caregiver's own avoid-list (not what sessions learned later): all of it for the checks, and
+  // only what is safe to send for the model.
+  const caregiverAvoid = (
+    await deps.db
+      .select({ text: avoidItems.text })
+      .from(avoidItems)
+      .where(and(eq(avoidItems.profileId, profileId), eq(avoidItems.source, "caregiver")))
+      .orderBy(asc(avoidItems.position))
+  ).map((a) => a.text);
+  const avoid = llmSafeTopics(caregiverAvoid, nickname);
   return {
     ctx,
-    avoid,
+    caregiverAvoid,
     input: {
       bornIn: ctx.birthYear,
       livedIn: ctx.regions,
@@ -99,7 +100,7 @@ async function genericPlan(
   deps: CompareDeps,
   opts: { cacheOnly?: boolean; seeding?: boolean; allow?: () => boolean } = {},
 ) {
-  const facts = await genericInput(profileId, deps);
+  const facts = await genericInput(profileId, nickname, deps);
   if (!facts) return null;
   const result = await deps.llm.json<GenericPlan>({
     task: "compare",
@@ -130,10 +131,21 @@ const key = (kind: string, name: string) => {
 };
 
 /**
- * A reason Memory Lane would never show (security review W4): claims about the person, memory words,
- * medical or personal details. It is counted, and replaced with fixed text on the page.
+ * Model text Memory Lane would never show (security review W4, W1): claims about the person, memory
+ * words, medical or personal details, the avoid-list, painful subjects. A reason that fails is counted
+ * and replaced with fixed text on the page; a name that fails is hidden too.
  */
-export const reasonBlocked = (why: string) =>
+export const textBlocked = (text: string, isAvoided: (...fields: (string | null)[]) => boolean) =>
+  isAvoided(text) || HEAVY.test(text) || HEAVY_SCREEN.test(text) || reasonBlocked(text);
+
+/** A title may say "Memories" (a 1955 hit does); it may not carry painful, medical or personal words. */
+const nameBlocked = (name: string) =>
+  HEAVY.test(name) ||
+  HEAVY_SCREEN.test(name) ||
+  HEALTH.test(normalizeText(name)) ||
+  personalDetailProblem(name) !== null;
+
+const reasonBlocked = (why: string) =>
   !captionAllowed(why) ||
   /\b(remember|recall|forget|forgot|forgotten|memory|memories)\b/i.test(why) ||
   HEALTH.test(normalizeText(why)) ||
@@ -159,7 +171,8 @@ export async function buildCompare(
   if (!mine) return null;
   const { facts, result } = mine;
   const era = eraFor(facts.ctx.birthYear);
-  const isAvoided = avoidMatcher(facts.avoid);
+  // Flags come from the caregiver's whole list, not just what was safe to send (security review W1).
+  const isAvoided = avoidMatcher(facts.caregiverAvoid);
 
   // "One of their favourites" (judge review): Memory Lane's items by Qloo id, exactly; the generic
   // plan's by a favourite's name inside the item's name ("“Crazy” — Patsy Cline" is Patsy Cline), or a
@@ -231,17 +244,21 @@ export async function buildCompare(
     result.kind === "ok"
       ? plan(
           result.data.items.map((i) => {
-            const blocked = reasonBlocked(i.why);
+            const avoided = isAvoided(i.name, i.why);
+            // A name only on the avoid-list (the caregiver's own words) is shown: that is the point
+            // of the count. A name failing anything else is hidden (security review S1).
+            const nameHidden = nameBlocked(i.name);
+            const blocked = nameHidden || textBlocked(i.why, isAvoided);
             const matched = genericMatch(i.kind, i.name);
             return {
               kind: i.kind,
-              name: i.name,
+              name: nameHidden ? "(name hidden)" : i.name,
               year: i.year,
               // Only wording that passes Memory Lane's own checks is shown.
-              why: blocked ? "" : i.why,
+              why: blocked || avoided ? "" : i.why,
               evidence: 0,
               outsideYears: dated(i.kind, i.year),
-              avoided: isAvoided(i.name, i.why),
+              avoided,
               sharedWith: sharedIn(otherGeneric, i.kind, i.name),
               fromFavourites: matched !== null,
               matched,

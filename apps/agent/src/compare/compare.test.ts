@@ -54,7 +54,12 @@ const fakeLlm: LlmClient = {
               { kind: "food", name: "Apple Pie", year: null, why: "Comforting." },
               { kind: "place", name: "Dayton", year: null, why: "She will love a day out." },
               { kind: "film", name: "Unchained Melody", year: 1997, why: "A love story." },
-              { kind: "song", name: "Famous Band", year: 1964, why: "Everyone sang along." },
+              {
+                kind: "song",
+                name: "Famous Band",
+                year: 1964,
+                why: "Songs people sang after the massacre.",
+              },
             ],
           }
         : req.task === "prompts"
@@ -163,10 +168,18 @@ describe("with vs without Qloo (compare) and the LLM's prompts", () => {
       expect(
         ours.items.every((i) => (i.matched === "One of their favourites") === i.fromFavourites),
       ).toBe(true);
-      // A reason that speaks for the person is counted and never shown.
-      expect(generic.wordingBlocked).toBe(1);
+      // Reasons that speak for the person or dwell on a painful subject are counted and never
+      // shown; an item on the avoid-list keeps its name (the caregiver's words) but not its reason.
+      expect(generic.wordingBlocked).toBe(2);
       expect(generic.items[3]).toMatchObject({ why: "", wordingBlocked: true });
-      expect(JSON.stringify(compare)).not.toContain("She will love");
+      expect(generic.items[5]).toMatchObject({ why: "", wordingBlocked: true });
+      expect(generic.items[4]).toMatchObject({
+        name: "Unchained Melody",
+        why: "",
+        avoided: true,
+        wordingBlocked: false,
+      });
+      expect(JSON.stringify(compare)).not.toMatch(/She will love|massacre|A love story/);
 
       // Session prompts came from the LLM, minus the memory test.
       const session = SessionResponseSchema.parse(

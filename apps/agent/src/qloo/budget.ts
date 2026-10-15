@@ -61,6 +61,11 @@ export function createRateLimiter(
 ) {
   const hits = new Map<string, number[]>();
   return {
+    /** Whether `tryTake` would succeed now, without taking. */
+    canTake(key: string): boolean {
+      const t = now();
+      return (hits.get(key) ?? []).filter((h) => t - h < windowMs).length < max;
+    },
     tryTake(key: string): boolean {
       const t = now();
       if (hits.size > 10_000) {

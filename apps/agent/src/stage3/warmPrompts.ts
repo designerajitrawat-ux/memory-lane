@@ -85,7 +85,7 @@ export async function warmPrompts(
     input: {
       youngIn,
       grewUpIn: context.regions[0]?.split(",")[0]?.trim() ?? null,
-      thingsToAvoid: llmSafeTopics(context.avoid),
+      thingsToAvoid: llmSafeTopics(context.avoid, nickname),
       items: items.map((i, n) => ({
         n,
         kind: i.kind,

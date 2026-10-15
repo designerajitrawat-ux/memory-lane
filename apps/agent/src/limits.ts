@@ -39,9 +39,16 @@ export function createResearchAllowance(limits: ResearchLimits = {}) {
     budgetReserve: limits.budgetReserve ?? 0,
     take: (ownerHash: string, client: string) =>
       perOwner.tryTake(ownerHash) && perClient.tryTake(client),
-    /** One live LLM call; a visitor on a demo (no device token) counts by network only. */
-    takeLlm: (ownerHash: string | null, client: string) =>
-      (ownerHash === null || llmPerOwner.tryTake(ownerHash)) && llmPerClient.tryTake(client),
+    /**
+     * One live LLM call; a visitor on a demo (no device token) counts by network only. Both limits
+     * are checked before either is taken, so a refusal costs nothing (security review S4).
+     */
+    takeLlm: (ownerHash: string | null, client: string) => {
+      if (ownerHash !== null && !llmPerOwner.canTake(ownerHash)) return false;
+      if (!llmPerClient.canTake(client)) return false;
+      if (ownerHash !== null) llmPerOwner.tryTake(ownerHash);
+      return llmPerClient.tryTake(client);
+    },
   };
 }
 

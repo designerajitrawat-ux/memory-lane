@@ -198,10 +198,12 @@ export function createLlmClient(config: LlmConfig): LlmClient {
       }
       if (req.cacheOnly) return { kind: "miss" };
 
-      const running = inFlight.get(hash);
+      // Seeding never shares a visitor's call: it would inherit their "limit" (security review S3).
+      const slot = `${hash}:${req.seeding ? "seed" : "visit"}`;
+      const running = inFlight.get(slot);
       if (running) return (await running) as LlmResult<T>;
-      const call = live(req, hash).finally(() => inFlight.delete(hash));
-      inFlight.set(hash, call as Promise<LlmResult<unknown>>);
+      const call = live(req, hash).finally(() => inFlight.delete(slot));
+      inFlight.set(slot, call as Promise<LlmResult<unknown>>);
       return call;
     },
   };

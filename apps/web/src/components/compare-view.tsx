@@ -391,7 +391,11 @@ function Item({ item, era, generic }: { item: CompareItem; era: string; generic:
       {item.wordingBlocked ? (
         <p className="text-base text-muted-foreground italic">
           Reason not shown: its wording fails the checks Memory Lane runs on everything it shows
-          (about the person, their memory or their health).
+          (about the person, their memory or health, painful subjects or the avoid-list).
+        </p>
+      ) : item.avoided && !item.why ? (
+        <p className="text-base text-muted-foreground italic">
+          Reason not shown: the item is on the avoid-list.
         </p>
       ) : (
         <p className="text-base [overflow-wrap:anywhere]">{item.why}</p>

@@ -70,7 +70,7 @@ export function checkArgs(args: unknown, ctx: RedactContext): RedactResult {
  * The whole nickname with any separators between its parts, plus each part of 3+ letters on its own.
  * Parts of 4+ letters also match as a word prefix ("Bimlaji", "Bimla's"), 3-letter parts as whole words.
  */
-function nicknamePatterns(nickname: string | null): RegExp[] {
+export function nicknamePatterns(nickname: string | null): RegExp[] {
   const tokens = normalizeText(nickname ?? "")
     .split(/[^\p{L}\p{N}]+/u)
     .filter(Boolean);

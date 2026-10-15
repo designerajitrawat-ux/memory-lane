@@ -76,11 +76,11 @@ describe("warmer prompts from the LLM", () => {
     expect(out.items[0]?.prompts).toEqual(["Template prompt one?", "Template prompt two?"]);
   });
 
-  it("sends the topics to avoid (never health ones), decades instead of a birth year, and no nickname", async () => {
+  it("sends the topics to avoid (never health ones or the nickname), decades instead of a birth year, and no nickname", async () => {
     const { llm, sent } = fakeLlm(["Would you like to sing along?", "Tell me about Saturdays."]);
     await warmPrompts(
       [item("Example Singer")],
-      context(["Brass bands", "Medication times"]),
+      context(["Brass bands", "Medication times", "Bimla's wedding songs"]),
       "Bimla",
       llm,
       () => false,
