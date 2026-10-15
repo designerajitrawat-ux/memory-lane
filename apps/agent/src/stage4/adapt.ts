@@ -175,7 +175,9 @@ export async function adapt(input: AdaptInput, deps: AdaptDeps): Promise<Adaptat
   const musicNew = found(musicOutcome)
     .filter(ok)
     .map((f) => ({ f, place: PLACEMENT_ORDER[eraPlacement(f.description, era)] }))
-    .filter((x) => x.place < PLACEMENT_ORDER.later)
+    // Only voices Qloo's description places in their years: an undated one can be far later (live
+    // check: a 2000s singer slipped into a 1950-born persona's session).
+    .filter((x) => x.place === PLACEMENT_ORDER.fits)
     .sort((a, b) => a.place - b.place)
     .slice(0, PER_DOMAIN)
     .map((x) =>
