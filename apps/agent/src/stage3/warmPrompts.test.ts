@@ -76,6 +76,42 @@ describe("warmer prompts from the LLM", () => {
     expect(out.items[0]?.prompts).toEqual(["Template prompt one?", "Template prompt two?"]);
   });
 
+  it("keeps prompts item-specific: a line two items share, or a repeated opening, is dropped", async () => {
+    const sent: LlmRequest<unknown>[] = [];
+    const llm: LlmClient = {
+      configured: true,
+      model: "test-model",
+      async json<T>(req: LlmRequest<T>) {
+        sent.push(req as LlmRequest<unknown>);
+        const items = (req.input.items as { n: number; name: string }[]).map((i) => ({
+          n: i.n,
+          prompts: [
+            `Tell me what ${i.name} brings to mind for you.`,
+            "Would you rather sing along, tap your foot, or just listen?",
+            `Would you rather sing along with ${i.name} or listen?`,
+          ],
+        }));
+        return { kind: "ok" as const, data: req.schema.parse({ items }), cached: false };
+      },
+    };
+    const out = await warmPrompts(
+      [item("Singer One"), item("Singer Two")],
+      context([]),
+      null,
+      llm,
+      () => false,
+    );
+    expect(out.items.map((i) => i.prompts)).toEqual([
+      [
+        "Tell me what Singer One brings to mind for you.",
+        "Would you rather sing along with Singer One or listen?",
+      ],
+      // Its "Would you rather sing along with…" opens like Singer One's, so only one prompt is
+      // left: it keeps the templates.
+      ["Template prompt one?", "Template prompt two?"],
+    ]);
+  });
+
   it("sends the topics to avoid (never health ones or the nickname), decades instead of a birth year, and no nickname", async () => {
     const { llm, sent } = fakeLlm(["Would you like to sing along?", "Tell me about Saturdays."]);
     await warmPrompts(

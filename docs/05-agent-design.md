@@ -108,8 +108,9 @@ server-side, same privacy guard as Qloo, cached by input hash, capped per day; o
    item's kind, year and Qloo description, with the decades and town they were young in and the avoid
    topics (caregiver's and learned). Each prompt must pass the prompt and caption checks, no memory
    words, no health words, the avoid-list and painful-topic filters, speak to the person (you, we, tell
-   me) and not ask what something "means to people"; at most one "What might…"; an item keeps its
-   template prompts unless two pass.
+   me) and not ask what something "means to people"; at most one "What might…"; each prompt hinges
+   on a detail of its own item, and a line two items share (or a repeated five-word opening) is dropped;
+   an item keeps its template prompts unless two pass.
 3. **Compare (screen 9):** the same model, no tools, given the same public facts and the same task as
    Memory Lane's first session (a favourite or two, then new things they're likely to enjoy; §4.3) and
    the same wording rules as Memory Lane's captions,

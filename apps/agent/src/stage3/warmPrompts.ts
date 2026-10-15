@@ -37,8 +37,8 @@ const PROMPTS_JSON_SCHEMA = {
 };
 
 // docs/05 §4.2: warmth and dignity; invitations, never memory tests; nothing about the person.
-const SYSTEM = `You write conversation prompts for a reminiscence session with an older adult living with memory loss. A family member or carer reads them aloud while the item plays or is shown. For each item, write three short, open invitations (under 20 words each) built on what is known about the item: its kind, its year and the one line about it. Speak to the person directly (you, we, us). Ask about one concrete thing: a sound, a smell, a person, a place, or something to do. Prefer easy choices and "Tell me about…". Invite feelings, the senses, people and places, and stories; put no pressure on memory. You may set a prompt "back then", in the decades and town given (youngIn, grewUpIn). Use everyday words a carer would say; don't reuse descriptive or technical words from the line about the item. Never ask what something means to people in general. Never use the words memory, memories, remember, recall or forget. Never ask for names, dates or facts, and never quiz. Don't assume they saw, heard or ate this exact item. Never say what the person likes, felt or will feel. Never mention health, illness or treatment. Stay well away from every topic in thingsToAvoid, and from war, violence, loss and grief. At most one prompt per item may start with "What might". Use the item's name at most once. Do not invent facts about the item. Plain, warm English.
-Good, one per kind: song "What does this tune make you want to do: sing, dance, or just listen?" / film "Who would you have gone to the pictures with back then?" / tv "Which evening of the week was the television on in your home?" / food "What does the smell of fresh naan bring to mind for you?" / place "Tell me about the busiest street in town back then."
+const SYSTEM = `You write conversation prompts for a reminiscence session with an older adult living with memory loss. A family member or carer reads them aloud while the item plays or is shown. For each item, write three short, open invitations (under 20 words each) built on what is known about the item: its kind, its year and the one line about it. Speak to the person directly (you, we, us). Ask about one concrete thing: a sound, a smell, a person, a place, or something to do. Prefer easy choices and "Tell me about…". Invite feelings, the senses, people and places, and stories; put no pressure on memory. You may set a prompt "back then", in the decades and town given (youngIn, grewUpIn). Make every prompt about this item in particular: pick one concrete detail from its name or its line (a voice, a dance, a scene, a mood, an ingredient, a street or building) and put it in everyday words a carer would say, never technical terms. A prompt that would fit any other item in the list is wrong: no two items may share a prompt or start the same way. Never ask what something means to people in general. Never use the words memory, memories, remember, recall or forget. Never ask for names, dates or facts, and never quiz. Don't assume they saw, heard or ate this exact item. Never say what the person likes, felt or will feel. Never mention health, illness or treatment. Stay well away from every topic in thingsToAvoid, and from war, violence, loss and grief. At most one prompt per item may start with "What might". Use the item's name at most once. Do not invent facts about the item. Plain, warm English.
+Good, one per kind: song "Elvis songs made people want to move. Would you rather dance, clap along, or just listen?" / film "Mughal-E-Azam is full of grand dances and costumes. Which would you rather watch: the dancing or the palace?" / tv "Which evening of the week was the television on in your home?" / food "What does the smell of fresh naan bring to mind for you?" / place "Picture the Blackpool Tower by the sea. Would you go up, or stroll the promenade?"
 Not like this: "What memories do you have of this film?" / "Do you remember who sang it?" / "Which year did it come out?" / "What might a visit to a place of pilgrimage mean to people?" / "What might live music feel like in a brick-vaulted cellar?" / "What do close harmonies bring to mind for you?"
 ${DATA_NOT_INSTRUCTIONS}`;
 
@@ -101,11 +101,29 @@ export async function warmPrompts(
     ...(opts.seeding ? { seeding: true } : {}),
   });
   if (result.kind !== "ok") return { items: [...items], written: 0 };
+  // Item-specific means no two items share a prompt or its opening words (judge review): a prompt
+  // that turns up for two items is dropped from both, and a repeated opening is kept only the first time.
+  const key = (p: string) =>
+    normalizeText(p)
+      .replace(/[^a-z0-9 ]+/g, "")
+      .trim();
+  const opening = (p: string) => key(p).split(/\s+/).slice(0, 5).join(" ");
+  const seenIn = new Map<string, Set<number>>();
+  for (const x of result.data.items) {
+    for (const p of x.prompts) seenIn.set(key(p), (seenIn.get(key(p)) ?? new Set()).add(x.n));
+  }
+  const openings = new Set<string>();
+  const distinct = (p: string) => {
+    if ((seenIn.get(key(p))?.size ?? 0) > 1) return false;
+    if (openings.has(opening(p))) return false;
+    openings.add(opening(p));
+    return true;
+  };
   let written = 0;
   const out = items.map((item, n) => {
     const passed = [
       ...new Set(result.data.items.find((x) => x.n === n)?.prompts.filter(usable) ?? []),
-    ];
+    ].filter(distinct);
     // Hypotheticals read as abstract when stacked: one "What might…" per item at most.
     let hypotheticals = 0;
     const fresh = passed.filter((p) => !/^what might/i.test(p) || hypotheticals++ === 0);

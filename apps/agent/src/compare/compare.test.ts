@@ -64,12 +64,14 @@ const fakeLlm: LlmClient = {
           }
         : req.task === "prompts"
           ? {
-              items: ((req.input.items as { n: number }[]) ?? []).map((i) => ({
+              items: ((req.input.items as { n: number; name: string }[]) ?? []).map((i) => ({
                 n: i.n,
                 prompts: [
-                  "What does this music bring to mind for you?",
+                  `What does ${i.name} bring to mind for you?`,
                   "Do you remember who sang it first?",
-                  "Who would you share an evening like this with?",
+                  `Who would you share ${i.name} with, back then?`,
+                  // The same line for every item: not item-specific, so never kept.
+                  "Tell me about a song you liked to hear.",
                 ],
               })),
             }
@@ -181,13 +183,14 @@ describe("with vs without Qloo (compare) and the LLM's prompts", () => {
       });
       expect(JSON.stringify(compare)).not.toMatch(/She will love|massacre|A love story/);
 
-      // Session prompts came from the LLM, minus the memory test.
+      // Session prompts came from the LLM, minus the memory test and the line every item shared.
       const session = SessionResponseSchema.parse(
         (await a.inject({ method: "GET", url: `/api/sessions/${dorothy.latestSessionId}` })).json(),
       ).session;
-      expect(session.items[0]?.prompts).toEqual([
-        "What does this music bring to mind for you?",
-        "Who would you share an evening like this with?",
+      const first = session.items[0];
+      expect(first?.prompts).toEqual([
+        `What does ${first?.name} bring to mind for you?`,
+        `Who would you share ${first?.name} with, back then?`,
       ]);
     } finally {
       await a.close();
