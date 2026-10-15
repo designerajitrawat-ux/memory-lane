@@ -7,7 +7,8 @@ const CAPTION_BLOCKLIST: RegExp[] = [
   /\b(she|he|they|your (mum|mom|dad|father|mother|parent|wife|husband|gran\w*|nan\w*))\s+(loved?|will|would|enjoyed|adored)\b/i,
   /\bwill (love|enjoy|remember|adore)\b/i,
   /\b(dementia|alzheimer\w*|patients?|suffer\w*|decline|cognitive|symptoms?|diagnos\w*)\b/i,
-  /\b(treat\w*|cure[sd]?|therap\w*|heal\w*|clinical\w*|medical\w*|improves? memory|boosts? memory)\b/i,
+  // Medical claims, not "a sweet treat" or "cured ham" (live check: a dish's reason was blocked).
+  /\b(treatments?|treating|treats? (?:memory|symptoms|dementia|alzheimer\w*|confusion|anxiety|depression)|cures?|therap\w*|heal\w*|clinical\w*|medical\w*|improves? memory|boosts? memory)\b/i,
 ];
 
 const PROMPT_BLOCKLIST: RegExp[] = [

@@ -73,6 +73,11 @@ describe("language policy", () => {
     expect(captionAllowed("She loved this song.")).toBe(false);
     expect(captionAllowed("He will enjoy this film.")).toBe(false);
     expect(captionAllowed("Music therapy for dementia patients.")).toBe(false);
+    expect(captionAllowed("A treatment that cures forgetfulness.")).toBe(false);
+    expect(captionAllowed("This song treats anxiety.")).toBe(false);
+    // Food words that only look medical.
+    expect(captionAllowed("A sweet Ohio treat, often served at parties.")).toBe(true);
+    expect(captionAllowed("People who enjoy cured ham often enjoy this.")).toBe(true);
   });
 
   it("keeps prompts as gentle invitations, not memory tests", () => {
