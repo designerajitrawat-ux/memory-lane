@@ -152,18 +152,23 @@ async function main() {
   void gateway.capabilities().then(async (q) => {
     app.log.info({ qloo: q.state }, "qloo readiness");
     if (!seedDemos || q.state !== "ok" || !dataDb || !profiles) return;
-    await ensureDemoProfiles({
-      db: dataDb.drizzle,
-      profiles,
-      resolutions: createResolutionStore(dataDb.drizzle),
-      taste: createTasteStore(dataDb.drizzle),
-      sessions: createSessionStore(dataDb.drizzle),
-      gateway,
-      llm,
-      log: app.log,
-    }).catch((err: unknown) =>
-      app.log.warn({ code: (err as { code?: string }).code ?? "error" }, "demo seeding failed"),
-    );
+    const seed = () =>
+      ensureDemoProfiles({
+        db: dataDb.drizzle,
+        profiles,
+        resolutions: createResolutionStore(dataDb.drizzle),
+        taste: createTasteStore(dataDb.drizzle),
+        sessions: createSessionStore(dataDb.drizzle),
+        gateway,
+        llm,
+        log: app.log,
+      }).catch((err: unknown) =>
+        app.log.warn({ code: (err as { code?: string }).code ?? "error" }, "demo seeding failed"),
+      );
+    await seed();
+    // Look again now and then: a persona left half-built by a restart is rebuilt once it is stale,
+    // even if no restart follows. When every demo is ready this is a few cheap queries.
+    setInterval(() => void seed(), 20 * 60 * 1000).unref();
   });
 }
 
