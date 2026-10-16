@@ -99,6 +99,13 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-16: **Submission prep.** Final judge review (≈7.75/10, no disqualifying issue) → item-specific AI
+  prompts (cross-item repeats dropped; demos v13), accurate README/Devpost text (tests, favourites,
+  server-side profiles, places/songs limits, business model, pictures, layouts), seeder re-check every
+  20 min. Devpost draft filled (overview, story, 17 tags, links, 10 gallery shots at 3:2, additional
+  info); intro video (2:52, offline Windows voice, captions, live-app recordings) on the Desktop for the
+  developer to upload to YouTube; Qloo kit feedback posted (Discussion #4). Left for the developer:
+  upload the video and paste its link, tick the rules and press Submit on Devpost.
 - 2026-10-15: **Wide-screen layouts + colour button (live).** Landing hero in two columns with Qloo's
   pictures and a real-session preview; demo personas side by side; taste profile and plan with side
   columns (sticky only when they fit); player with the picture beside the text; header colour button
