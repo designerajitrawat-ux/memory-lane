@@ -1,7 +1,8 @@
 # Memory Lane — reminiscence sessions, personal to them
 
 > Qloo Agentic Hackathon 2026 · **Live demo: https://memory-lane-sable-rho.vercel.app** · No login
-> needed: tap **Try a demo profile**.
+> needed: tap **Try a demo profile**. · **Intro video (3 min): https://youtu.be/L5JuIBgxvdY** · Built
+> by Ajit Rawat.
 
 ![Memory Lane landing page](docs/screenshots/landing.png)
 

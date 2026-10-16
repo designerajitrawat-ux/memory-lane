@@ -5,6 +5,7 @@
 Qloo's taste graph, and Qloo decides what comes next.
 **Demo:** https://memory-lane-sable-rho.vercel.app (no login: "Try a demo profile")
 **Repo:** https://github.com/designerajitrawat-ux/memory-lane
+**Video:** https://youtu.be/L5JuIBgxvdY
 **Built by:** Ajit Rawat (solo)
 **Built with:** qloo, qloo-mcp, openai, typescript, next.js, react, tailwindcss, fastify, node.js,
 postgresql, neon, drizzle-orm, zod, vercel, render, docker, vitest
