@@ -33,7 +33,7 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
   use `qloo.cmd` in PowerShell (the .ps1 shim is blocked by the execution policy).
 
 ## Next steps
-1. Submit on Devpost by Oct 29 IST (text ready in docs/devpost.md; screenshots in docs/screenshots/).
+1. Submitted (Oct 16). Edits allowed until Oct 30, 11:45 pm EDT; avoid risky changes.
 2. Keep the app live and free through Nov 17 (UptimeRobot monitors on); re-run the reviewers after
    any larger change; bump `DEMO_VERSION` when research or session logic changes.
 
@@ -99,6 +99,8 @@ Claude Code: update this file at the end of every phase/session. Newest entries 
 | 2026-10-12 | Pinned mature deps (vitest 5.0.3, zod 4.6.5) instead of bypassing pnpm's minimum-release-age policy | Supply-chain safety | — |
 
 ## Done
+- 2026-10-16: **Submitted on Devpost** (status SUBMITTED; editable until the deadline). Intro video
+  https://youtu.be/L5JuIBgxvdY on the project page, README and Devpost text.
 - 2026-10-16: **Submission prep.** Final judge review (≈7.75/10, no disqualifying issue) → item-specific AI
   prompts (cross-item repeats dropped; demos v13), accurate README/Devpost text (tests, favourites,
   server-side profiles, places/songs limits, business model, pictures, layouts), seeder re-check every
